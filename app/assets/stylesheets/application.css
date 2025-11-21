@@ -1,10 +1,50 @@
-/*
- * This is a manifest file that'll be compiled into application.css.
- *
- * With Propshaft, assets are served efficiently without preprocessing steps. You can still include
- * application-wide styles in this file, but keep in mind that CSS precedence will follow the standard
- * cascading order, meaning styles declared later in the document or manifest will override earlier ones,
- * depending on specificity.
- *
- * Consider organizing styles into separate files for maintainability.
- */
+.flash-message {
+  transition: opacity 0.3s ease-out;
+}
+
+/* .btn-unified { */
+/*   @apply px-4 py-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 rounded text-sm font-medium transition-colors cursor-pointer; */
+/* } */
+
+/* .btn-unified { */
+/*   padding: 0.5rem 1rem; */
+/*   border: 1px solid #d1d5db; */
+/*   background-color: #ffffff; */
+/*   color: #374151; */
+/*   border-radius: 0.25rem; */
+/*   font-size: 0.875rem; */
+/*   font-weight: 500; */
+/*   transition: background-color 0.15s ease-in-out; */
+/*   cursor: pointer; */
+/*   text-decoration: none; */
+/*   display: inline-block; */
+/* } */
+/**/
+/* .btn-unified:hover { */
+/*   background-color: #f9fafb; */
+/* } */
+
+.btn-unified {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid #ccc;
+  background-color: #f8f8f8;
+  color: #2f2f2f;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-block;
+  text-decoration: none;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.btn-unified:hover {
+  background-color: #efefef;
+  border-color: #bbb;
+}
+
+.btn-unified:active {
+  background-color: #e5e5e5;
+}

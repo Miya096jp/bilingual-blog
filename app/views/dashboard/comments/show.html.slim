@@ -1,0 +1,27 @@
+h1 コメント詳細
+
+h3 記事情報
+p
+  strong タイトル: 
+  = link_to @comment.article.title, user_article_path(@comment.article, locale: @comment.article.locale)
+p
+  strong 言語: 
+  = @comment.article.locale == 'ja' ? '日本語' : 'English'
+
+h3 コメント情報
+p
+  strong 投稿者: 
+  = @comment.author_name
+p
+  strong 投稿日: 
+  = @comment.created_at.strftime('%Y年%m月%d日 %H:%M')
+- if @comment.website.present?
+  p
+    strong ウェブサイト: 
+    = link_to @comment.website, @comment.website, target: "_blank"
+
+h3 コメント内容
+= simple_format(@comment.content)
+
+= link_to "削除", dashboard_comment_path(@comment, locale: params[:locale]), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }
+= link_to "一覧に戻る", dashboard_comments_path(locale: params[:locale])

@@ -1,0 +1,27 @@
+h1 新しいカテゴリを作成
+
+- if @category.errors.any?
+  .errors
+    h4 エラーが発生しました:
+    ul
+      - @category.errors.full_messages.each do |message|
+        li= message
+
+= form_with model: [:dashboard, @category], local: true do |f|
+  p
+    = f.label :name, "カテゴリ名"
+    = f.text_field :name, required: true, style: "width: 100%;"
+
+  p
+    = f.label :description, "説明(任意)"
+    = f.text_area :description, rows: 4, style: "width: 100%;"
+
+  p
+    = f.label :locale, "言語"
+    = f.select :locale, options_for_select([["日本語", "ja"], ["English", "en"]], @category.locale), {}, { disabled: true, style: "background-color: #f5f5f5" }
+    small style="color: #666; display: block; margin-top: 5px;"
+      | 言語は作成時に決定され、後から変更できません
+
+  .actions
+    = f.submit "カテゴリを作成"
+    = link_to "キャンセル", dashboard_categories_path

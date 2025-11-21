@@ -1,0 +1,90 @@
+.medium-container {
+  all: revert;
+  font-family: Georgia, "Times New Roman", Times, serif;
+}
+.medium-container * {
+  all: revert;
+}
+.medium,
+.medium-wide {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: 21px;
+  line-height: 1.58;
+  letter-spacing: -0.003em;
+  color: rgba(41, 41, 41, 1);
+  margin: 0 auto;
+  padding: 0 50px;
+}
+.medium {
+  max-width: 768px;
+}
+.medium-wide {
+  max-width: 1280px;
+}
+
+.medium h1,
+.medium-wide h1 {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.028em;
+  margin: 56px 0 -13px;
+}
+.medium h2,
+.medium-wide h2 {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 48px 0 -13px;
+}
+.medium p,
+.medium-wide p {
+  margin: 29px 0;
+  line-height: 1.58;
+}
+.medium blockquote,
+.medium-wide blockquote {
+  font-style: italic;
+  font-size: 24px;
+  line-height: 1.48;
+  border-left: 3px solid rgba(41, 41, 41, 1);
+  padding-left: 20px;
+  margin: 43px 0 43px -20px;
+}
+.medium ul,
+.medium ol,
+.medium-wide ul,
+.medium-wide ol {
+  margin: 29px 0;
+  padding-left: 30px;
+}
+.medium li,
+.medium-wide li {
+  margin: 14px 0;
+  line-height: 1.58;
+}
+
+.medium pre,
+.medium-wide pre {
+  background: #fdf6e3; /* 薄いクリーム色 */
+  border-radius: 3px;
+  padding: 20px;
+  margin: 29px 0;
+  overflow-x: auto;
+  font-family: "SF Mono", Monaco, monospace;
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.medium code,
+.medium-wide code {
+  background: #fdf6e3; /* 薄いクリーム色 */
+  border-radius: 2px;
+  padding: 3px 4px;
+  font-family: "SF Mono", Monaco, monospace;
+  font-size: 16px;
+}

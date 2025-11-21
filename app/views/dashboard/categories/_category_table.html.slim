@@ -1,0 +1,23 @@
+- if categories.any?
+  table
+    thead
+      tr
+        th ID
+        th カテゴリ名
+        th 説明
+        th 記事数
+        th アクション
+    tbody
+      - categories.each do |category|
+        tr
+          td= category.id
+          td= category.name
+          td= truncate(category.description, length: 50) if category.description.present?
+          td= category.articles_count || 0
+          td
+            = link_to "編集", edit_dashboard_category_path(category)
+            = " | "
+            = link_to "削除", dashboard_category_path(category),
+                      data: { turbo_method: :delete, turbo_confirm: "削除しますか？"}
+- else
+  p カテゴリがありません

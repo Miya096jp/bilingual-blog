@@ -1,0 +1,77 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Rails プロジェクトの「MVC + routes + schema」を
+# Markdown にまとめて出力するスクリプト。
+#
+# 使い方:
+#   chmod +x bin/export_code
+#   bin/export_code
+#
+# 出力: project_export.md
+
+require "pathname"
+
+ROOT = Pathname.new(File.expand_path("..", __dir__))
+OUTPUT = ROOT.join("project_export.md")
+
+TARGET_PATHS = [
+  "app/models",
+  "app/controllers",
+  "app/views",
+  "config/routes.rb",
+  "db/schema.rb",
+  "db/seeds.rb",
+  "app/assets",
+  "app/javascript"
+]
+
+def collect_files
+  TARGET_PATHS.flat_map do |path|
+    full = ROOT.join(path)
+
+    if full.directory?
+      Dir.glob(full.join("**/*")).select { |f| File.file?(f) }
+    elsif full.file?
+      [full.to_s]
+    else
+      []
+    end
+  end
+end
+
+def header_for(file)
+  <<~MD
+  ## File: `#{Pathname.new(file).relative_path_from(ROOT)}`
+
+  ```
+  MD
+end
+
+def footer
+  "```\n\n"
+end
+
+def export
+  files = collect_files
+
+  File.open(OUTPUT, "w") do |md|
+    md << "# Project Code Export (MVC + Routes + Schema)\n"
+    md << "Exported at: #{Time.now}\n"
+    md << "\n---\n\n"
+
+    files.each do |file|
+      md << header_for(file)
+      md << File.read(file)
+      md << footer
+    end
+  end
+
+  puts "✅ Export complete!"
+  puts "Output: #{OUTPUT}"
+  puts "Total files: #{files.size}"
+end
+
+export
+
+

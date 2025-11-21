@@ -1,0 +1,92 @@
+- if article.errors.any?
+  h4 エラーが発生しました:
+  ul
+    - article.errors.full_messages.each do |message|
+      li= message
+
+div data-controller="markdown-preview image-upload layout-switcher category-modal" data-markdown-preview-url-value=dashboard_preview_path(locale: params[:locale]) data-layout-switcher-translation-mode-value=is_translation data-category-modal-url-value="#{dashboard_categories_path(format: :json)}" data-category-modal-locale-value="#{article.locale || 'ja'}" class="layout-switcher"
+
+  div data-layout-switcher-target="buttons" class="layout-buttons flex gap-1 justify-center mb-2"
+    button.layout-button type="button" data-action="click->layout-switcher#switchToSplit" data-mode="split" ⚏
+    button.layout-button type="button" data-action="click->layout-switcher#switchToTextOnly" data-mode="text-only" ☰
+    button.layout-button type="button" data-action="click->layout-switcher#switchToPreviewOnly" data-mode="preview-only" ⚇
+    - if is_translation
+      button.layout-button type="button" data-action="click->layout-switcher#switchToOriginalPreview" data-mode="original-preview" 原
+
+  div class= "relative flex gap-5 h-screen"
+    div data-layout-switcher-target="textArea" class="flex-1 pr-5 flex flex-col h-full text-area"
+
+      = form_with model: article, url: form_url, local: true do |f|
+
+        div class="flex items-baseline mb-6 border-b border-gray-400"
+
+          div class="flex items-baseline gap-4"
+            p
+              = f.select :locale, options_for_select([["日本語", "ja"], ["English", "en"]], article.locale), {}, { disabled: locale_disabled, class: "text-gray-600 border border-gray-400 rounded" }
+            p
+              = f.select :status, options_for_select([["下書き", "draft"],["公開", "published"]], article.status), {}, class: "text-gray-600 border border-gray-400 rounded"
+
+          div class="flex items-baseline gap-1 mx-4"
+            - case button_type
+            - when "new"
+              /= f.submit "記事を作成", class: "bg-gray-500 hover:bg-gray-600 rounded text-sm py-1 px-2 text-white"
+              = f.submit "記事を作成", class: "btn-unified"
+            - when "edit"
+              /= f.submit "更新", class: "bg-blue-500 hover:bg-blue-600 rounded text-sm py-1 px-2 text-white"
+              = f.submit "更新", class: "btn-unified"
+              /= link_to "キャンセル", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 rounded text-sm py-1 px-2 text-white ml-2"
+              = link_to "キャンセル", dashboard_articles_path, class: "btn-unified ml-2"
+              /= link_to "削除", dashboard_article_path(article), class: "bg-red-500 hover:bg-red-600 rounded text-sm py-1 px-2 text-white ml-2", data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
+              = link_to "削除", dashboard_article_path(article), class: "btn-unified ml-2", data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
+            - when "translation"
+              /= f.submit "翻訳を作成", class: "bg-green-500 hover:bg-green-600 rounded text-sm py-1 px-2 text-white"
+              = f.submit "翻訳を作成", class: "btn-unified"
+              /= link_to "キャンセル", dashboard_article_path(original_article), class: "bg-gray-500 hover:bg-gray-600 rounded text-sm py-1 px-2 text-white ml-2"
+              = link_to "キャンセル", dashboard_article_path(original_article), class: "btn-unified ml-2"
+        div class="ml-auto flex gap-2 border-b border-gray-400"
+          .flex.items-center.gap-1
+            button.text-gray-500.hover:text-gray-700.text-lg.font-bold type="button" data-action="click->category-modal#showModal" title="新しいカテゴリを追加" +
+            = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "text-gray-400 focus:outline-none", required: false, data: { category_modal_target: "select" } }
+          p
+            = f.text_field :tag_list, placeholder: "tags", class: "text-gray-600 focus:outline-none"
+          p
+            /button type="button" data-action="click->image-upload#selectImage" style="cursor-pointer margin-bottom: 10px"
+            button type="button" data-action="click->image-upload#selectImage" class="cursor-pointer mb-2"
+              | 📷
+        p
+          = f.text_field :title, required: true,
+            class: "w-full border-b border-gray-400 placeholder-gray-400 p-2 focus:border-gray-400 focus:outline-none mb-3",
+            placeholder: "title",
+            data: { field: "title", action: "input->markdown-preview#preview" }
+            
+          = f.text_area :content, required: true, style: "width: 100%; padding-bottom: 36rem;", data: { markdown_preview_target: "input", action: "input->markdown-preview#preview", image_upload_target: "textarea" }, class: "px-3 py-2 border-0 focus:ring-0 focus:outline-none focus:border-[1px] focus:border-gray-300"
+
+    .fixed.inset-0.bg-black.bg-opacity-50.flex.items-center.justify-center.z-50.hidden data-category-modal-target="modal"
+      .bg-white.rounded-lg.p-6.w-96.max-w-90vw
+        h3.text-lg.font-semibold.mb-4 新しいカテゴリを作成
+
+        form data-category-modal-target="form" data-action="submit->category-modal#submitForm"
+          .mb-4
+            label.block.text-sm.font-medium.text-gray-700.mb-2 カテゴリ名
+            input.w-full.border.border-gray-300.rounded-md.px-3.py-2.focus:outline-none.focus:ring-1.focus:ring-gray-500 type="text" name="category[name]" required="" placeholder="カテゴリ名を入力"
+          .flex.gap-3.justify-end
+            button.px-4.py-2.text-gray-600.border.border-gray-300.rounded-md.hover:bg-gray-50 type="button" data-action="click->category-modal#closeModal" キャンセル
+            button.px-4.py-2.bg-blue-500.text-white.rounded-md.hover:bg-blue-600 type="submit" 作成
+
+    div class="absolute top-0 bottom-0 left-1/2 w-[1px] bg-gray-400 layout-divider"
+
+    div data-layout-switcher-target="preview" class="flex-1 pl-5 h-full overflow-hidden hover:overflow-y-auto preview-area"
+      .medium-container style="all: revert;"
+        div data-markdown-preview-target="titlePreview" class="medium title-preview"
+          h1 プレビュータイトル
+        div data-markdown-preview-target="preview" class="medium" style="padding-bottom: 36rem;"
+          p プレビューがここに表示されます
+
+    - if is_translation
+      div data-layout-switcher-target="originalPreview" class="flex-1 pl-5 h-full overflow-hidden hover:overflow-y-auto original-preview-area"
+        .original-content style="all: revert;"
+          div class="medium"
+            .original-title
+              h1= @original_article.title
+            .original-body
+              = @original_article.content_html

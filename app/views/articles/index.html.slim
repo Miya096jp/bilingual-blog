@@ -1,0 +1,47 @@
+/ 現在の絞り込み条件表示
+- if @filter.current_category || @filter.current_tags&.any?
+  .filter-status
+    | 現在の絞り込み: 
+    - if @filter.current_category
+      strong #{@filter.current_category.name}
+    - if @filter.current_tags&.any?
+      | タグ: 
+      - @filter.current_tags.each do |tag|
+        strong #{tag.name}
+        | 　
+    = link_to "すべてクリア", user_articles_path(params[:username], locale: params[:locale])
+
+/ 記事一覧
+- @articles.each do |article|
+  .article-item.mb-8.p-6.border-b.border-gray-500
+    .article-header.max-w-3xl.mx-auto
+      h2.text-4xl.font-extrabold.mb-4.mt-8.text-gray-900.border-b.border-gray-500.pb-2
+        = link_to article.title, user_article_path(article.user.username, article.id, locale: params[:locale])
+
+      .article-meta.pb-3.mb-4
+        - if article.category.present?
+          p.pb-2
+            | カテゴリ: 
+            = link_to article.category.name, user_articles_path(params[:username], @filter.filter_params.merge(category_id: article.category.id))
+
+        = render 'shared/article_tags', article: article, filter_params: @filter.filter_params
+
+      .meta-content-divider.text-center.mx-8
+        span.text-gray-400.text-xl • • •
+
+    .article-content.medium-container style="all: revert;"
+      div class="medium"
+        = article.content_html
+
+    .article-meta.max-w-3xl.mx-auto.text-right
+      p
+        | 投稿日: 
+        = article.published_at&.strftime('%Y年%m月%d日')
+      p
+        | 最終更新日: 
+        = article.updated_at&.strftime('%Y年%m月%d日')
+
+      - if article.translation.present?
+        p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(article.translation.user.username, article.translation.id, locale: article.translation.locale)
+
+= paginate @articles

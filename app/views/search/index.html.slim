@@ -1,0 +1,35 @@
+h1= params[:locale] == 'ja' ? '検索結果' : 'Search Results'
+
+/ 検索結果の表示
+- if @search_keyword.present?
+  p style="margin-bottom: 20px;"
+    | 「#{@search_keyword}」の検索結果: #{@articles.total_count}件
+    = link_to (params[:locale] == 'ja' ? '記事一覧に戻る' : 'Back to Articles'), user_articles_path(locale: params[:locale]), style: "margin-left: 20px;"
+- else
+  p= params[:locale] == 'ja' ? 'キーワードを入力してください' : 'Please enter a keyword'
+  = link_to (params[:locale] == 'ja' ? '記事一覧に戻る' : 'Back to Articles'), user_articles_path(locale: params[:locale]), style: "margin-left: 20px;"
+    
+/ 記事一覧表示（articles/index.html.slim と同じ構造）
+- @articles.each do |article|
+  .article-item style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd;"
+    h2= link_to article.title, user_article_path(article.user.username, article.id, locale: params[:locale])
+    
+    - if article.category.present?
+      p
+        | カテゴリ: 
+        strong= article.category.name
+    
+    - if article.tags.any?
+      p
+        | タグ: 
+        - article.tags.each_with_index do |tag, index|
+          strong= tag.name
+          - if index < article.tags.size - 1
+            | , 
+    
+    .article-content= article.content_html
+    p
+      strong 投稿日: 
+      = article.published_at&.strftime('%Y年%m月%d日')
+
+= paginate @articles

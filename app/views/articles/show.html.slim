@@ -1,0 +1,91 @@
+.article-items
+  .article-title.max-w-5xl.mx-auto
+    h1.text-4xl.font-extrabold.mb-8.text-gray-900
+      = @article.title
+  
+  .article-meta.max-w-5xl.mx-auto.mb-4.border-b.border-gray-500
+    .flex.items-center.mb-2
+      span.w-20.text-gray-500.text-right
+        | 投稿日
+      span.w-4.text-gray-500.text-center
+        | :
+      span.text-gray-500
+        = @article.published_at&.strftime('%Y年%m月%d日')
+
+    .flex.items-center.mb-2
+      span.w-20.text-gray-500.text-right
+        | 更新日
+      span.w-4.text-gray-500.text-center
+        | :
+      span.text-gray-500
+        = @article.updated_at&.strftime('%Y年%m月%d日')
+
+    .flex.items-center.mb-2
+      - if @article.category.present?
+        span.w-20.text-gray-500.text-right
+          | カテゴリ
+        span.w-4.text-gray-500.text-center
+          | :
+        span.text-gray-500.hover:text-gray-800
+          = link_to @article.category.name, user_articles_path(locale: params[:locale], category_id: @article.category.id)
+
+    .flex.items-center.mb-2
+      span.w-20.text-gray-500.text-right
+        | タグ
+      span.w-4.text-gray-500.text-center
+        | :
+      span
+        = render 'shared/article_tags', article: @article, filter_params: {}
+
+    - if @article.translation.present?
+      .flex.items-center.mb-2
+        span.w-20.text-gray-500.text-right
+          | 翻訳
+        span.w-4.text-gray-500.text-center
+          | :
+        span
+          = link_to "#{@article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(@article.translation.user.username, @article.translation.id, locale: @article.translation.locale), class: "pb-2 block text-gray-500 hover:text-gray-800"
+
+  .article-content style="all: revert;"
+    div class="medium-wide"
+      = @article.content_html
+
+/.section-devider.my-16.max-w-5xl.mx-auto
+/  .border-t.border-gray-600
+
+.section-divider.my-16.max-w-5xl.mx-auto.text-center
+  .flex.items-center.justify-center.gap-4
+    .border-t.border-gray-600.flex-1
+    span.text-sm.italic.text-gray-600.px-4 End of the article
+    .border-t.border-gray-600.flex-1
+
+.comment-section
+  .comments.max-w-5xl.mx-auto
+    - if @article.comments.exists?
+      - @article.comments.order(created_at: :desc).each.with_index(1) do |comment, index|
+        .comment.mb-8.pb-4.border-b.border-gray-500
+          p.mb-2.font-semibold
+            | コメント#{index}:
+          .mb-2
+            - if comment.website.present?
+              = link_to comment.author_name, comment.website, target: "_blank"
+            - else
+              = comment.author_name
+          p.text-sm.text-gray-500.mb-2= comment.created_at.strftime('%Y年%m月%d日 %H:%M')
+          .text-gray-700= simple_format(comment.content)
+    - else
+      p コメントはまだありません。
+
+  .comment-form.max-w-5xl.mx-auto.py-8
+    = form_with user: user_article_comments_path(@article.user.username, @article.id), local: true do |f|
+      .flex.flex-col.w-1/2.mb-2
+        = f.label :author_name, "お名前:", class: "mb-2"
+        = f.text_field :author_name, required: true, class: "border-0 border-b border-gray-600 focus:outline-none"
+      .flex.flex-col.w-1/2.mb-2
+        = f.label :website, "ウェブサイト（任意）:", class: "mb-2"
+        = f.url_field :website, class: "border-0 border-b border-gray-600 focus:outline-none"
+      .flex.flex-col.w-1/2.mb-2
+        = f.label :content, "コメント:", class: "mb-2"
+        = f.text_area :content, rows: 5, required: true, class: "border border-gray-600 focus:outline-none"
+      
+      = f.submit "コメントを投稿", class: "px-4 py-2 border border-gray-300 bg-white cursor-pointer text-base rounded hover:bg-gray-200 transition-colors"

@@ -1,0 +1,153 @@
+/* app/assets/tailwind/application.css */
+@import "tailwindcss";
+@import "../stylesheets/layout_switcher.css";
+
+.slate-theme .blog-title {
+  color: #222b45 !important;
+}
+
+.slate-theme .theme-header {
+  background-color: #222b45 !important;
+  color: #e5e7eb !important; /* text-gray-300 相当 */
+}
+
+.slate-theme .theme-footer {
+  background-color: #222b45 !important;
+  color: #e5e7eb !important; /* text-gray-300 相当 */
+}
+
+/* .green-theme .blog-title { */
+/*   color: theme("colors.emerald.900") !important; */
+/* } */
+/* .green-theme .theme-header { */
+/*   @apply bg-emerald-900 text-white; */
+/* } */
+/* .green-theme .theme-footer { */
+/*   @apply bg-emerald-900 text-gray-300; */
+/* } */
+
+.forest-theme .blog-title {
+  color: #1b4332 !important;
+}
+
+.forest-theme .theme-header {
+  background-color: #1b4332 !important;
+  color: #e5e7eb !important; /* text-gray-300 */
+}
+
+.forest-theme .theme-footer {
+  background-color: #1b4332 !important;
+  color: #e5e7eb !important; /* text-gray-300 */
+}
+
+/* .purple-theme .blog-title { */
+/*   color: theme("colors.indigo.900") !important; */
+/* } */
+/* .purple-theme .theme-header { */
+/*   @apply bg-indigo-900 text-white; */
+/* } */
+/* .purple-theme .theme-footer { */
+/*   @apply bg-indigo-900 text-gray-300; */
+/* } */
+
+.maroon-theme .blog-title {
+  color: #3a0a0a !important;
+}
+
+.maroon-theme .theme-header {
+  background-color: #3a0a0a !important;
+  color: #e5e7eb !important; /* text-gray-300 */
+}
+
+.maroon-theme .theme-footer {
+  background-color: #3a0a0a !important;
+  color: #e5e7eb !important; /* text-gray-300 */
+}
+
+/* .gray-theme .blog-title { */
+/*   color: theme("colors.slate.900") !important; */
+/* } */
+/* .gray-theme .theme-header { */
+/*   @apply bg-stone-900 text-white; */
+/* } */
+/* .gray-theme .theme-footer { */
+/*   @apply bg-stone-900 text-gray-300; */
+/* } */
+/**/
+
+.midnight-theme .blog-title {
+  color: #0a1a2f !important;
+}
+
+.midnight-theme .theme-header {
+  background-color: #0a1a2f !important;
+  color: #e5e7eb !important; /* text-gray-300 相当 */
+}
+
+.midnight-theme .theme-footer {
+  background-color: #0a1a2f !important;
+  color: #e5e7eb !important; /* text-gray-300 相当 */
+}
+
+[data-markdown-preview-target="preview"] img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+/* 公開記事の画像 */
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+/* app/assets/stylesheets/application.css */
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 4px;
+  margin: 15px auto;
+  display: block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tab-container {
+  margin: 20px 0;
+}
+
+.tab-buttons {
+  display: flex;
+  border-bottom: 2px solid #ddd;
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  padding: 10px 20px;
+  border: none;
+  background: #f5f5f5;
+  cursor: pointer;
+  border-top: 2px solid transparent;
+  margin-right: 2px;
+}
+
+.tab-button.active {
+  background: white;
+  border-top-color: #007bff;
+  font-weight: bold;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}

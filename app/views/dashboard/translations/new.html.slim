@@ -1,0 +1,7 @@
+= render 'dashboard/articles/form',
+  article: @translation,
+  original_article: @original_article,
+  form_url: dashboard_article_translation_path(@original_article),
+  locale_disabled: true,
+  button_type: "translation",
+  is_translation: true

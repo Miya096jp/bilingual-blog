@@ -1,0 +1,25 @@
+.flex.justify-between.items-center
+  .flex-grow
+    .font-semibold= article_data.title
+    .text-sm.text-gray-500
+      = article_data.locale == "ja" ? "日本語" : "English"
+      | ・
+      = article_data.category&.name || '未設定'
+      | ・
+      = article_data.published_at&.strftime("%Y-%m-%d")
+      | ・
+      = article_data.status == "draft" ? "下書き" : "公開"
+      - if article_data.original? && article_data.has_translation?
+        | ・翻訳済み
+      - if article_data.translated?
+        | ・翻訳元: #{article_data.original_article.title}
+        /| ・翻訳元: 要チェック 
+
+  .flex.space-x-2.ml-4
+    - if article_data.translated?
+      = link_to "翻訳編集", edit_dashboard_article_translation_path(article_data.original_article, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"
+    - else
+      = link_to "編集", edit_dashboard_article_path(article_data, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"
+    - if article_data.translation.blank? && article_data.original?
+      span.text-gray-400 |
+      = link_to "翻訳作成", new_dashboard_article_translation_path(article_data, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"

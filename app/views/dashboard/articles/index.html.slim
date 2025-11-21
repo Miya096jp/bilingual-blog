@@ -1,0 +1,17 @@
+= link_to "新しい記事を作成", new_dashboard_article_path(locale: params[:locale]), class: "text-blue-500 hover:text-blue-600 inline-block p-3"
+
+.space-y-6
+  - @original_articles.each do |article|
+    .p-4.border.border-gray-200.rounded-lg.shadow-sm.bg-white
+      .space-y-4
+        .p-3
+          = render "dashboard/articles/article_row", article_data: article
+        .span.border-b.border-gray-300
+        - if article.translation.present?
+          .p-3
+            = render "dashboard/articles/article_row", article_data: article.translation
+        - else
+          .p-3.text-gray-500
+            | 未翻訳
+
+= paginate @original_articles

@@ -1,0 +1,40 @@
+.profile-header.mb-8
+  .flex.items-center.gap-6
+    - if @user.avatar.attached?
+      = image_tag @user.avatar, class: "w-24 h-24 rounded-full"
+    - else
+      .w-24.h-24.bg-gray-300.rounded-full.flex.items-center.justify-center
+        span.text-3xl.text-gray-600 #{@user.display_name.first}
+
+    div
+      h1.text-3xl.font-bold= @user.display_name(@current_locale)
+      - if @user.localized_location(@current_locale).present?
+        p.text-gray-600 #{@user.localized_location(@current_locale)}
+
+      - if @user.localized_bio(@current_locale).present?
+        p.mt-2= simple_format(@user.localized_bio(@current_locale))
+
+      - if @user.website.present? || @user.twitter_handle.present? || @user.facebook_handle.present?
+
+        .flex.flex_wrap.gap-3.mt-4
+          - if @user.website.present?
+            = link_to @user.website, target: "_blank" do
+              | 🌐 Website
+          - if @user.twitter_handle.present?
+            = link_to "https://x.com/#{@user.twitter_handle.delete('@')}", target: "_blank" do
+              | X
+          - if @user.facebook_handle.present?
+            = link_to "https://facebook.com/#{@user.facebook_handle}", target: "_blank" do
+              | Facebook
+            - if @user.github_handle.present?
+              = link_to "https://github.com/#{@user.github_handle}", target: "_blank" do
+                | GitHub
+            - if @user.qiita_handle.present?
+              = link_to "https://qiita.com/#{@user.qiita_handle}", target: "_blank" do
+                | Qiita
+            - if @user.zenn_handle.present?
+              = link_to "https://zenn.dev/#{@user.zenn_handle}", target: "_blank" do
+                | Zenn
+            - if @user.hatena_handle.present?
+              = link_to "https://#{@user.hatena_handle}.hatenablog.com/", target: "_blank" do
+                | はてなブログ

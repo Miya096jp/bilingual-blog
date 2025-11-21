@@ -16,7 +16,7 @@ gem "turbo-rails"
 gem "stimulus-rails"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
-
+gem "tailwindcss-rails"
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
 
@@ -36,6 +36,16 @@ gem "kamal", require: false
 
 # Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
 gem "thruster", require: false
+gem "kaminari"
+gem "kramdown"
+gem "kramdown-parser-gfm"
+# Use slim
+gem "slim-rails"
+gem "html2slim", github: "slim-template/html2slim"
+
+# For ActiveStorage
+gem "image_processing", "~> 1.2"
+gem "devise"
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 # gem "image_processing", "~> 1.2"
@@ -53,7 +63,10 @@ end
 
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
+  gem "rubocop-capybara"
   gem "web-console"
+  gem "solargraph"
+  gem "ruby-lsp"
 end
 
 group :test do
@@ -61,3 +74,4 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+gem "rouge"

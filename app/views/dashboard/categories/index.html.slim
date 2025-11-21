@@ -1,0 +1,14 @@
+.tab-container data-controller="category-tabs"
+  .tab-buttons
+    button.tab-button.active data-action="click->category-tabs#switchTab" data-target="ja" data-category-tabs-target="button"
+      | 日本語 (#{category_count_for_locale("ja")})
+    button.tab-button data-action="click->category-tabs#switchTab" data-target="en" data-category-tabs-target="button"
+      | English (#{category_count_for_locale("en")})
+  .tab-content.active data-category-tabs-target="content" data-tab="ja"
+    = link_to "日本語カテゴリを作成", new_dashboard_category_path(locale: "ja"), 
+      style: "margin-bottom: 20px; display: inline-block;"
+    = render "category_table", categories: @ja_categories
+
+  .tab-content data-category-tabs-target="content" data-tab="en"
+    = link_to "英語カテゴリを作成", new_dashboard_category_path(locale: "en"), style: "margin-bottom: 20px; display: inline-block;"
+    = render "category_table", categories: @en_categories

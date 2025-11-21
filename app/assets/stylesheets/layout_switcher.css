@@ -1,0 +1,92 @@
+.layout-switcher.mode-split .text-area {
+  flex: 1;
+  display: block;
+}
+
+.layout-switcher.mode-split .preview-area {
+  flex: 1;
+  display: block;
+}
+
+.layout-switcher.mode-split .original-preview-area {
+  display: none;
+}
+
+.layout-switcher.mode-text-only .text-area {
+  flex: 1;
+  display: block;
+}
+
+.layout-switcher.mode-text-only .preview-area {
+  display: none;
+}
+
+.layout-switcher.mode-text-only .original-preview-area {
+  display: none;
+}
+
+.layout-switcher.mode-text-only .layout-divider {
+  display: none;
+}
+
+.layout-switcher.mode-preview-only .text-area {
+  display: none;
+}
+
+.layout-switcher.mode-preview-only .preview-area {
+  flex: 1;
+  display: block;
+}
+
+.layout-switcher.mode-preview-only .original-preview-area {
+  display: none;
+}
+
+.layout-switcher.mode-preview-only .layout-divider {
+  display: none;
+}
+
+.layout-switcher.mode-original-preview .text-area {
+  flex: 1;
+  display: block;
+}
+
+.layout-switcher.mode-original-preview .preview-area {
+  display: none;
+}
+
+.layout-switcher.mode-original-preview .original-preview-area {
+  flex: 1;
+  display: block;
+}
+
+.layout-switcher.mode-original-preview .layout-divider {
+  display: block;
+}
+
+/* ボタンスタイル */
+.layout-buttons button {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+  font-size: 16px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 4px;
+}
+
+.layout-buttons button:hover {
+  background: #f3f4f6;
+}
+
+.layout-buttons button.active {
+  background: #e5e7eb;
+  border-color: #6b7280;
+}
+
+/* レイアウトの基本スタイル */
+.layout-switcher {
+  width: 100%;
+  height: 100%;
+}
