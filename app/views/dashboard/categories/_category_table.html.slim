@@ -1,23 +1,24 @@
 - if categories.any?
-  table
-    thead
+  table.w-full
+    thead.bg-gray-50
       tr
-        th ID
-        th カテゴリ名
-        th 説明
-        th 記事数
-        th アクション
-    tbody
-      - categories.each do |category|
-        tr
-          td= category.id
-          td= category.name
-          td= truncate(category.description, length: 50) if category.description.present?
-          td= category.articles_count || 0
-          td
-            = link_to "編集", edit_dashboard_category_path(category)
-            = " | "
-            = link_to "削除", dashboard_category_path(category),
-                      data: { turbo_method: :delete, turbo_confirm: "削除しますか？"}
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider ID
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider カテゴリ名
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider 説明
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider 記事数
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider アクション
+    tbody.bg-white.divide-y.divide-gray-200
+      - categories.each_with_index do |category, index|
+        tr class="#{index.even? ? 'bg-white' : 'bg-gray-50'}"
+          td.px-6.py-4.whitespace-nowrap.text-sm.text-gray-900= category.id
+          td.px-6.py-4.whitespace-nowrap.text-sm.font-medium.text-gray-900= category.name
+          td.px-6.py-4.text-sm.text-gray-500
+            = truncate(category.description, length: 50) if category.description.present?
+          td.px-6.py-4.whitespace-nowrap.text-sm.text-gray-900= category.articles_count || 0
+          td.px-6.py-4.whitespace-nowrap.text-sm.font-medium
+            .flex.gap-2
+              = link_to "編集", edit_dashboard_category_path(category), class: "btn-unified text-sm"
+              = link_to "削除", dashboard_category_path(category), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }, class: "btn-unified text-sm"
 - else
-  p カテゴリがありません
+  .p-8.text-center
+    p.text-gray-500.text-lg カテゴリがありません

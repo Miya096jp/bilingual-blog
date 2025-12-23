@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="<%= (@blog_setting&.theme_color || 'slate') %>-theme">
+<html class="<%= (@blog_setting&.theme_color || 'default') %>-theme">
   <head>
     <title><%= @blog_setting&.display_title(I18n.locale) || "Dual Pascal" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -22,7 +22,7 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="text-lg bg-white min-h-screen flex flex-col">
+  <body class="text-lg bg-white min-h-screen flex flex-col" data-controller="auth-modal" data-action="keydown->auth-modal#closeOnEscape">
     <!-- ページヘッダー -->
     <header class="site-header mb-4">
       <div class="header-container w-full">
@@ -31,35 +31,25 @@
           <nav class="main-nav w-full theme-header">
             <nav class="nav-inner flex max-w-6xl mx-auto items-center justify-end gap-4 h-12 px-6">
 
-            <!-- 言語切替 -->
-            <% link_label = params[:locale] == "ja" ? "EN" : "JP" %>
-            <% link_locale = params[:locale] == "ja" ? "en" : "ja" %>
-            <% if action_name == "show" && @article&.translation.present? %>
-              <%= link_to "#{link_label}", user_article_path(@article.translation.user.username, @article.translation.id, locale: "#{link_locale}"), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded" %>
-            <% elsif action_name == "show" && @article&.original_article.present? %>
-              <%= link_to "#{link_label}", user_article_path(@article.original_article.user.username, @article.original_article.id, locale: "#{link_locale}"), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded" %>
-            <% elsif controller_name == "profiles" && action_name == "show" %>
-              <%= link_to "#{link_label}", user_profile_path(params[:username], locale: "#{link_locale}"), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded" %>
-            <% elsif params[:username].present? %>
-              <%= link_to "#{link_label}", user_articles_path(params[:username], locale: "#{link_locale}"), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded" %>
-            <% else %>
-              <%= link_to "#{link_label}", root_path(locale: "#{link_locale}"), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded" %>
-            <% end %>
+            <%= link_to locale_switch_label, locale_switch_url(locale_switch_target), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded" %>
 
              <!-- 検索フォームを追加 -->
-            <div class="header-search">
-              <%=form_with url: search_path(locale: params[:locale] || 'ja'), method: :get, local: true, class: "search-form flex items-center gap-2" do |f| %>
-                <%= f.text_field :q,
-                    placeholder: (params[:locale] == "ja" ? "記事を検索..." : "Search article..."),
-                    class: "search-input w-64 border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-4 py-1",
-                    value: params[:q] %>
-                <%= f.submit (params[:locale] == "ja" ? "検索" : "Search"),
-                    class: "search-button bg-gray-100 text-gray-500 rounded-md hover:bg-gray-300 transition px-4 py-1" %>
+    <% if params[:username].present? %>
+      <div class="header-search">
+        <%= form_with url: user_search_path(params[:username], locale: params[:locale] || 'ja'), method: :get, local: true, class: "search-form flex items-center gap-2" do |f| %>
+          <%= f.text_field :q,
+              placeholder: t('blog.search.placeholder'),
+              class: "search-input w-64 border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-4 py-1",
+              value: params[:q] %>
+          <%= f.submit t('blog.search.button'),
+              class: "btn-unified text-sm" %>
+        <% end %>
+      </div>
+    <% end %>
 
-              <% end %>
-            </div>
             <div class="flex items-center gap-4">
               <% if user_signed_in? %>
+                <%= link_to "Dashboard", dashboard_articles_path, class: "text-gray-200 hover:text-gray-100 font-medium" %>
                 <div class="flex items-center gap-2">
                   <% if current_user.avatar.attached? %>
                     <%= image_tag current_user.avatar, class: "w-8 h-8 rounded-full" %>
@@ -68,14 +58,26 @@
                       <%= current_user.display_name.first %>
                     </div>
                   <% end %>
-                  <%= link_to current_user.display_name, user_profile_path(current_user.username), locale: params[:locale], class: "" %>
+                  <%= link_to current_user.display_name, user_profile_path(current_user.username), locale: params[:locale], class: "text-gray-200 hover:text-gray-100 font-medium" %>
                 </div>
+              <% else %>
+                <button data-action="click->auth-modal#showModal" class="btn-unified text-sm">
+                  Sign in
+                </button>
               <% end %>
             </div>
             </nav>
            </nav>
           <div class="text-center py-10">
-            <%= link_to (@blog_setting&.display_title(I18n.locale) || "My Blog"), root_path, class: "text-4xl font-bold py-4 inline-block blog-title" %>
+
+            <% if @blog_setting&.user %>
+              <%= link_to (@blog_setting.display_title(I18n.locale) || "Dual Pascal"), 
+      user_articles_path(@blog_setting.user.username, locale: I18n.locale), 
+      class: "text-4xl font-bold py-4 inline-block blog-title" %>
+            <% else %>
+              <%= link_to "Dual Pascal", root_path, class: "text-4xl font-bold py-4 inline-block blog-title" %>
+            <% end %>
+            
             <% if @blog_setting&.display_subtitle(I18n.locale).present? %>
               <p class="text-lg text-gray-600 mt-2"><%= @blog_setting.display_subtitle(I18n.locale) %></p>
             <% end %>
@@ -92,6 +94,8 @@
       </div>
     <% end %>
 
+    <%= render 'shared/auth_modal' %>
+  
     <!-- メインコンテンツ -->
     <main class="main-content flex-grow">
       <div class="content-container max-w-6xl mx-auto px-6 mb-8">
@@ -99,13 +103,22 @@
       </div>
     </main>
 
-    <!-- フッター -->
-    <footer class="site-footer">
-      <div class="footer-container w-full theme-footer">
-        <div class="footer-content max-w-6xl mx-auto">
-          <p>© 2025 Dual Pascal. All rights reserved.</p>
+
+<!-- フッター部分の更新 -->
+<footer class="site-footer">
+  <div class="footer-container w-full theme-footer">
+    <div class="footer-content max-w-6xl mx-auto px-6 py-4">
+      <div class="flex justify-between items-center">
+        <p>© 2025 Dual Pascal. All rights reserved.</p>
+        <div class="flex gap-4">
+          <%= link_to "利用規約", terms_of_service_path, class: "text-sm hover:text-white" %>
+          <%= link_to "プライバシーポリシー", privacy_policy_path, class: "text-sm hover:text-white" %>
+          <%= link_to "免責事項", disclaimer_path, class: "text-sm hover:text-white" %>
+          <%= link_to "運営への問い合わせ", new_contact_path, class: "text-sm hover:text-white" %>
         </div>
       </div>
-    </footer>
+    </div>
+  </div>
+</footer>
   </body>
 </html>

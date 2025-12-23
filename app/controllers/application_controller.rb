@@ -2,6 +2,12 @@ class ApplicationController < ActionController::Base
   include Authorization
   before_action :set_locale
   before_action :set_blog_setting
+  before_action :configure_permitted_parameters, if: :devise_controller?
+  # 一時的に追加
+  # if Rails.env.development?
+  #   skip_before_action :verify_authenticity_token
+  # end
+  skip_before_action :verify_authenticity_token
 
   protect_from_forgery with: :exception
 
@@ -15,13 +21,6 @@ class ApplicationController < ActionController::Base
     { locale: locale }
   end
 
-  # def set_blog_setting
-  #   if params[:username].present?
-  #     user = User.find_by(username: params[:username])
-  #     @blog_setting = user&.blog_setting
-  #   end
-  # end
-
   def set_blog_setting
     if params[:username].present?
       user = User.find_by(username: params[:username])
@@ -29,5 +28,12 @@ class ApplicationController < ActionController::Base
     elsif user_signed_in?
       @blog_setting = current_user.blog_setting
     end
+  end
+
+  protected
+
+  def configure_permitted_parameters
+    devise_parameter_sanitizer.permit(:sign_up, keys: [ :username ])
+    devise_parameter_sanitizer.permit(:account_update, keys: [ :username ])
   end
 end

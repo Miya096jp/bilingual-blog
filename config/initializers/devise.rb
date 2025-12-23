@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# require "omniauth/rails_csrf_protection"
+
 # Assuming you have not yet modified this file, each configuration option below
 # is set to its default value. Note that some are commented out while others
 # are not: uncommented lines are intended to protect your configuration from
@@ -104,6 +106,8 @@ Devise.setup do |config|
   # requests for sign in and sign up, you need to get a new CSRF token
   # from the server. You can disable this option at your own risk.
   # config.clean_up_csrf_token_on_authentication = true
+
+
 
   # When false, Devise will not attempt to reload routes on eager load.
   # This can reduce the time taken to boot the app but if your application
@@ -302,6 +306,7 @@ Devise.setup do |config|
   # apps is `200 OK` and `302 Found` respectively, but new apps are generated with
   # these new defaults that match Hotwire/Turbo behavior.
   # Note: These might become the new default in future versions of Devise.
+  config.navigational_formats = [ "*/*", :html, :turbo_stream ]
   config.responder.error_status = :unprocessable_entity
   config.responder.redirect_status = :see_other
 
@@ -310,4 +315,12 @@ Devise.setup do |config|
   # When set to false, does not sign a user in automatically after their password is
   # changed. Defaults to true, so a user is signed in automatically after changing a password.
   # config.sign_in_after_change_password = true
+  config.omniauth :github,
+    Rails.application.credentials.github[:client_id],
+    Rails.application.credentials.github[:client_secret],
+    scope: "user:email"
+  config.omniauth :google_oauth2,
+    Rails.application.credentials.google[:client_id],
+    Rails.application.credentials.google[:client_secret],
+    scope: "email,profile"
 end

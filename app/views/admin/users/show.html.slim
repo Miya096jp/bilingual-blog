@@ -1,0 +1,66 @@
+.mb-6
+  = link_to "← ユーザー一覧に戻る", admin_users_path, class: "text-blue-600 hover:text-blue-800"
+
+h1.text-2xl.font-bold.mb-6 ユーザー詳細
+
+.grid.grid-cols-1.md:grid-cols-2.gap-6.mb-8
+  .bg-white.rounded-lg.border.border-gray-200.p-6
+    h3.text-lg.font-semibold.mb-4 基本情報
+    .space-y-3
+      .flex
+        span.w-24.text-gray-600 ID:
+        span= @user.id
+      .flex
+        span.w-24.text-gray-600 ユーザー名:
+        span= @user.username
+      .flex
+        span.w-24.text-gray-600 メール:
+        span= @user.email
+      .flex
+        span.w-24.text-gray-600 権限:
+        span
+          - if @user.admin?
+            span.bg-red-100.text-red-800.px-2.py-1.rounded.text-xs 管理者
+          - else
+            span.bg-blue-100.text-blue-800.px-2.py-1.rounded.text-xs 一般
+      .flex
+        span.w-24.text-gray-600 登録日:
+        span= @user.created_at.strftime('%Y年%m月%d日 %H:%M')
+      .flex
+        span.w-24.text-gray-600 状態:
+        span
+          - if @user.email.include?('[SUSPENDED]')
+            span.bg-red-100.text-red-800.px-2.py-1.rounded.text-xs 停止中
+          - else
+            span.bg-green-100.text-green-800.px-2.py-1.rounded.text-xs アクティブ
+
+  .bg-white.rounded-lg.border.border-gray-200.p-6
+    h3.text-lg.font-semibold.mb-4 統計情報
+    .space-y-3
+      .flex
+        span.w-32.text-gray-600 総記事数:
+        span= @user.articles.count
+      .flex
+        span.w-32.text-gray-600 公開記事数:
+        span= @user.articles.published.count
+      .flex
+        span.w-32.text-gray-600 下書き数:
+        span= @user.articles.draft.count
+
+- if @articles.any?
+  .bg-white.rounded-lg.border.border-gray-200.p-6
+    h3.text-lg.font-semibold.mb-4 最近の記事
+    .space-y-3
+      - @articles.each do |article|
+        .flex.justify-between.items-center.py-2.border-b.border-gray-100
+          div
+            = link_to article.title, user_article_path(article.user.username, article.id, locale: article.locale), target: "_blank", class: "text-blue-600 hover:text-blue-800"
+            .text-sm.text-gray-500
+              = article.locale == 'ja' ? '日本語' : 'English'
+              | ・
+              = article.created_at.strftime('%Y/%m/%d')
+          div
+            - if article.published?
+              span.bg-green-100.text-green-800.px-2.py-1.rounded.text-xs 公開
+            - else
+              span.bg-gray-100.text-gray-800.px-2.py-1.rounded.text-xs 下書き

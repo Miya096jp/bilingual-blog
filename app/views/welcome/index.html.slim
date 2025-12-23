@@ -1,0 +1,13 @@
+<!-- app/views/welcome/index.html.slim -->
+.min-h-screen.flex.flex-col.justify-center.items-center.bg-gray-50
+  .max-w-4xl.mx-auto.text-center.px-6
+    h1.text-5xl.font-bold.mb-6.text-gray-900
+      | Dual Pascal
+    p.text-xl.text-gray-600.mb-8
+      | 日英バイリンガルブログプラットフォーム
+    
+    .flex.gap-4.justify-center
+      button.bg-blue-500.hover:bg-blue-600.text-white.px-8.py-3.rounded-lg.font-semibold data-action="click->auth-modal#showModal"
+        | はじめる
+      
+      = link_to 'デモを見る', '#', class: "border-2 border-gray-300 hover:border-gray-400 text-gray-700 px-8 py-3 rounded-lg font-semibold"

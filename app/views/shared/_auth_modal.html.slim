@@ -1,0 +1,42 @@
+.fixed.inset-0.bg-black.bg-opacity-50.flex.items-center.justify-center.z-50.hidden data-auth-modal-target="modal" data-action="click->auth-modal#closeOnOutsideClick"
+  .bg-white.rounded-lg.p-6.w-96.max-w-90vw data-action="click->auth-modal#stopPropagation"
+    .flex.justify-between.items-center.mb-6
+      h3.text-xl.font-semibold data-auth-modal-target="title" Sign in to your account
+      button.text-gray-400.hover:text-gray-600 data-action="click->auth-modal#closeModal" ×
+    
+    / OAuth ボタン
+    .space-y-3.mb-6
+      = button_to omniauth_authorize_path(:user, :github), data: { turbo: false }, class: "w-full btn-unified flex items-center justify-center gap-2" do
+        | Continue with GitHub
+      = button_to omniauth_authorize_path(:user, :google_oauth2), data: { turbo: false }, class: "w-full btn-unified flex items-center justify-center gap-2" do
+        | Continue with Google
+    
+    .relative.mb-6
+      .absolute.inset-0.flex.items-center
+        .w-full.border-t.border-gray-300
+      .relative.flex.justify-center.text-sm
+        span.bg-white.px-2.text-gray-500 or
+    
+    / Sign in フォーム
+    .signin-form data-auth-modal-target="signinForm"
+      = form_with model: User.new, url: user_session_path, local: true, data: { turbo: false }, class: "space-y-4" do |f|
+        .space-y-4
+          = f.email_field :email, placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+          = f.password_field :password, placeholder: "Password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+        = f.submit "Sign in", class: "w-full btn-unified"
+      .text-center.mt-4
+        span.text-gray-600 Don't have an account? 
+        button.text-blue-600.hover:text-blue-800 data-action="click->auth-modal#switchToSignup" Sign up
+    
+    / Sign up フォーム（初期状態は非表示）
+    .signup-form.hidden data-auth-modal-target="signupForm"
+      = form_with model: User.new, url: user_registration_path, local: true, class: "space-y-4" do |f|
+        .space-y-4
+          = f.email_field :email, placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+          = f.text_field :username, placeholder: "Username", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+          = f.password_field :password, placeholder: "Password (6 characters minimum)", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+          = f.password_field :password_confirmation, placeholder: "Confirm Password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+        = f.submit "Create account", class: "w-full btn-unified"
+      .text-center.mt-4
+        span.text-gray-600 Already have an account? 
+        button.text-blue-600.hover:text-blue-800 data-action="click->auth-modal#switchToSignin" Sign in

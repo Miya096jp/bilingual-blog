@@ -28,4 +28,24 @@
 #       enabled: "ON"
 
 en:
-  hello: "Hello world"
+  blog:
+    category: "Category"
+    tags: "Tags"
+    published_at: "Published"
+    updated_at: "Updated"
+    translation: "Translation"
+    search:
+      placeholder: "Search article..."
+      button: "Search"
+      results: "Search Results"
+      back_to_articles: "Back to Articles"
+      results_count: "search results for: %{count} articles"
+      no_keyword: "Please enter a keyword"
+  comments:
+    title: "Comments"
+    author_name: "Name"
+    website: "Website (optional)"
+    content: "Comment"
+    submit: "Post Comment"
+    none: "No comments yet."
+    number: "Comment %{number}:"

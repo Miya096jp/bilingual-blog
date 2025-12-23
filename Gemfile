@@ -45,10 +45,21 @@ gem "html2slim", github: "slim-template/html2slim"
 
 # For ActiveStorage
 gem "image_processing", "~> 1.2"
-gem "devise"
 
+# Registration
+gem "devise"
+gem "devise-i18n"
+gem "omniauth", "~> 2.1"
+gem "omniauth-github", "~> 2.0"
+gem "omniauth-rails_csrf_protection", "~> 1.0"
+gem "omniauth-oauth2"
+gem "omniauth-google-oauth2"
+
+gem "rails-i18n"
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 # gem "image_processing", "~> 1.2"
+gem "aws-sdk-s3", require: false
+
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
@@ -59,6 +70,7 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+  gem "dotenv-rails"
 end
 
 group :development do

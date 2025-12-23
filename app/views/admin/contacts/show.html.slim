@@ -1,0 +1,36 @@
+.mb-6
+  = link_to "← 問い合わせ一覧に戻る", admin_contacts_path, class: "text-blue-600 hover:text-blue-800"
+
+h1.text-2xl.font-bold.mb-6 問い合わせ詳細
+
+.bg-white.rounded-lg.border.border-gray-200.p-6
+  .grid.grid-cols-2.gap-4.mb-6
+    div
+      .text-sm.text-gray-600 お名前
+      .font-semibold= @contact.name
+    div
+      .text-sm.text-gray-600 メールアドレス
+      .font-semibold= @contact.email
+    div
+      .text-sm.text-gray-600 件名
+      .font-semibold= @contact.subject
+    div
+      .text-sm.text-gray-600 受信日
+      .font-semibold= @contact.created_at.strftime('%Y年%m月%d日 %H:%M')
+    div
+      .text-sm.text-gray-600 対応状態
+      div
+        - if @contact.resolved?
+          span.bg-green-100.text-green-800.px-2.py-1.rounded.text-xs 対応済み
+        - else
+          span.bg-red-100.text-red-800.px-2.py-1.rounded.text-xs 未対応
+
+  .mb-6
+    .text-sm.text-gray-600.mb-2 お問い合わせ内容
+    .bg-gray-50.rounded.p-4= simple_format(@contact.message)
+
+  .flex.gap-3
+    = form_with model: [:admin, @contact], local: true, class: "inline" do |f|
+      = f.hidden_field :resolved, value: !@contact.resolved?
+      = f.submit @contact.resolved? ? '未対応にする' : '対応済みにする', 
+          class: "btn-unified"

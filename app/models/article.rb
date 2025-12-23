@@ -14,11 +14,13 @@ class Article < ApplicationRecord
   has_many :comments, dependent: :destroy
 
   has_many_attached :images
+  has_one_attached :cover_image
 
   has_many :article_tags, dependent: :destroy
   has_many :tags, through: :article_tags
 
   before_save :set_published_at
+  after_create :assign_pending_tags
 
   scope :by_locale, ->(locale) { where(locale: locale) }
   scope :by_category, ->(category_id) { where(category_id: category_id) if category_id.present? }
@@ -63,15 +65,31 @@ class Article < ApplicationRecord
   end
 
   def tag_list=(tag_string)
+    return if tag_string.blank?
+
     tag_names = tag_string.split(/[,\s]+/).map(&:strip).reject(&:blank?)
-    new_tags = tag_names.map { |name| user.tags.find_or_create_by(name: name.downcase) }
-    self.tags = new_tags
+
+    if user.present?
+      # 既存記事または保存済み記事の場合
+      new_tags = tag_names.map { |name| user.tags.find_or_create_by(name: name.downcase) }
+      self.tags = new_tags
+    else
+      # 新規記事の場合は、一旦タグ名だけ保存
+      @pending_tag_names = tag_names
+    end
   end
 
   private
   def set_published_at
     if status == "published" && published_at.blank?
       self.published_at = Time.current
+    end
+  end
+
+  def assign_pending_tags
+    if @pending_tag_names.present?
+      new_tags = @pending_tag_names.map { |name| user.tags.find_or_create_by(name: name.downcase) }
+      self.tags = new_tags
     end
   end
 end

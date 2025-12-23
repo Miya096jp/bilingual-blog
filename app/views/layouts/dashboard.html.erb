@@ -26,6 +26,7 @@
             <%= link_to "コメント", dashboard_comments_path, class: "mx-2 hover:text-white" %>
             <%= link_to "プロフィール", edit_dashboard_profile_path, class: "mx-2 hover:text-white" %>
             <%= link_to "ブログ設定", edit_dashboard_blog_setting_path, class: "mx-2 hover:text-white" %>
+            <%= link_to "解析", dashboard_analytics_path, class: "mx-2 hover:text-white" %>
             <%= link_to "サイトを見る", user_articles_path(current_user.username, locale: I18n.locale), target: "_blank", class: "mx-2 hover:text-white" %>
           </div>
         </div>
@@ -56,13 +57,20 @@
         <%= yield %>
     </div>
 
-    <!-- フッター -->
-    <footer class="site-footer">
-      <div class="footer-container w-full theme-footer">
-        <div class="footer-content max-w-6xl mx-auto">
-          <p>© 2025 Dual Pascal. All rights reserved.</p>
+<!-- ダッシュボードフッター部分の更新 -->
+<footer class="site-footer">
+  <div class="footer-container w-full theme-footer">
+    <div class="footer-content max-w-6xl mx-auto px-6 py-4">
+      <div class="flex justify-between items-center">
+        <p>© 2025 Dual Pascal. All rights reserved.</p>
+        <div class="flex gap-4 text-sm">
+          <%= link_to "利用規約", terms_of_service_path, class: "hover:text-white" %>
+          <%= link_to "プライバシーポリシー", privacy_policy_path, class: "hover:text-white" %>
+          <%= link_to "免責事項", disclaimer_path, class: "hover:text-white" %>
         </div>
       </div>
-    </footer>
+    </div>
+  </div>
+</footer>
   </body>
 </html>

@@ -61,6 +61,6 @@ class Dashboard::ArticlesController < ApplicationController
   end
 
   def article_params
-    params.require(:article).permit(:title, :content, :locale, :status, :category_id, :tag_list)
+    params.require(:article).permit(:title, :content, :locale, :status, :category_id, :tag_list, :cover_image)
   end
 end

@@ -1,0 +1,47 @@
+- hero_article = articles.first
+- tile_articles = articles.offset(1).limit(6)
+
+/ ヒーロー記事
+- if hero_article
+  .hero-article.mb-12
+    - if @blog_setting&.show_hero_thumbnail && has_cover_image?(hero_article)
+      .hero-thumbnail.max-w-4xl.mx-auto.mb-6
+        = image_tag thumbnail_for_article(hero_article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
+    .article-header.max-w-4xl.mx-auto
+      h1.text-4xl.font-extrabold.mb-4.text-gray-900.border-b.border-gray-500.pb-2
+        = link_to hero_article.title, user_article_path(hero_article.user.username, hero_article.id, locale: params[:locale])
+
+      .article-meta.pb-3.mb-4
+        - if hero_article.category.present?
+          p.pb-2
+            | #{t('blog.category')}:
+            = link_to hero_article.category.name, user_articles_path(params[:username], filter.filter_params.merge(category_id: hero_article.category.id))
+
+        = render 'shared/article_tags', article: hero_article, filter_params: filter.filter_params
+
+      .meta-content-divider.text-center.mx-8
+        span.text-gray-400.text-xl • • •
+
+    .article-content.medium-container style="all: revert;"
+      div class="medium"
+        = hero_article.content_html
+
+    .article-meta.max-w-4xl.mx-auto.text-right
+      p
+        | #{t('blog.published_at')}:
+        = hero_article.published_at&.strftime('%Y年%m月%d日')
+      p
+        | #{t('blog.updated_at')}:
+        = hero_article.updated_at&.strftime('%Y年%m月%d日')
+
+      - if hero_article.translation.present?
+        p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
+
+/ タイル記事
+- if tile_articles.any?
+  .tiles-section
+    h2.text-xl.font-semibold.mb-6.text-center その他の記事
+    .grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-6.max-w-6xl.mx-auto
+      - tile_articles.each do |article|
+        .tile-article
+          = render 'shared/article_thumbnail', article: article, blog_setting: blog_setting, filter_params: filter.filter_params

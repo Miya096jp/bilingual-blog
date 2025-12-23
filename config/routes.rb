@@ -1,5 +1,7 @@
 Rails.application.routes.draw do
-  devise_for :users
+  get "contacts/new"
+  get "contacts/create"
+  devise_for :users, controllers: { omniauth_callbacks: "users/omniauth_callbacks" }
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
@@ -27,36 +29,47 @@ Rails.application.routes.draw do
 
 
 scope "/:locale", constraints: { locale: /ja|en/ } do
-  root "home#index"
-  get "search", to: "search#index"
+  root "welcome#index"
 
   scope "u" do
+    get "/:username/search", to: "search#index", as: :user_search
     get "/:username/articles", to: "articles#index", as: :user_articles
     get "/:username/articles/:id", to: "articles#show", as: :user_article
     post "/:username/articles/:article_id/comments", to: "comments#create", as: :user_article_comments
     get ":username/profile", to: "profiles#show", as: :user_profile
   end
+
+  get "/terms-of-service", to: "legal#terms_of_service", as: :terms_of_service
+  get "/privacy-policy", to: "legal#privacy_policy", as: :privacy_policy
+  get "/disclaimer", to: "legal#disclaimer", as: :disclaimer
+
+
+  resources :contacts, only: [ :new, :create ]
 end
 
 namespace :dashboard do
   resources :articles do
+    resource :export, only: [ :show ]
     resource :translation, only: %i[show create update destroy new edit]
   end
   resources :comments, only: %i[index show destroy]
-  # resources :categories, defaults: { format: :html } do
-  #   collection do
-  #     post "", defaults: { format: :json }
-  #   end
-  # end
-
   resources :categories
   post "categories", to: "categories#create", defaults: { format: :json }
   resource :preview, only: [ :create ]
   resources :images, only: [ :create ]
   resource :profile, only: %i[edit update]
   resource :blog_setting, only: %i[edit update]
+  resources :analytics, only: [ :index ]
 end
 
 get "/dashboard", to: redirect("/dashboard/articles")
 get "/", to: redirect("/ja")
+
+namespace :admin do
+  resources :users, only: [ :index, :show, :update ]
+  resources :articles, only: [ :index, :destroy ]
+  resources :contacts, only: [ :index, :show, :update ]
+
+  root "dashboard#index"
+end
 end

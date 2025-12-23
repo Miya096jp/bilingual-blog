@@ -23,7 +23,7 @@ export default class extends Controller {
     formData.append("image", file);
 
     const locale = window.location.pathname.split("/")[1];
-    const url = `/${locale}/admin/images`;
+    const url = `/${locale}/images`;
 
     fetch(url, {
       method: "POST",

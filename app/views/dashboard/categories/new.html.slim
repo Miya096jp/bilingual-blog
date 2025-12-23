@@ -1,27 +1,28 @@
-h1 新しいカテゴリを作成
+h1.text-2xl.font-bold.mb-6 新しいカテゴリを作成
 
 - if @category.errors.any?
-  .errors
-    h4 エラーが発生しました:
-    ul
+  .bg-red-50.border.border-red-200.rounded-md.p-4.mb-6
+    h4.text-red-800.font-semibold エラーが発生しました:
+    ul.mt-2.text-red-700
       - @category.errors.full_messages.each do |message|
-        li= message
+        li.text-sm= message
 
-= form_with model: [:dashboard, @category], local: true do |f|
-  p
-    = f.label :name, "カテゴリ名"
-    = f.text_field :name, required: true, style: "width: 100%;"
+.bg-white.rounded-lg.border.border-gray-200.shadow-sm.p-6
+  = form_with model: [:dashboard, @category], local: true, class: "space-y-6" do |f|
+    div
+      = f.label :name, "カテゴリ名", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.text_field :name, required: true, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
 
-  p
-    = f.label :description, "説明(任意)"
-    = f.text_area :description, rows: 4, style: "width: 100%;"
+    div
+      = f.label :description, "説明(任意)", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.text_area :description, rows: 4, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
 
-  p
-    = f.label :locale, "言語"
-    = f.select :locale, options_for_select([["日本語", "ja"], ["English", "en"]], @category.locale), {}, { disabled: true, style: "background-color: #f5f5f5" }
-    small style="color: #666; display: block; margin-top: 5px;"
-      | 言語は作成時に決定され、後から変更できません
+    div
+      = f.label :locale, "言語", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.select :locale, options_for_select([["日本語", "ja"], ["English", "en"]], @category.locale), {}, { disabled: true, class: "w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-gray-500" }
+      small.block.text-gray-500.text-sm.mt-1
+        | 言語は作成時に決定され、後から変更できません
 
-  .actions
-    = f.submit "カテゴリを作成"
-    = link_to "キャンセル", dashboard_categories_path
+    .flex.gap-3
+      = f.submit "カテゴリを作成", class: "btn-unified"
+      = link_to "キャンセル", dashboard_categories_path, class: "btn-unified"

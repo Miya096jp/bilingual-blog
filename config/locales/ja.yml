@@ -1,0 +1,22 @@
+ja:
+  blog:
+    category: "カテゴリ"
+    tags: "タグ"
+    published_at: "投稿日"
+    updated_at: "最終更新日"
+    translation: "翻訳"
+    search:
+      placeholder: "記事を検索..."
+      button: "検索"
+      results: "検索結果"
+      back_to_articles: "記事一覧に戻る"
+      results_count: "の検索結果: %{count}件"
+      no_keyword: "キーワードを入力してください"
+  comments:
+    title: "コメント"
+    author_name: "お名前"
+    website: "ウェブサイト（任意）"
+    content: "コメント"
+    submit: "コメントを投稿"
+    none: "コメントはまだありません。"
+    number: "コメント%{number}:"

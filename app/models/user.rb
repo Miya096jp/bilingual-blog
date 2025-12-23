@@ -1,13 +1,14 @@
 class User < ApplicationRecord
-  # Include default devise modules. Others available are:
-  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable
+         :recoverable, :rememberable, :validatable,
+         :omniauthable, omniauth_providers: [ :github, :google_oauth2 ]
+
 
   validates :username, presence: true, uniqueness: true
   validates :website, format: { with: /\A(http|https):\/\/.+\z/ }, allow_blank: true
 
   enum :role, { user: 0, admin: 1 }
+  enum :status, { active: 0, suspended: 1, pending: 2 }
 
   has_many :articles, dependent: :destroy
   has_many :categories, dependent: :destroy
@@ -15,6 +16,8 @@ class User < ApplicationRecord
   has_one :blog_setting, dependent: :destroy
 
   has_one_attached :avatar
+
+  after_create :setup_analytics_async
 
   def display_name(locale = I18n.locale)
     localized_nickname(locale).presence || localized_nickname(locale == "ja" ? "en" : "ja").presence || username
@@ -50,5 +53,46 @@ class User < ApplicationRecord
 
   def blog_setting
     super || create_blog_setting
+  end
+
+  def suspended?
+    status == "suspended"
+  end
+
+  def suspend!
+    update(status: :suspended)
+  end
+
+  def restore!
+    update(status: :active)
+  end
+
+  def self.from_omniauth(auth)
+    user = where(email: auth.info.email).first
+
+    if user
+      { user: user, is_new: false }
+    else
+      new_user = create!(
+        email: auth.info.email,
+        password: Devise.friendly_token[0, 20],
+        username: auth.info.nickname || auth.info.name&.parameterize || auth.info.email.split("@").first
+      )
+      { user: new_user, is_new: true }
+    end
+  end
+
+  def analytics_dashboard_url
+    umami_share_url
+  end
+
+  def has_analytics?
+    analytics_setup_completed?
+  end
+
+  private
+
+  def setup_analytics_async
+    UmamiSetupJob.perform_later(self)
   end
 end

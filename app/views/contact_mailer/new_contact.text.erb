@@ -1,0 +1,8 @@
+お名前: <%= @contact.name %>
+メールアドレス: <%= @contact.email %>
+件名: <%= @contact.subject %>
+
+メッセージ:
+<%= @contact.message %>
+
+送信日時: <%= @contact.created_at.strftime('%Y年%m月%d日 %H:%M') %>

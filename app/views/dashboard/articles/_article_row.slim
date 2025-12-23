@@ -20,6 +20,9 @@
       = link_to "翻訳編集", edit_dashboard_article_translation_path(article_data.original_article, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"
     - else
       = link_to "編集", edit_dashboard_article_path(article_data, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"
+
+    = link_to "📥", dashboard_article_export_path(article_data, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800", title: "記事をエクスポート"
+
     - if article_data.translation.blank? && article_data.original?
       span.text-gray-400 |
       = link_to "翻訳作成", new_dashboard_article_translation_path(article_data, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"

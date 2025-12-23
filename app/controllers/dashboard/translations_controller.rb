@@ -15,6 +15,7 @@ class Dashboard::TranslationsController < ApplicationController
     @translation.locale = @original_article.locale == "ja" ? "en" : "ja"
     @translation.category_id = nil
     @translation.user = current_user
+    # @translation.tags = @original_article.tags
     @translation.tag_list = @original_article.tag_list
   end
 
@@ -66,6 +67,6 @@ class Dashboard::TranslationsController < ApplicationController
   end
 
   def translation_params
-    params.require(:article).permit(:title, :content, :status, :category_id)
+    params.require(:article).permit(:title, :content, :status, :category_id, :tag_list, :cover_image)
   end
 end

@@ -1,0 +1,24 @@
+h1.text-2xl.font-bold.mb-6 管理ダッシュボード
+
+.grid.grid-cols-1.md:grid-cols-3.gap-6.mb-8
+  .bg-white.rounded-lg.border.border-gray-200.p-6
+    h3.text-lg.font-semibold.text-gray-900.mb-2 ユーザー
+    p.text-3xl.font-bold.text-blue-600= @stats[:total_users]
+    p.text-sm.text-gray-500 今月の新規: #{@stats[:this_month_users]}名
+
+  .bg-white.rounded-lg.border.border-gray-200.p-6
+    h3.text-lg.font-semibold.text-gray-900.mb-2 記事
+    p.text-3xl.font-bold.text-green-600= @stats[:total_articles]
+    p.text-sm.text-gray-500 公開記事: #{@stats[:published_articles]}件
+
+  .bg-white.rounded-lg.border.border-gray-200.p-6
+    h3.text-lg.font-semibold.text-gray-900.mb-2 問い合わせ
+    p.text-3xl.font-bold.text-orange-600= @stats[:total_contacts]
+    p.text-sm.text-gray-500 未対応: #{@stats[:unresolved_contacts]}件
+
+.bg-white.rounded-lg.border.border-gray-200.p-6
+  h3.text-lg.font-semibold.mb-4 クイックアクション
+  .flex.gap-4
+    = link_to "ユーザー管理", admin_users_path, class: "btn-unified"
+    = link_to "記事管理", admin_articles_path, class: "btn-unified"
+    = link_to "問い合わせ管理", admin_contacts_path, class: "btn-unified"

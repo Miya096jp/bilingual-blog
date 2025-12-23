@@ -1,0 +1,18 @@
+p
+  strong お名前: 
+  = @contact.name
+p
+  strong メールアドレス: 
+  = @contact.email
+p
+  strong 件名: 
+  = @contact.subject
+
+h3 メッセージ:
+p= simple_format(@contact.message)
+
+hr
+p
+  small 
+    | 送信日時:
+    = @contact.created_at.strftime('%Y年%m月%d日 %H:%M')

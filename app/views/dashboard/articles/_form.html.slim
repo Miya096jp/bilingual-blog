@@ -27,22 +27,22 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
               = f.select :status, options_for_select([["下書き", "draft"],["公開", "published"]], article.status), {}, class: "text-gray-600 border border-gray-400 rounded"
 
           div class="flex items-baseline gap-1 mx-4"
+            /label for="cover_image_input" class="btn-unified cursor-pointer text-xs"
+            label for="cover_image_input" class="cursor-pointer" title="カバー画像"
+              | 🖼️
+            = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
+    
             - case button_type
             - when "new"
-              /= f.submit "記事を作成", class: "bg-gray-500 hover:bg-gray-600 rounded text-sm py-1 px-2 text-white"
-              = f.submit "記事を作成", class: "btn-unified"
+              = f.submit "🌐", class: "cursor-pointer", title: "投稿"
             - when "edit"
-              /= f.submit "更新", class: "bg-blue-500 hover:bg-blue-600 rounded text-sm py-1 px-2 text-white"
-              = f.submit "更新", class: "btn-unified"
-              /= link_to "キャンセル", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 rounded text-sm py-1 px-2 text-white ml-2"
-              = link_to "キャンセル", dashboard_articles_path, class: "btn-unified ml-2"
-              /= link_to "削除", dashboard_article_path(article), class: "bg-red-500 hover:bg-red-600 rounded text-sm py-1 px-2 text-white ml-2", data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
-              = link_to "削除", dashboard_article_path(article), class: "btn-unified ml-2", data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
+              = f.submit "🔄", class: "cursor-pointer", title: "更新"
+              = link_to "✖️", dashboard_articles_path, class: "cursor-pointer", title: "キャンセル"
+              = link_to "🗑️", dashboard_article_path(article), class: "cursor-pointer",title: "削除" , data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
             - when "translation"
-              /= f.submit "翻訳を作成", class: "bg-green-500 hover:bg-green-600 rounded text-sm py-1 px-2 text-white"
-              = f.submit "翻訳を作成", class: "btn-unified"
-              /= link_to "キャンセル", dashboard_article_path(original_article), class: "bg-gray-500 hover:bg-gray-600 rounded text-sm py-1 px-2 text-white ml-2"
-              = link_to "キャンセル", dashboard_article_path(original_article), class: "btn-unified ml-2"
+              = f.submit "🌐", class: "cursor-pointer", title: "翻訳"
+              = link_to "✖️", dashboard_article_path(original_article), class: "cursor-pointer", title: "キャンセル"
+
         div class="ml-auto flex gap-2 border-b border-gray-400"
           .flex.items-center.gap-1
             button.text-gray-500.hover:text-gray-700.text-lg.font-bold type="button" data-action="click->category-modal#showModal" title="新しいカテゴリを追加" +
@@ -50,9 +50,9 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
           p
             = f.text_field :tag_list, placeholder: "tags", class: "text-gray-600 focus:outline-none"
           p
-            /button type="button" data-action="click->image-upload#selectImage" style="cursor-pointer margin-bottom: 10px"
-            button type="button" data-action="click->image-upload#selectImage" class="cursor-pointer mb-2"
-              | 📷
+            button type="button" data-action="click->image-upload#selectImage" class="cursor-pointer mb-2 text-gray-400 text-sm"
+              /| 📷
+              | 画像を挿入
         p
           = f.text_field :title, required: true,
             class: "w-full border-b border-gray-400 placeholder-gray-400 p-2 focus:border-gray-400 focus:outline-none mb-3",

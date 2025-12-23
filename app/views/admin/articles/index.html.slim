@@ -1,0 +1,31 @@
+h1.text-2xl.font-bold.mb-6 記事管理
+
+.bg-white.rounded-lg.border.border-gray-200.overflow-hidden
+  table.w-full
+    thead.bg-gray-50
+      tr
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase ID
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase タイトル
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase 作者
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase 言語
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase ステータス
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase 投稿日
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase アクション
+    tbody.divide-y.divide-gray-200
+      - @articles.each do |article|
+        tr
+          td.px-6.py-4.text-sm= article.id
+          td.px-6.py-4.text-sm.font-medium
+            = link_to truncate(article.title, length: 50), user_article_path(article.user.username, article.id, locale: article.locale), target: "_blank", class: "text-blue-600 hover:text-blue-800"
+          td.px-6.py-4.text-sm= article.user.username
+          td.px-6.py-4.text-sm= article.locale == 'ja' ? '日本語' : 'English'
+          td.px-6.py-4.text-sm
+            - if article.published?
+              span.bg-green-100.text-green-800.px-2.py-1.rounded.text-xs 公開
+            - else
+              span.bg-gray-100.text-gray-800.px-2.py-1.rounded.text-xs 下書き
+          td.px-6.py-4.text-sm= article.created_at.strftime('%Y/%m/%d')
+          td.px-6.py-4.text-sm
+            = link_to "削除", admin_article_path(article), data: { "turbo-method": "delete", "turbo-confirm": "記事を削除しますか？" }, class: "text-red-600 hover:text-red-800"
+
+= paginate @articles if respond_to?(:paginate)

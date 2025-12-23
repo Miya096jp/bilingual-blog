@@ -19,6 +19,6 @@ class Dashboard::BlogSettingsController < ApplicationController
   private
 
   def blog_setting_params
-    params.require(:blog_setting).permit(:blog_title_ja, :blog_title_en, :blog_subtitle_ja, :blog_subtitle_en, :theme_color, :header_image)
+    params.require(:blog_setting).permit(:blog_title_ja, :blog_title_en, :blog_subtitle_ja, :blog_subtitle_en, :theme_color, :header_image, :layout_style, :show_hero_thumbnail)
   end
 end

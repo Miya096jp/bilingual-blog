@@ -2,6 +2,42 @@
 @import "tailwindcss";
 @import "../stylesheets/layout_switcher.css";
 
+.default-theme .theme-header {
+  background-color: #f9fafb !important; /* gray-50 */
+  color: #374151 !important; /* gray-700 */
+  border-bottom: 1px solid #e5e7eb; /* gray-200 */
+}
+
+.default-theme .theme-header a {
+  color: #374151 !important; /* gray-700 */
+}
+
+.default-theme .theme-header a:hover {
+  color: #1f2937 !important; /* gray-800 */
+}
+
+.default-theme .theme-header button {
+  color: #374151 !important; /* gray-700 */
+}
+
+.default-theme .theme-header button:hover {
+  color: #1f2937 !important; /* gray-800 */
+}
+
+.default-theme .theme-footer {
+  background-color: #f9fafb !important; /* gray-50 */
+  color: #374151 !important; /* gray-700 */
+  border-top: 1px solid #e5e7eb !important; /* gray-200 - ヘッダーと同じ境界線 */
+}
+
+.default-theme .theme-footer a {
+  color: #374151 !important; /* gray-700 */
+}
+
+.default-theme .theme-footer a:hover {
+  color: #1f2937 !important; /* gray-800 */
+}
+
 .slate-theme .blog-title {
   color: #222b45 !important;
 }
@@ -15,16 +51,6 @@
   background-color: #222b45 !important;
   color: #e5e7eb !important; /* text-gray-300 相当 */
 }
-
-/* .green-theme .blog-title { */
-/*   color: theme("colors.emerald.900") !important; */
-/* } */
-/* .green-theme .theme-header { */
-/*   @apply bg-emerald-900 text-white; */
-/* } */
-/* .green-theme .theme-footer { */
-/*   @apply bg-emerald-900 text-gray-300; */
-/* } */
 
 .forest-theme .blog-title {
   color: #1b4332 !important;
@@ -40,16 +66,6 @@
   color: #e5e7eb !important; /* text-gray-300 */
 }
 
-/* .purple-theme .blog-title { */
-/*   color: theme("colors.indigo.900") !important; */
-/* } */
-/* .purple-theme .theme-header { */
-/*   @apply bg-indigo-900 text-white; */
-/* } */
-/* .purple-theme .theme-footer { */
-/*   @apply bg-indigo-900 text-gray-300; */
-/* } */
-
 .maroon-theme .blog-title {
   color: #3a0a0a !important;
 }
@@ -63,17 +79,6 @@
   background-color: #3a0a0a !important;
   color: #e5e7eb !important; /* text-gray-300 */
 }
-
-/* .gray-theme .blog-title { */
-/*   color: theme("colors.slate.900") !important; */
-/* } */
-/* .gray-theme .theme-header { */
-/*   @apply bg-stone-900 text-white; */
-/* } */
-/* .gray-theme .theme-footer { */
-/*   @apply bg-stone-900 text-gray-300; */
-/* } */
-/**/
 
 .midnight-theme .blog-title {
   color: #0a1a2f !important;

@@ -1,12 +1,13 @@
 class BlogSetting < ApplicationRecord
   belongs_to :user
 
-  validates :theme_color, inclusion: { in: %w[slate forest maroon midnight] }
+  validates :theme_color, inclusion: { in: %w[default slate forest maroon midnight] }
+  validates :layout_style, inclusion: { in: %w[linear hero_tiles hero_list] }
 
   validates :user_id, uniqueness: true
 
   def display_title(locale = I18.locale)
-    localized_title(locale).presence || localized_title(locale == "ja" ? "en" : "ja").presence || "My Blog"
+    localized_title(locale).presence || localized_title(locale == "ja" ? "en" : "ja").presence || "Dual Pascal"
   end
 
   def localized_title(locale = I18n.locale)

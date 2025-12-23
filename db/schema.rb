@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_11_040119) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_28_011705) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -73,11 +73,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_11_040119) do
     t.bigint "user_id", null: false
     t.string "blog_title_ja"
     t.string "blog_subtitle_ja"
-    t.string "theme_color", default: "blue"
+    t.string "theme_color", default: "slate"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "blog_title_en"
     t.string "blog_subtitle_en"
+    t.string "layout_style", default: "linear"
+    t.boolean "show_hero_thumbnail", default: false
     t.index ["user_id"], name: "index_blog_settings_on_user_id", unique: true
   end
 
@@ -101,6 +103,18 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_11_040119) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["article_id"], name: "index_comments_on_article_id"
+  end
+
+  create_table "contacts", force: :cascade do |t|
+    t.string "name"
+    t.string "email"
+    t.string "subject"
+    t.text "message"
+    t.boolean "resolved", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_contacts_on_created_at"
+    t.index ["resolved"], name: "index_contacts_on_resolved"
   end
 
   create_table "tags", force: :cascade do |t|
@@ -136,9 +150,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_11_040119) do
     t.string "qiita_handle"
     t.string "zenn_handle"
     t.string "hatena_handle"
+    t.integer "status", default: 0, null: false
+    t.string "umami_website_id"
+    t.string "umami_share_url"
+    t.boolean "analytics_setup_completed", default: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
+    t.index ["status"], name: "index_users_on_status"
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 

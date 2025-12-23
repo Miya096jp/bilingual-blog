@@ -1,0 +1,30 @@
+.article-thumbnail.p-4
+  - if has_cover_image?(article)
+    = image_tag thumbnail_for_article(article, blog_setting), 
+        class: "w-full h-48 object-cover rounded-lg border border-gray-200"
+  - else
+    .default-thumbnail
+      = blog_setting&.display_title(I18n.locale) || "Dual Pascal"
+  
+  .mt-3
+    h3.text-lg.font-semibold.line-clamp-2
+      = link_to article.title, user_article_path(article.user.username, article.id, locale: article.locale),
+          class: "text-gray-900 hover:text-blue-600"
+
+  .flex.flex-wrap.items-center.gap-3.mt-2.text-xs.text-gray-600
+    - if article.category.present?
+      span
+        | #{t('blog.category')}: 
+        = link_to article.category.name, user_articles_path(params[:username], filter_params.merge(category_id: article.category.id)), class: ""
+      
+    - if article.tags.any?
+      .flex.items-center.gap-1
+        span
+          | #{t('blog.tags')}: 
+        - article.tags.limit(3).each do |tag|
+          span.inline-block.bg-blue-100.text-blue-800.px-2.py-1.rounded.text-xs
+            = link_to tag.name, user_articles_path(params[:username], filter_params.merge(tag_id: tag.id)), class: ""
+
+      span
+        | #{t('blog.published_at')}: 
+        = article.published_at&.strftime('%Y年%m月%d日') || article.created_at.strftime('%Y年%m月%d日')

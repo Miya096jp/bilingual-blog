@@ -14,6 +14,7 @@ class ArticleFilterQuery
       .by_tags(tag_id, user)
   end
 
+  # 修正？
   def current_category
     @current_category ||= Category.find_by(id: category_id) if category_id.present?
   end
