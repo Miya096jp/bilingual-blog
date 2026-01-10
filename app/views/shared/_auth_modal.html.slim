@@ -19,7 +19,7 @@
     
     / Sign in フォーム
     .signin-form data-auth-modal-target="signinForm"
-      = form_with model: User.new, url: user_session_path, local: true, data: { turbo: false }, class: "space-y-4" do |f|
+      = form_with model: User.new, url: user_session_path, local: true, class: "space-y-4" do |f|
         .space-y-4
           = f.email_field :email, placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
           = f.password_field :password, placeholder: "Password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true

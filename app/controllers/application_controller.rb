@@ -3,13 +3,15 @@ class ApplicationController < ActionController::Base
   before_action :set_locale
   before_action :set_blog_setting
   before_action :configure_permitted_parameters, if: :devise_controller?
-  # 一時的に追加
-  # if Rails.env.development?
-  #   skip_before_action :verify_authenticity_token
-  # end
-  skip_before_action :verify_authenticity_token
 
-  protect_from_forgery with: :exception
+  # skip_before_action :verify_authenticity_token
+
+  # protect_from_forgery with: :exception
+
+  # Devise関連のみCSRF検証をスキップ
+  skip_before_action :verify_authenticity_token, if: :devise_controller?
+  protect_from_forgery with: :exception, unless: :devise_controller?
+
 
   def set_locale
     I18n.locale = params[:locale] || I18n.default_locale
