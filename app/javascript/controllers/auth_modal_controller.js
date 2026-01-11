@@ -1,31 +1,21 @@
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["modal", "signinForm", "signupForm", "title"];
+  static targets = ["modal"];
 
   connect() {
     console.log("✅ AuthModal controller connected!");
   }
 
-  showModal() {
+  showModal(e) {
+    if (e) e.preventDefault()
     this.modalTarget.classList.remove("hidden");
-    this.switchToSignin(); // デフォルトでサインインフォームを表示
   }
 
-  closeModal() {
+  closeModal(e) {
+    if (e) e.preventDefault()
     this.modalTarget.classList.add("hidden");
-  }
-
-  switchToSignin() {
-    this.signinFormTarget.classList.remove("hidden");
-    this.signupFormTarget.classList.add("hidden");
-    this.titleTarget.textContent = "Sign in to your account";
-  }
-
-  switchToSignup() {
-    this.signinFormTarget.classList.add("hidden");
-    this.signupFormTarget.classList.remove("hidden");
-    this.titleTarget.textContent = "Create your account";
+    // this.resetForm();
   }
 
   closeOnOutsideClick(event) {
@@ -43,5 +33,15 @@ export default class extends Controller {
     if (event.key === "Escape") {
       this.closeModal();
     }
+  }
+
+  resetForm() {
+    setTimeout(() => {
+      const errorMessage = this.modalTarget.querySelector('[role="alert"]');
+      if (errorMessage) errorMessage.remove();
+
+      const form = this.modalTarget.querySelector("form");
+      if (form) form.reset();
+    }, 200);
   }
 }

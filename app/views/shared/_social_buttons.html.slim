@@ -1,0 +1,11 @@
+.space-y-3.mb-6
+  = button_to omniauth_authorize_path(:user, :github), data: { turbo: false }, class: "w-full btn-unified flex items-center justify-center gap-2" do
+    | Continue with GitHub
+  = button_to omniauth_authorize_path(:user, :google_oauth2), data: { turbo: false }, class: "w-full btn-unified flex items-center justify-center gap-2" do
+    | Continue with Google
+
+.relative.mb-6
+  .absolute.inset-0.flex.items-center
+    .w-full.border-t.border-gray-300
+  .relative.flex.justify-center.text-sm
+    span.bg-white.px-2.text-gray-500 or

@@ -1,0 +1,13 @@
+- if flash[:alert].present?
+  .mb-4.bg-red-50.border-l-4.border-red-500.text-red-700.p-4.text-sm role="alert"
+    p = flash[:alert]
+
+= form_with model: User.new, url: user_session_path, data: { turbo_frame: "_top" }, class: "space-y-4" do |f|
+  .space-y-4
+    = f.email_field :email, placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+    = f.password_field :password, placeholder: "Password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+    = f.submit "Sign in", class: "w-full btn-unified"
+
+.text-center.mt-4
+  span.text-gray-600 Don't have an account? 
+  = link_to "Sign up", new_user_registration_path, data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800"
