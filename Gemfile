@@ -80,6 +80,7 @@ group :development do
   gem "web-console"
   gem "solargraph"
   gem "ruby-lsp"
+  gem "letter_opener"
 end
 
 group :test do

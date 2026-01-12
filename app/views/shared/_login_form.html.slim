@@ -8,6 +8,9 @@
     = f.password_field :password, placeholder: "Password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
     = f.submit "Sign in", class: "w-full btn-unified"
 
+    .text-right
+      = link_to "Forgot password?", new_user_password_path, data: { turbo_frame: "auth_form_frame" }, class: "text-sm text-blue-600 hover:text-blue-800"
+
 .text-center.mt-4
   span.text-gray-600 Don't have an account? 
   = link_to "Sign up", new_user_registration_path, data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800"
