@@ -46,7 +46,8 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
         div class="ml-auto flex gap-2 border-b border-gray-400"
           .flex.items-center.gap-1
             / button.text-gray-500.hover:text-gray-700.text-lg.font-bold type="button" data-action="click->category-modal#showModal" title="新しいカテゴリを追加" +
-            = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "text-gray-400 focus:outline-none", required: false, data: { category_modal_target: "select" } }
+            / = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "text-gray-400 focus:outline-none", required: false, data: { category_modal_target: "select" } }
+            = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "w-30 truncate text-gray-400 focus:outline-none", required: false }
           p
             = f.text_field :tag_list, placeholder: "tags", class: "text-gray-600 focus:outline-none"
           p
