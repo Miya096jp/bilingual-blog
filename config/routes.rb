@@ -1,6 +1,9 @@
 Rails.application.routes.draw do
   get "contacts/new"
   get "contacts/create"
+
+  root to: redirect('/ja/u/admin/articles')
+
   devise_for :users, controllers: { 
     omniauth_callbacks: "users/omniauth_callbacks",
     sessions: "users/sessions",
@@ -34,7 +37,7 @@ Rails.application.routes.draw do
 
 
 scope "/:locale", constraints: { locale: /ja|en/ } do
-  root "welcome#index"
+  # root "welcome#index"
 
   scope "u" do
     get "/:username/search", to: "search#index", as: :user_search
