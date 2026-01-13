@@ -1,5 +1,4 @@
 .article-items
-
   .article-title.max-w-5xl.mx-auto
     h1.text-4xl.font-extrabold.mb-8.text-gray-900
       = @article.title
@@ -12,7 +11,6 @@
         | :
       span.text-gray-500
         = @article.published_at&.strftime('%Y年%m月%d日')
-
     .flex.items-center.mb-2
       span.w-20.text-gray-500.text-right
         = t('blog.updated_at')
@@ -20,7 +18,6 @@
         | :
       span.text-gray-500
         = @article.updated_at&.strftime('%Y年%m月%d日')
-
     .flex.items-center.mb-2
       - if @article.category.present?
         span.w-20.text-gray-500.text-right
@@ -29,7 +26,6 @@
           | :
         span.text-gray-500.hover:text-gray-800
           = link_to @article.category.name, user_articles_path(locale: params[:locale], category_id: @article.category.id)
-
     .flex.items-center.mb-2
       span.w-20.text-gray-500.text-right
         = t('blog.tags')
@@ -37,7 +33,6 @@
         | :
       span
         = render 'shared/article_tags', article: @article, filter_params: {}
-
     - if @article.translation.present?
       .flex.items-center.mb-2
         span.w-20.text-gray-500.text-right
@@ -46,18 +41,15 @@
           | :
         span
           = link_to "#{@article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(@article.translation.user.username, @article.translation.id, locale: @article.translation.locale), class: "pb-2 block text-gray-500 hover:text-gray-800"
-
-
+  
   - if @blog_setting&.show_hero_thumbnail && has_cover_image?(@article)
     .hero-thumbnail.max-w-5xl.mx-auto.mb-6
       = image_tag thumbnail_for_article(@article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
-
-  .article-content style="all: revert;"
-    div class="medium-wide"
+  
+  / ← ここを修正（2重のarticle-contentを削除、max-w-5xlに統一）
+  .max-w-5xl.mx-auto
+    article.article-content
       = @article.content_html
-
-/.section-devider.my-16.max-w-5xl.mx-auto
-/  .border-t.border-gray-600
 
 .section-divider.my-16.max-w-5xl.mx-auto.text-center
   .flex.items-center.justify-center.gap-4
@@ -81,7 +73,7 @@
           .text-gray-700= simple_format(comment.content)
     - else
       p= t('comments.none')
-
+  
   .comment-form.max-w-5xl.mx-auto.py-8
     = form_with model: Comment.new, url: user_article_comments_path(@article.user.username, @article.id), local: true do |f|
       .flex.flex-col.w-1/2.mb-2

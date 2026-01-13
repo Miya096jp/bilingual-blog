@@ -1,90 +1,279 @@
-.medium-container {
-  all: revert;
-  font-family: Georgia, "Times New Roman", Times, serif;
-}
-.medium-container * {
-  all: revert;
-}
-.medium,
-.medium-wide {
+.article-content {
   font-family: Georgia, "Times New Roman", Times, serif;
   font-size: 21px;
   line-height: 1.58;
   letter-spacing: -0.003em;
   color: rgba(41, 41, 41, 1);
-  margin: 0 auto;
-  padding: 0 50px;
-}
-.medium {
-  max-width: 768px;
-}
-.medium-wide {
-  max-width: 1280px;
+  max-width: 100%;  /* ← 親の max-w-5xl に従う */
+  margin: 0;
 }
 
-.medium h1,
-.medium-wide h1 {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 42px;
-  font-weight: 700;
-  line-height: 1.04;
-  letter-spacing: -0.028em;
-  margin: 56px 0 -13px;
+
+/* Tailwindの影響を受けやすい要素だけリセット */
+.article-content ul,
+.article-content ol,
+.article-content li,
+.article-content p,
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  all: revert;
 }
-.medium h2,
-.medium-wide h2 {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1.15;
-  margin: 48px 0 -13px;
+
+/* ==================================================
+   見出し
+   ================================================== */
+
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #1a1a1a;
 }
-.medium p,
-.medium-wide p {
-  margin: 29px 0;
-  line-height: 1.58;
+
+.article-content h1 {
+  font-size: 1.8em;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3em;
+  margin-top: 0;
 }
-.medium blockquote,
-.medium-wide blockquote {
+
+.article-content h2 {
+  font-size: 1.6em;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3em;
+}
+
+.article-content h3 {
+  font-size: 1.45em;
+}
+
+.article-content h4 {
+  font-size: 1.30em;
+}
+
+.article-content h5 {
+  font-size: 1.15em;
+}
+
+.article-content h6 {
+  font-size: 1em;
+}
+
+/* ==================================================
+   段落・テキスト
+   ================================================== */
+
+.article-content p {
+  margin-bottom: 1em;
+  margin-top: 0;
+}
+
+.article-content strong {
+  font-weight: 600;
+}
+
+.article-content em {
   font-style: italic;
-  font-size: 24px;
-  line-height: 1.48;
-  border-left: 3px solid rgba(41, 41, 41, 1);
-  padding-left: 20px;
-  margin: 43px 0 43px -20px;
-}
-.medium ul,
-.medium ol,
-.medium-wide ul,
-.medium-wide ol {
-  margin: 29px 0;
-  padding-left: 30px;
-}
-.medium li,
-.medium-wide li {
-  margin: 14px 0;
-  line-height: 1.58;
 }
 
-.medium pre,
-.medium-wide pre {
-  background: #fdf6e3; /* 薄いクリーム色 */
-  border-radius: 3px;
-  padding: 20px;
-  margin: 29px 0;
+/* ==================================================
+   リンク
+   ================================================== */
+
+.article-content a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.article-content a:hover {
+  text-decoration: underline;
+}
+
+/* ==================================================
+   リスト（重要：Tailwindのリセットを上書き）
+   ================================================== */
+
+.article-content ul {
+  list-style-type: disc;
+  list-style-position: outside;
+  padding-left: 2em;
+  margin-bottom: 1em;
+  margin-top: 0;
+}
+
+.article-content ul li {
+  margin-bottom: 0.25em;
+  display: list-item;  /* Tailwindのリセットを上書き */
+}
+
+.article-content ul ul {
+  list-style-type: circle;
+  margin-top: 0.25em;
+  margin-bottom: 0;
+}
+
+.article-content ul ul ul {
+  list-style-type: square;
+}
+
+.article-content ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+  padding-left: 2em;
+  margin-bottom: 1em;
+  margin-top: 0;
+}
+
+.article-content ol li {
+  margin-bottom: 0.25em;
+  display: list-item;  /* Tailwindのリセットを上書き */
+}
+
+.article-content ol ol {
+  list-style-type: lower-alpha;
+  margin-top: 0.25em;
+  margin-bottom: 0;
+}
+
+.article-content ol ol ol {
+  list-style-type: lower-roman;
+}
+
+/* タスクリスト */
+.article-content .task-list-item {
+  list-style-type: none;
+}
+
+.article-content .task-list-item input[type="checkbox"] {
+  margin-right: 0.5em;
+  margin-left: -1.5em;
+}
+
+/* ==================================================
+   コードブロック
+   ================================================== */
+
+.article-content pre {
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 1em;
   overflow-x: auto;
-  font-family: "SF Mono", Monaco, monospace;
-  font-size: 16px;
-  line-height: 1.45;
+  margin-bottom: 1em;
+  margin-top: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
-.medium code,
-.medium-wide code {
-  background: #fdf6e3; /* 薄いクリーム色 */
-  border-radius: 2px;
-  padding: 3px 4px;
-  font-family: "SF Mono", Monaco, monospace;
-  font-size: 16px;
+.article-content code {
+  background-color: #f6f8fa;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.article-content pre code {
+  background-color: transparent;
+  padding: 0;
+  font-size: 0.9em;
+}
+
+/* ==================================================
+   引用
+   ================================================== */
+
+.article-content blockquote {
+  border-left: 4px solid #d0d7de;
+  padding-left: 1em;
+  color: #57606a;
+  margin-bottom: 1em;
+  margin-top: 0;
+  font-style: italic;
+}
+
+.article-content blockquote p {
+  margin-bottom: 0.5em;
+}
+
+/* ==================================================
+   水平線
+   ================================================== */
+
+.article-content hr {
+  border: none;
+  border-top: 1px solid #d0d7de;
+  margin: 2em 0;
+}
+
+/* ==================================================
+   テーブル
+   ================================================== */
+
+.article-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1em;
+  margin-top: 0;
+  display: block;
+  overflow-x: auto;
+}
+
+.article-content table th,
+.article-content table td {
+  border: 1px solid #d0d7de;
+  padding: 0.5em 1em;
+  text-align: left;
+}
+
+.article-content table th {
+  background-color: #f6f8fa;
+  font-weight: 600;
+}
+
+.article-content table tr:nth-child(even) {
+  background-color: #f6f8fa;
+}
+
+/* ==================================================
+   画像
+   ================================================== */
+
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 1.5em 0;
+  border-radius: 4px;
+  display: block;
+}
+
+/* ==================================================
+   レスポンシブ対応
+   ================================================== */
+
+@media (max-width: 768px) {
+  .article-content {
+    font-size: 18px;
+  }
+  
+  .article-content h1 {
+    font-size: 2em;
+  }
+  
+  .article-content h2 {
+    font-size: 1.5em;
+  }
+  
+  .article-content pre {
+    padding: 0.75em;
+  }
 }
