@@ -72,3 +72,19 @@
 .list-article:hover {
   background-color: #f9fafb;
 }
+
+
+/* ダッシュボード: 画面サイズ警告 */
+#screen-size-warning {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  #screen-size-warning {
+    display: flex !important;
+  }
+  
+  #dashboard-content {
+    display: none !important;
+  }
+}
