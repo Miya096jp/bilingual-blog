@@ -25,20 +25,22 @@
     article.article-content
       = hero_article.content_html
     
-    .article-meta.text-right.mt-6
+    .article-meta.text-right.text-sm.text-gray-400.mt-6
       p
         | #{t('blog.published_at')}:
-        = hero_article.published_at&.strftime('%Y年%m月%d日')
+        = l(hero_article.published_at, format: :blog_date)
       p
         | #{t('blog.updated_at')}:
-        = hero_article.updated_at&.strftime('%Y年%m月%d日')
+        = l(hero_article.updated_at, format: :blog_date)
+
       - if hero_article.translation.present?
         p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
 
 / タイル記事
 - if tile_articles.any?
   .tiles-section.max-w-6xl.mx-auto
-    h2.text-xl.font-semibold.mb-6.text-center その他の記事
+    h2.text-xl.font-semibold.mb-6.text-center
+      | #{t('blog.more_stories')}
     .grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-6
       - tile_articles.each do |article|
         .tile-article

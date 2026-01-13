@@ -1,33 +1,33 @@
 .article-items
   .article-title.max-w-5xl.mx-auto
-    h1.text-4xl.font-extrabold.mb-8.text-gray-900
+    h1.text-4xl.font-extrabold.my-4.text-gray-900
       = @article.title
   
   .article-meta.max-w-5xl.mx-auto.mb-4.border-b.border-gray-500
     .flex.items-center.mb-2
-      span.w-20.text-gray-500.text-right
+      span.w-25.text-gray-500.text-right
         = t('blog.published_at')
       span.w-4.text-gray-500.text-center
         | :
       span.text-gray-500
-        = @article.published_at&.strftime('%Y年%m月%d日')
+        = l(@article.published_at, format: :blog_date)
     .flex.items-center.mb-2
-      span.w-20.text-gray-500.text-right
+      span.w-25.text-gray-500.text-right
         = t('blog.updated_at')
       span.w-4.text-gray-500.text-center
         | :
       span.text-gray-500
-        = @article.updated_at&.strftime('%Y年%m月%d日')
+        = l(@article.updated_at, format: :blog_date)
     .flex.items-center.mb-2
       - if @article.category.present?
-        span.w-20.text-gray-500.text-right
+        span.w-25.text-gray-500.text-right
           = t('blog.category')
         span.w-4.text-gray-500.text-center
           | :
         span.text-gray-500.hover:text-gray-800
           = link_to @article.category.name, user_articles_path(locale: params[:locale], category_id: @article.category.id)
     .flex.items-center.mb-2
-      span.w-20.text-gray-500.text-right
+      span.w-25.text-gray-500.text-right
         = t('blog.tags')
       span.w-4.text-gray-500.text-center
         | :
@@ -35,7 +35,7 @@
         = render 'shared/article_tags', article: @article, filter_params: {}
     - if @article.translation.present?
       .flex.items-center.mb-2
-        span.w-20.text-gray-500.text-right
+        span.w-25.text-gray-500.text-right
           = t('blog.translation')
         span.w-4.text-gray-500.text-center
           | :

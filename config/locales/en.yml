@@ -34,6 +34,7 @@ en:
     published_at: "Published"
     updated_at: "Updated"
     translation: "Translation"
+    more_stories: "More Stories"
     search:
       placeholder: "Search article..."
       button: "Search"
@@ -49,3 +50,6 @@ en:
     submit: "Post Comment"
     none: "No comments yet."
     number: "Comment %{number}:"
+  time:
+    formats:
+      blog_date: "%B %d, %Y"

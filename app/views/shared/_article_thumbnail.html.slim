@@ -11,6 +11,9 @@
       = link_to article.title, user_article_path(article.user.username, article.id, locale: article.locale),
           class: "text-gray-900 hover:text-blue-600"
 
+    span.text-sm.text-gray-400
+      | "#{t('blog.published_at')}: #{l(article.published_at, format: :blog_date)}"
+
   .flex.flex-wrap.items-center.gap-3.mt-2.text-xs.text-gray-600
     - if article.category.present?
       span
@@ -25,6 +28,6 @@
           span.inline-block.bg-blue-100.text-blue-800.px-2.py-1.rounded.text-xs
             = link_to tag.name, user_articles_path(params[:username], filter_params.merge(tag_id: tag.id)), class: ""
 
-      span
-        | #{t('blog.published_at')}: 
-        = article.published_at&.strftime('%Y年%m月%d日') || article.created_at.strftime('%Y年%m月%d日')
+      / span
+      /   | #{t('blog.published_at')}: 
+      /   = article.published_at&.strftime('%Y年%m月%d日') || article.created_at.strftime('%Y年%m月%d日')

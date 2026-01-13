@@ -5,6 +5,7 @@ ja:
     published_at: "投稿日"
     updated_at: "最終更新日"
     translation: "翻訳"
+    more_stories: "その他の記事"
     search:
       placeholder: "記事を検索..."
       button: "検索"
@@ -20,3 +21,6 @@ ja:
     submit: "コメントを投稿"
     none: "コメントはまだありません。"
     number: "コメント%{number}:"
+  time:
+    formats:
+      blog_date: "%Y年%m月%d日"

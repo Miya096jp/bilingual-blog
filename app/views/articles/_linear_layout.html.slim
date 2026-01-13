@@ -17,12 +17,12 @@
     article.article-content
       = article.content_html
     
-    .article-meta.text-right.mt-6
+    .article-meta.text-right.text-sm.text-gray-400.mt-6
       p
         | #{t('blog.published_at')}:
-        = article.published_at&.strftime('%Y年%m月%d日')
+        = l(article.published_at, format: :blog_date)
       p
         | #{t('blog.updated_at')}:
-        = article.updated_at&.strftime('%Y年%m月%d日')
+        = l(article.updated_at, format: :blog_date)
       - if article.translation.present?
         p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(article.translation.user.username, article.translation.id, locale: article.translation.locale)
