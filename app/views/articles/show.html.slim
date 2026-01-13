@@ -76,13 +76,16 @@
   
   .comment-form.max-w-5xl.mx-auto.py-8
     = form_with model: Comment.new, url: user_article_comments_path(@article.user.username, @article.id), local: true do |f|
-      .flex.flex-col.w-1/2.mb-2
+      / .flex.flex-col.w-1/2.mb-2
+      .flex.flex-col.w-full.md:w-1/2.mb-2
         = f.label :author_name, "#{t('comments.author_name')}:", class: "mb-2"
         = f.text_field :author_name, required: true, class: "border-0 border-b border-gray-600 focus:outline-none"
-      .flex.flex-col.w-1/2.mb-2
+      / .flex.flex-col.w-1/2.mb-2
+      .flex.flex-col.w-full.md:w-1/2.mb-2
         = f.label :website, "#{t('comments.website')}:", class: "mb-2"
         = f.url_field :website, class: "border-0 border-b border-gray-600 focus:outline-none"
-      .flex.flex-col.w-1/2.mb-2
+      / .flex.flex-col.w-1/2.mb-2
+      .flex.flex-col.w-full.md:w-1/2.mb-2
         = f.label :content, "#{t('comments.content')}:", class: "mb-2"
         = f.text_area :content, rows: 5, required: true, class: "border border-gray-600 focus:outline-none"
       
