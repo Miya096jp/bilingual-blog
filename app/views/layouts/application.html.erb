@@ -134,17 +134,36 @@
 
 <!-- フッター部分の更新 -->
 <footer class="site-footer">
-  <div class="footer-container w-full theme-footer">
-    <div class="footer-content max-w-6xl mx-auto px-6 py-4">
-      <div class="flex justify-between items-center">
-        <p>© 2025 Dual Pascal. All rights reserved.</p>
-        <div class="flex gap-4">
-          <%= link_to "利用規約", terms_of_service_path, class: "text-sm hover:text-white" %>
-          <%= link_to "プライバシーポリシー", privacy_policy_path, class: "text-sm hover:text-white" %>
-          <%= link_to "免責事項", disclaimer_path, class: "text-sm hover:text-white" %>
-          <%= link_to "運営への問い合わせ", new_contact_path, class: "text-sm hover:text-white" %>
+  <div class="footer-container w-full theme-footer border-t border-gray-200">
+    <div class="max-w-6xl mx-auto px-6 py-8">
+      
+      <%# 上段：リンクエリア %>
+      <div class="flex flex-wrap justify-center md:justify-between gap-6 mb-6 text-sm">
+        <nav class="flex flex-wrap justify-center gap-x-6 gap-y-2">
+          <%= link_to "利用規約", terms_of_service_path, class: "hover:text-white transition-colors" %>
+          <%= link_to "プライバシーポリシー", privacy_policy_path, class: "hover:text-white transition-colors" %>
+          <%= link_to "免責事項", disclaimer_path, class: "hover:text-white transition-colors" %>
+          <%= link_to "運営への問い合わせ", new_contact_path, class: "hover:text-white transition-colors" %>
+        </nav>
+        
+        <div class="flex items-center gap-2">
+          <%= link_to "Photos by Unsplash", "https://unsplash.com/", target: "_blank", rel: "noopener", class: "opacity-70 hover:opacity-100 hover:text-white transition-all" %>
         </div>
       </div>
+
+      <%# 下段：コピーライトエリア %>
+      <div class="pt-6 border-t border-gray-500/20 text-center text-sm opacity-80">
+        <p>
+          <% custom_title = @blog_setting&.localized_title(I18n.locale) %>
+          <% if custom_title.present? %>
+            <strong><%= custom_title %></strong> <span class="text-xs">powered by</span> Dual Pascal.
+          <% else %>
+            Dual Pascal.
+          <% end %>
+          All rights reserved. © <%= Time.current.year %>
+        </p>
+      </div>
+      
     </div>
   </div>
 </footer>
