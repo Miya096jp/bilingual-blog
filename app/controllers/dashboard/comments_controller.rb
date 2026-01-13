@@ -5,6 +5,7 @@ class Dashboard::CommentsController < ApplicationController
 
   def index
     @comments = Comment.includes(:article)
+                       .where(articles: { user_id: current_user.id })
                        .order(created_at: :desc)
                        .page(params[:page]).per(20)
   end

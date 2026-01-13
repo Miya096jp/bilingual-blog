@@ -1,18 +1,24 @@
 class SearchController < ApplicationController
+  before_action :set_blog_owner
+
   def index
-    @search_keyword = params[:q]
-    Rails.logger.info "Search keyword: #{@search_keyword}"
-    @articles = if @search_keyword.present?
-                  user = User.find_by(username: params[:username])
-                  user.articles.published
-                    .where(locale: params[:locale])
-                    .search(@search_keyword)
-                    .includes(:category, :tags)
-                    .order(published_at: :desc)
-                    .page(params[:page]).per(10)
+    @query = params[:q]
+    if @query.present?
+      @articles = @blog_owner.articles
+                             .published
+                             .by_locale(params[:locale])
+                             .search(@query)
+                             .page(params[:page]).per(10)
     else
-                  current_user.articles.none.page(1)
+      @articles = Article.none.page(1)
     end
-    @filter = ArticleFilterQuery.new(params.merge(user: user))
+  end
+
+  private
+
+  def set_blog_owner
+    @blog_owner = User.find_by!(username: params[:username])
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path(locale: params[:locale]), alert: "ユーザーが見つかりません"
   end
 end

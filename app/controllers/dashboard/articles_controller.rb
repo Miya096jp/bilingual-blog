@@ -56,7 +56,7 @@ class Dashboard::ArticlesController < ApplicationController
   end
 
   def set_categories
-    locale = @article&.locale || params[:locale] || "ja"
+    locale = @article&.locale || params.dig(:article, :locale) || params[:locale] || "ja"
     @categories = current_user.categories.for_locale(locale).order(:name)
   end
 
