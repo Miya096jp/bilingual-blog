@@ -4,6 +4,14 @@ class Users::RegistrationsController < Devise::RegistrationsController
   layout "dashboard", only: [:delete_confirmation]
   respond_to :html, :turbo_stream
 
+  def new
+    redirect_to root_path(locale: I18n.locale), alert: "このページは利用できません"
+  end
+
+  def edit
+    redirect_to edit_dashboard_profile_path(locale: I18n.locale), alert: "ダッシュボードから編集してください"
+  end
+
   def delete_confirmation
     @resource = current_user
   end

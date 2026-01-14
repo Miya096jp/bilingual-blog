@@ -28,4 +28,8 @@ class Users::SessionsController < Devise::SessionsController
       end
     end
   end
+
+  def new
+    redirect_to root_path(locale: I18n.locale), alert: "このページは利用できません"
+  end
 end
