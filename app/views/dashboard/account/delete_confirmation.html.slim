@@ -1,0 +1,19 @@
+h1.text-2xl.font-bold.mb-6.text-red-600 アカウントの削除
+
+.bg-white.rounded-lg.border.border-red-200.shadow-sm.p-8
+  .bg-red-50.border.border-red-200.rounded-md.p-4.mb-6
+    h2.text-lg.font-semibold.text-red-800.mb-2 ⚠️ 警告
+    ul.text-red-700.text-sm.space-y-2
+      li • アカウントを削除すると、すべてのデータが完全に削除されます
+      li • 投稿した記事、カテゴリ、タグ、コメントがすべて削除されます
+      li • この操作は取り消すことができません
+      li • 削除後、同じメールアドレスで再登録することはできません
+
+  .mb-6
+    p.text-gray-700.mb-4 本当にアカウントを削除してもよろしいですか？
+    p.text-gray-600.text-sm 削除を続行する場合は、以下のボタンをクリックしてください。
+
+  = form_with url: user_registration_path, method: :delete, local: true, data: { turbo_confirm: "本当にアカウントを削除しますか？この操作は取り消せません。" } do |f|
+    .flex.gap-3
+      = f.submit "アカウントを削除する", class: "bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md transition-colors font-semibold"
+      = link_to "キャンセル", dashboard_articles_path(locale: params[:locale]), class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"

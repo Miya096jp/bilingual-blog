@@ -1,7 +1,12 @@
 class Users::RegistrationsController < Devise::RegistrationsController
   layout false, only: [:new, :create], if: -> { turbo_frame_request? }
 
+  layout "dashboard", only: [:delete_confirmation]
   respond_to :html, :turbo_stream
+
+  def delete_confirmation
+    @resource = current_user
+  end
 
   def create
     build_resource(sign_up_params)
@@ -36,5 +41,11 @@ class Users::RegistrationsController < Devise::RegistrationsController
         end
       end
     end
+  end
+
+  protected
+
+  def after_sign_out_path_for(resource_or_scope)
+    root_path(locale: I18n.locale)
   end
 end

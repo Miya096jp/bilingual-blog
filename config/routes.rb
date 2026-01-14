@@ -69,6 +69,7 @@ namespace :dashboard do
   resource :profile, only: %i[edit update]
   resource :blog_setting, only: %i[edit update]
   resources :analytics, only: [ :index ]
+  get "account/delete", to: "account#delete_confirmation", as: :delete_account_confirmation
 end
 
 get "/dashboard", to: redirect("/dashboard/articles")
