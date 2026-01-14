@@ -19,6 +19,7 @@ class Article < ApplicationRecord
   has_many :article_tags, dependent: :destroy
   has_many :tags, through: :article_tags
 
+  before_destroy :purge_attachments
   before_save :set_published_at
   after_create :assign_pending_tags
 
@@ -80,6 +81,12 @@ class Article < ApplicationRecord
   end
 
   private
+
+  def purge_attachments
+    images.purge if images.attached?
+    cover_image.purge if cover_image.attached?
+  end
+
   def set_published_at
     if status == "published" && published_at.blank?
       self.published_at = Time.current

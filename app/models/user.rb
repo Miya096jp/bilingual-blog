@@ -17,6 +17,8 @@ class User < ApplicationRecord
 
   has_one_attached :avatar
 
+  before_destroy :purge_avatar
+
   after_create :setup_analytics_async
 
   def display_name(locale = I18n.locale)
@@ -92,6 +94,10 @@ class User < ApplicationRecord
   end
 
   private
+
+  def purge_avatar
+    avatar.purge if avatar.attached?
+  end
 
   def setup_analytics_async
     UmamiSetupJob.perform_later(self)
