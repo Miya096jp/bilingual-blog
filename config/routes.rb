@@ -8,7 +8,8 @@ Rails.application.routes.draw do
     omniauth_callbacks: "users/omniauth_callbacks",
     sessions: "users/sessions",
     registrations: "users/registrations",
-    passwords: "users/passwords"
+    passwords: "users/passwords",
+    confirmations: "users/confirmations"
   }
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 

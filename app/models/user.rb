@@ -1,6 +1,6 @@
 class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable,
+         :recoverable, :rememberable, :validatable, :confirmable,
          :omniauthable, omniauth_providers: [ :github, :google_oauth2 ]
 
 
@@ -76,7 +76,8 @@ class User < ApplicationRecord
       new_user = create!(
         email: auth.info.email,
         password: Devise.friendly_token[0, 20],
-        username: auth.info.nickname || auth.info.name&.parameterize || auth.info.email.split("@").first
+        username: auth.info.nickname || auth.info.name&.parameterize || auth.info.email.split("@").first,
+        confirmed_at: Time.current
       )
       { user: new_user, is_new: true }
     end

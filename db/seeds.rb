@@ -14,7 +14,8 @@ admin = User.create!(
   email: "admin@example.com",
   password: "password",
   password_confirmation: "password",
-  role: :admin
+  role: :admin,
+  confirmed_at: Time.current 
 )
 
 # 一般ユーザー1
@@ -23,7 +24,8 @@ alice = User.create!(
   email: "alice@example.com",
   password: "password",
   password_confirmation: "password",
-  role: :user
+  role: :user,
+  confirmed_at: Time.current 
 )
 
 # 一般ユーザー2
@@ -32,7 +34,8 @@ bob = User.create!(
   email: "bob@example.com",
   password: "password",
   password_confirmation: "password",
-  role: :user
+  role: :user,
+  confirmed_at: Time.current 
 )
 
 puts "ユーザー作成完了: #{User.count}名"
