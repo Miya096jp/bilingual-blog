@@ -16,4 +16,4 @@ h1.text-2xl.font-bold.mb-6.text-red-600 アカウントの削除
   = form_with url: user_registration_path, method: :delete, local: true, data: { turbo_confirm: "本当にアカウントを削除しますか？この操作は取り消せません。" } do |f|
     .flex.gap-3
       = f.submit "アカウントを削除する", class: "bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md transition-colors font-semibold"
-      = link_to "キャンセル", dashboard_articles_path(locale: params[:locale]), class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
+      = link_to "キャンセル", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"

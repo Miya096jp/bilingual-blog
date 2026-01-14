@@ -19,11 +19,11 @@ class Dashboard::CategoriesController < ApplicationController
   def create
     @category = current_user.categories.build(category_params)
     # @category.locale = params[:locale]
-    @category.locale = params[:locale] || params.dig(:category, :locale) || "ja"
+    @category.locale = params.dig(:category, :locale) || "ja"
 
     respond_to do |format|
       if @category.save
-        format.html { redirect_to dashboard_categories_path(locale: params[:locale]), notice: "カテゴリが作成されました" }
+        format.html { redirect_to dashboard_categories_path, notice: "カテゴリが作成されました" }
         format.json { render json: { category: { id: @category.id, name: @category.name } } }
       else
         format.html { render new }
@@ -37,7 +37,7 @@ class Dashboard::CategoriesController < ApplicationController
 
   def update
     if @category.update(category_params)
-      redirect_to dashboard_categories_path(locale: params[:locale]), notice: "カテゴリが更新されました"
+      redirect_to dashboard_categories_path, notice: "カテゴリが更新されました"
     else
       render :edit
     end
@@ -45,7 +45,7 @@ class Dashboard::CategoriesController < ApplicationController
 
   def destroy
     @category.destroy
-    redirect_to dashboard_categories_path(locale: params[:locale]), notice: "カテゴリが削除されました"
+    redirect_to dashboard_categories_path, notice: "カテゴリが削除されました"
   end
 
   private

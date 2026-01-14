@@ -25,7 +25,7 @@ class Dashboard::TranslationsController < ApplicationController
     @translation.user = current_user
 
     if @translation.save
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "翻訳記事が作成されました"
+      redirect_to dashboard_articles_path, notice: "翻訳記事が作成されました"
     else
       render :new
     end
@@ -36,7 +36,7 @@ class Dashboard::TranslationsController < ApplicationController
 
   def update
     if @translation.update(translation_params)
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "翻訳記事が更新されました"
+      redirect_to dashboard_articles_path, notice: "翻訳記事が更新されました"
     else
 　　　render :edit
     end
@@ -44,9 +44,9 @@ class Dashboard::TranslationsController < ApplicationController
 
   def destroy
     if @translation.destroy
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "翻訳記事を削除しました"
+      redirect_to dashboard_articles_path, notice: "翻訳記事を削除しました"
     else
-      redirect_to edit_dashboard_article_translation_path(@original_article, locale: params[:locale]), alert: "削除に失敗しました"
+      redirect_to edit_dashboard_article_translation_path(@original_article), alert: "削除に失敗しました"
     end
   end
 

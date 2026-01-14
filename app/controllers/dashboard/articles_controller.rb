@@ -24,7 +24,7 @@ class Dashboard::ArticlesController < ApplicationController
     @article = current_user.articles.build(article_params)
 
     if @article.save
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "記事が作成されました"
+      redirect_to dashboard_articles_path, notice: "記事が作成されました"
     else
       render :new
     end
@@ -35,7 +35,7 @@ class Dashboard::ArticlesController < ApplicationController
 
   def update
     if @article.update(article_params)
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "記事が更新されました"
+      redirect_to dashboard_articles_path, notice: "記事が更新されました"
     else
       render :edit
     end
@@ -43,9 +43,9 @@ class Dashboard::ArticlesController < ApplicationController
 
   def destroy
     if @article.destroy
-      redirect_to dashboard_articles_path(locale: params[:locale], notice: "削除しました")
+      redirect_to dashboard_articles_path, notice: "削除しました"
     else
-      redirect_to edit_dashboard_article_path(@article, locale: params[:locale]), alert: "削除に失敗しました"
+      redirect_to edit_dashboard_article_path(@article), alert: "削除に失敗しました"
     end
   end
 
@@ -56,7 +56,7 @@ class Dashboard::ArticlesController < ApplicationController
   end
 
   def set_categories
-    locale = @article&.locale || params.dig(:article, :locale) || params[:locale] || "ja"
+    locale = @article&.locale || params.dig(:article, :locale) || "ja"
     @categories = current_user.categories.for_locale(locale).order(:name)
   end
 

@@ -118,11 +118,11 @@
             <%# 上段：リンクエリア %>
             <div class="flex flex-wrap justify-center md:justify-between gap-6 mb-6 text-sm">
               <nav class="flex flex-wrap justify-center gap-x-6 gap-y-2">
-                <%= link_to "利用規約", terms_of_service_path, class: "hover:text-white transition-colors" %>
-                <%= link_to "プライバシーポリシー", privacy_policy_path, class: "hover:text-white transition-colors" %>
-                <%= link_to "免責事項", disclaimer_path, class: "hover:text-white transition-colors" %>
-                <%= link_to "運営への問い合わせ", new_contact_path, class: "hover:text-white transition-colors" %>
-                <%= link_to "退会", dashboard_delete_account_confirmation_path(locale: I18n.locale), class: "text-red-400 hover:text-red-300 transition-colors" %>
+                <%= link_to "利用規約", terms_of_service_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
+                <%= link_to "プライバシーポリシー", privacy_policy_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
+                <%= link_to "免責事項", disclaimer_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
+                <%= link_to "運営への問い合わせ", new_contact_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
+                <%= link_to "退会", dashboard_delete_account_confirmation_path, class: "text-red-400 hover:text-red-300 transition-colors" %>
               </nav>
 
               <div class="flex items-center gap-2">

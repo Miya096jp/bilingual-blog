@@ -4,7 +4,7 @@
     - article.errors.full_messages.each do |message|
       li= message
 
-div data-controller="markdown-preview image-upload layout-switcher category-modal" data-markdown-preview-url-value=dashboard_preview_path(locale: params[:locale]) data-layout-switcher-translation-mode-value=is_translation data-category-modal-url-value="#{dashboard_categories_path(format: :json)}" data-category-modal-locale-value="#{article.locale || 'ja'}" class="layout-switcher"
+div data-controller="markdown-preview image-upload layout-switcher category-modal" data-markdown-preview-url-value=dashboard_preview_path data-layout-switcher-translation-mode-value=is_translation data-category-modal-url-value="#{dashboard_categories_path(format: :json)}" data-category-modal-locale-value="#{article.locale || 'ja'}" class="layout-switcher"
 
   div data-layout-switcher-target="buttons" class="layout-buttons flex gap-1 justify-center mb-2"
     button.layout-button type="button" data-action="click->layout-switcher#switchToSplit" data-mode="split" ⚏

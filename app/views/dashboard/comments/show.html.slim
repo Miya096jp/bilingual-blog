@@ -23,5 +23,5 @@ p
 h3 コメント内容
 = simple_format(@comment.content)
 
-= link_to "削除", dashboard_comment_path(@comment, locale: params[:locale]), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }
-= link_to "一覧に戻る", dashboard_comments_path(locale: params[:locale])
+= link_to "削除", dashboard_comment_path(@comment), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }
+= link_to "一覧に戻る", dashboard_comments_path

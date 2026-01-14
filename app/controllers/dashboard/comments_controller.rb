@@ -15,9 +15,9 @@ class Dashboard::CommentsController < ApplicationController
 
   def destroy
     if @comment.destroy
-      redirect_to dashboard_comments_path(locale: params[:locale], notice: "コメントを削除しました")
+      redirect_to dashboard_comments_path, notice: "コメントを削除しました"
     else
-      redirect_to dashboard_comments_path(locale: params[:locale], alert: "削除に失敗しました")
+      redirect_to dashboard_comments_path, alert: "削除に失敗しました"
     end
   end
 

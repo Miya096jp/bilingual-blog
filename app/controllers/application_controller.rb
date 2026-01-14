@@ -14,13 +14,19 @@ class ApplicationController < ActionController::Base
 
 
   def set_locale
-    I18n.locale = params[:locale] || I18n.default_locale
+    if request.path.start_with?('/dashboard') || request.path.start_with?('/admin')
+      I18n.locale = I18n.default_locale
+    else
+      I18n.locale = params[:locale] || I18n.default_locale
+    end
   end
 
   def default_url_options
-    # より安全な書き方
-    locale = params[:locale] || I18n.locale || "ja"
-    { locale: locale }
+    if request.path.start_with?('/dashboard') || request.path.start_with?('/admin')
+      {}
+    else
+      { locale: params[:locale] || I18n.locale || "ja" }
+    end
   end
 
   def set_blog_setting
