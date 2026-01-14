@@ -42,6 +42,11 @@ en:
       back_to_articles: "Back to Articles"
       results_count: "search results for: %{count} articles"
       no_keyword: "Please enter a keyword"
+  footer:
+      terms: "Terms of Service"
+      privacy: "Privacy Policy"
+      disclaimer: "Disclaimer"
+      contact: "Contact Us"
   comments:
     title: "Comments"
     author_name: "Name"

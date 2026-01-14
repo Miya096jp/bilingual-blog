@@ -13,6 +13,11 @@ ja:
       back_to_articles: "記事一覧に戻る"
       results_count: "の検索結果: %{count}件"
       no_keyword: "キーワードを入力してください"
+  footer:
+    terms: "利用規約"
+    privacy: "プライバシーポリシー"
+    disclaimer: "免責事項"
+    contact: "運営への問い合わせ"
   comments:
     title: "コメント"
     author_name: "お名前"
