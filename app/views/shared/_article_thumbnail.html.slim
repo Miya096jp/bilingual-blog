@@ -7,9 +7,12 @@
       = blog_setting&.display_title(I18n.locale) || "Dual Pascal"
   
   .mt-3
-    h3.text-lg.font-semibold.line-clamp-2
-      = link_to article.title, user_article_path(article.user.username, article.id, locale: article.locale),
-          class: "text-gray-900 hover:text-blue-600"
+    .flex.items-center.justify-between.mb-2
+      h3.text-lg.font-semibold.line-clamp-2.flex-1
+        = link_to article.title, user_article_path(article.user.username, article.id, locale: article.locale),
+            class: "text-gray-900 hover:text-blue-600"
+      .ml-2
+        = render 'shared/like_button', article: article
 
     span.text-sm.text-gray-400
       | "#{t('blog.published_at')}: #{l(article.published_at, format: :blog_date)}"

@@ -17,12 +17,15 @@
     article.article-content
       = article.content_html
     
-    .article-meta.text-right.text-sm.text-gray-400.mt-6
-      p
-        | #{t('blog.published_at')}:
-        = l(article.published_at, format: :blog_date)
-      p
-        | #{t('blog.updated_at')}:
-        = l(article.updated_at, format: :blog_date)
-      - if article.translation.present?
-        p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(article.translation.user.username, article.translation.id, locale: article.translation.locale)
+    .article-meta.max-w-4xl.mx-auto.text-right.text-sm.text-gray-400.mt-6.flex.justify-between.items-end
+      .like-section
+        = render 'shared/like_button', article: article, display_style: 'block'
+      .data-section
+        p
+          | #{t('blog.published_at')}:
+          = l(article.published_at, format: :blog_date)
+        p
+          | #{t('blog.updated_at')}:
+          = l(article.updated_at, format: :blog_date)
+        - if article.translation.present?
+          p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(article.translation.user.username, article.translation.id, locale: article.translation.locale)

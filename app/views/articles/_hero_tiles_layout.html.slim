@@ -25,16 +25,19 @@
     article.article-content
       = hero_article.content_html
     
-    .article-meta.text-right.text-sm.text-gray-400.mt-6
-      p
-        | #{t('blog.published_at')}:
-        = l(hero_article.published_at, format: :blog_date)
-      p
-        | #{t('blog.updated_at')}:
-        = l(hero_article.updated_at, format: :blog_date)
+    .article-meta.text-right.text-sm.text-gray-400.mt-6.flex.justify-between.items-end
+      .like-section
+        = render 'shared/like_button', article: hero_article, display_style: 'block'
+      .date-section
+        p
+          | #{t('blog.published_at')}:
+          = l(hero_article.published_at, format: :blog_date)
+        p
+          | #{t('blog.updated_at')}:
+          = l(hero_article.updated_at, format: :blog_date)
 
-      - if hero_article.translation.present?
-        p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
+        - if hero_article.translation.present?
+          p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
 
 / タイル記事
 - if tile_articles.any?

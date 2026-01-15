@@ -88,3 +88,21 @@
     display: none !important;
   }
 }
+
+/* いいねボタン */
+.like-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s;
+}
+
+.like-btn:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.like-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

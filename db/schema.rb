@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_14_041638) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_15_054057) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -63,6 +63,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_14_041638) do
     t.datetime "updated_at", null: false
     t.bigint "category_id"
     t.bigint "user_id", null: false
+    t.integer "likes_count", default: 0
     t.index ["category_id"], name: "index_articles_on_category_id"
     t.index ["original_article_id"], name: "index_articles_on_original_article_id"
     t.index ["published_at"], name: "index_articles_on_published_at"
@@ -115,6 +116,16 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_14_041638) do
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_contacts_on_created_at"
     t.index ["resolved"], name: "index_contacts_on_resolved"
+  end
+
+  create_table "likes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "article_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["article_id"], name: "index_likes_on_article_id"
+    t.index ["user_id", "article_id"], name: "index_likes_on_user_id_and_article_id", unique: true
+    t.index ["user_id"], name: "index_likes_on_user_id"
   end
 
   create_table "tags", force: :cascade do |t|
@@ -176,5 +187,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_14_041638) do
   add_foreign_key "blog_settings", "users"
   add_foreign_key "categories", "users"
   add_foreign_key "comments", "articles"
+  add_foreign_key "likes", "articles"
+  add_foreign_key "likes", "users"
   add_foreign_key "tags", "users"
 end

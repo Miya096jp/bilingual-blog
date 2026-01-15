@@ -35,7 +35,7 @@
                     <%= @blog_owner.username&.first&.upcase || "?" %>
                   </div>
                 <% end %>
-                <%= link_to @blog_owner.username, user_profile_path(username: @blog_owner.username, locale: params[:locale]), class: "text-gray-200 hover:text-gray-100 font-medium text-sm sm:text-base" %>
+                <%= link_to @blog_owner.username, user_profile_path(username: @blog_owner.username, locale: params[:locale]), class: "hover:!text-gray-400 font-medium text-sm sm:text-base" %>
               <% end %>
             </div>
 
@@ -53,15 +53,16 @@
                       class: "w-32 lg:w-48 border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-3 py-1 text-sm",
                       value: params[:q] %>
                   <%= f.submit t('blog.search.button'),
-                      class: "btn-unified text-sm whitespace-nowrap" %>
+                      class: "btn-unified text-sm whitespace-nowrap !py-1" %>
                 <% end %>
               <% end %>
 
               <!-- Dashboard / Sign in -->
               <% if user_signed_in? %>
-                <%= link_to "Dashboard", dashboard_articles_path, class: "text-gray-200 hover:text-gray-100 font-medium text-sm whitespace-nowrap" %>
+                <%= link_to "Dashboard", dashboard_articles_path, class: "hover:!text-gray-400 font-medium text-sm whitespace-nowrap" %>
               <% else %>
-                <button data-action="click->auth-modal#showModal" class="btn-unified text-sm whitespace-nowrap">
+                <button data-action="click->auth-modal#showModal" 
+                        class="bg-blue-600 !text-white rounded cursor-pointer text-sm font-medium hover:bg-blue-500 transition-colors whitespace-nowrap !py-1 px-5">
                   Sign in
                 </button>
               <% end %>
@@ -152,10 +153,10 @@
           <!-- 上段：リンクエリア -->
           <div class="flex flex-col sm:flex-row flex-wrap justify-center sm:justify-between gap-4 sm:gap-6 mb-6 text-sm">
             <nav class="flex flex-wrap justify-center gap-x-4 sm:gap-x-6 gap-y-2">
-              <%= link_to t('footer.terms'), terms_of_service_path, class: "hover:text-white transition-colors" %>
-              <%= link_to t('footer.privacy'), privacy_policy_path, class: "hover:text-white transition-colors" %>
-              <%= link_to t('footer.disclaimer'), disclaimer_path, class: "hover:text-white transition-colors" %>
-              <%= link_to t('footer.terms'), new_contact_path, class: "hover:text-white transition-colors" %>
+              <%= link_to t('footer.terms'), terms_of_service_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
+              <%= link_to t('footer.privacy'), privacy_policy_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
+              <%= link_to t('footer.disclaimer'), disclaimer_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
+              <%= link_to t('footer.contact'), new_contact_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
             </nav>
             
             <div class="flex items-center justify-center gap-2">

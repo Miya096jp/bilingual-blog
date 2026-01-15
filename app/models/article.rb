@@ -18,6 +18,7 @@ class Article < ApplicationRecord
 
   has_many :article_tags, dependent: :destroy
   has_many :tags, through: :article_tags
+  has_many :likes, dependent: :destroy
 
   before_destroy :purge_attachments
   before_save :set_published_at
@@ -78,6 +79,11 @@ class Article < ApplicationRecord
       # 新規記事の場合は、一旦タグ名だけ保存
       @pending_tag_names = tag_names
     end
+  end
+
+  def liked_by?(user)
+    return false unless user
+    likes.exists?(user_id: user.id)
   end
 
   private

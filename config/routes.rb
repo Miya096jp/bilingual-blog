@@ -25,6 +25,8 @@ scope "/:locale", constraints: { locale: /ja|en/ } do
     get "/:username/articles/:id", to: "articles#show", as: :user_article
     post "/:username/articles/:article_id/comments", to: "comments#create", as: :user_article_comments
     get ":username/profile", to: "profiles#show", as: :user_profile
+    post "/:username/articles/:article_id/likes", to: "likes#create", as: :user_article_likes
+    delete "/:username/articles/:article_id/likes", to: "likes#destroy", as: :user_article_like
   end
 
   get "/terms-of-service", to: "legal#terms_of_service", as: :terms_of_service

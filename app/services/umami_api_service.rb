@@ -25,10 +25,31 @@ class UmamiApiService
     Rails.logger.error "Umami setup failed for user #{user.id}: #{e.message}"
   end
 
+  def self.delete_website(website_id)
+    token = get_auth_token
+    return unless token
+
+    uri = URI("#{UMAMI_BASE_URL}/api/websites/#{website_id}")
+    http = configure_http(uri)
+
+    request = Net::HTTP::Delete.new(uri)
+    request["Authorization"] = "Bearer #{token}"
+    request["Content-Type"] = "application/json"
+
+    response = http.request(request)
+
+    if response.code == "200" || response.code == "204"
+      true
+    else
+      false
+    end
+  rescue => e
+    false
+  end
+
   private
 
   def self.get_auth_token
-    Rails.logger.info "🔥🔥🔥 Umami Auth Token 取得開始 🔥🔥🔥"
     uri = URI("#{UMAMI_BASE_URL}/api/auth/login")
 
     http = configure_http(uri)
@@ -47,13 +68,9 @@ class UmamiApiService
     if response.code == "200"
       JSON.parse(response.body)["token"]
     end
-
-    # puts "🔥#{response.code}"
-    # Rails.logger.info "🔥Response body: #{response.body}"
   end
 
   def self.create_website(user, token)
-    Rails.logger.info "🔥🔥🔥 Umami Webサイト作成開始 🔥🔥🔥"
     uri = URI("#{UMAMI_BASE_URL}/api/websites")
 
     http = configure_http(uri)
@@ -70,58 +87,34 @@ class UmamiApiService
     response = http.request(request)
     response.code == "200" ? JSON.parse(response.body) : nil
 
-    # puts "🔥#{response.code}"
   end
 
-# def self.create_share_url(website_id, token)
-#   Rails.logger.info "🔥🔥🔥 Share url作成開始 🔥🔥🔥"
-#   uri = URI("#{UMAMI_BASE_URL}/api/websites/#{website_id}/share")
-#
-#   http = configure_http(uri)
-#   # http.use_ssl = true
-#
-#   request = Net::HTTP::Post.new(uri)
-#   request["Authorization"] = "Bearer #{token}"
-#   request["Content-Type"] = "application/json"
-#   request.body = {}.to_json
-#   response = http.request(request)
-#   response.code == "200" ? JSON.parse(response.body) : nil
-#   puts "🔥#{response.code}"
-# end
-#
+  def self.create_share_url(website_id, token)
 
+    # エンドポイントから /share を削除した、サイトID直撃のURL
+    uri = URI("#{UMAMI_BASE_URL}/api/websites/#{website_id}")
+    http = configure_http(uri)
 
-def self.create_share_url(website_id, token)
-  Rails.logger.info "🔥🔥🔥 Share URL 有効化 (POST /api/websites/:id) 🔥🔥🔥"
+    # ブラウザと同じく POST を使用
+    request = Net::HTTP::Post.new(uri)
+    request["Authorization"] = "Bearer #{token}"
+    request["Content-Type"] = "application/json"
 
-  # エンドポイントから /share を削除した、サイトID直撃のURL
-  uri = URI("#{UMAMI_BASE_URL}/api/websites/#{website_id}")
-  http = configure_http(uri)
+    # 設定を更新するためのペイロード
+    # shareId を含めることで、サーバー側で共有機能が有効化されます
+    request.body = {
+      id: website_id,
+      shareId: SecureRandom.alphanumeric(10)
+    }.to_json
 
-  # ブラウザと同じく POST を使用
-  request = Net::HTTP::Post.new(uri)
-  request["Authorization"] = "Bearer #{token}"
-  request["Content-Type"] = "application/json"
+    response = http.request(request)
 
-  # 設定を更新するためのペイロード
-  # shareId を含めることで、サーバー側で共有機能が有効化されます
-  request.body = {
-    id: website_id,
-    shareId: SecureRandom.alphanumeric(10)
-  }.to_json
-
-  response = http.request(request)
-
-  puts "🔥ステータス: #{response.code}"
-  puts "🔥ボディ: #{response.body}"
-
-  if response.code == "200" || response.code == "201"
-    JSON.parse(response.body)
-  else
-    nil
+    if response.code == "200" || response.code == "201"
+      JSON.parse(response.body)
+    else
+      nil
+    end
   end
-end
-
 
   def self.configure_http(uri)
     http = Net::HTTP.new(uri.host, uri.port)

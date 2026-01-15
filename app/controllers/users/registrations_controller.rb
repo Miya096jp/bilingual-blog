@@ -1,15 +1,22 @@
 class Users::RegistrationsController < Devise::RegistrationsController
-  layout false, only: [:new, :create], if: -> { turbo_frame_request? }
-
   layout "dashboard", only: [:delete_confirmation]
   respond_to :html, :turbo_stream
 
   def new
-    redirect_to root_path(locale: I18n.locale), alert: "このページは利用できません"
+    if turbo_frame_request?
+      build_resource
+      render layout: false
+    else
+      redirect_to root_path(locale: I18n.locale), alert: "このページは利用できません"
+    end
   end
 
   def edit
-    redirect_to edit_dashboard_profile_path(locale: I18n.locale), alert: "ダッシュボードから編集してください"
+    if turbo_frame_request?
+      super
+    else
+      redirect_to edit_dashboard_profile_path(locale: I18n.locale), alert: "ダッシュボードから編集してください"
+    end
   end
 
   def delete_confirmation

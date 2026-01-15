@@ -21,13 +21,26 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  # def default_url_options
+  #   if request.path.start_with?('/dashboard') || request.path.start_with?('/admin')
+  #     {}
+  #   else
+  #     { locale: params[:locale] || I18n.locale || "ja" }
+  #   end
+  # end
+
   def default_url_options
-    if request.path.start_with?('/dashboard') || request.path.start_with?('/admin')
+    if request.path.start_with?('/users') || 
+      request.path.start_with?('/dashboard') || 
+      request.path.start_with?('/admin')
       {}
     else
       { locale: params[:locale] || I18n.locale || "ja" }
     end
   end
+
+
+
 
   def set_blog_setting
     if params[:username].present?

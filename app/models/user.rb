@@ -14,12 +14,14 @@ class User < ApplicationRecord
   has_many :categories, dependent: :destroy
   has_many :tags, dependent: :destroy
   has_one :blog_setting, dependent: :destroy
+  has_many :likes, dependent: :destroy
 
   has_one_attached :avatar
 
   before_destroy :purge_avatar
 
   after_create :setup_analytics_async
+  after_destroy :cleanup_analytics_async
 
   def display_name(locale = I18n.locale)
     localized_nickname(locale).presence || localized_nickname(locale == "ja" ? "en" : "ja").presence || username
@@ -101,5 +103,11 @@ class User < ApplicationRecord
 
   def setup_analytics_async
     UmamiSetupJob.perform_later(self)
+  end
+
+  def cleanup_analytics_async
+    if umami_website_id.present?
+      UmamiCleanupJob.perform_later(umami_website_id)
+    end
   end
 end

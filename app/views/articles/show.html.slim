@@ -46,10 +46,13 @@
     .hero-thumbnail.max-w-5xl.mx-auto.mb-6
       = image_tag thumbnail_for_article(@article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
   
-  / ← ここを修正（2重のarticle-contentを削除、max-w-5xlに統一）
   .max-w-5xl.mx-auto
     article.article-content
       = @article.content_html
+    
+    / いいねボタン（右下配置）
+    .flex.justify-end.mt-8
+      = render 'shared/like_button', article: @article, display_style: 'block'
 
 .section-divider.my-16.max-w-5xl.mx-auto.text-center
   .flex.items-center.justify-center.gap-4
