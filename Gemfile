@@ -43,7 +43,8 @@ gem "kramdown-parser-gfm"
 # Use slim
 gem "slim-rails"
 gem "html2slim", github: "slim-template/html2slim"
-
+# lucide icons
+gem 'lucide-rails'
 # For ActiveStorage
 gem "image_processing", "~> 1.2"
 

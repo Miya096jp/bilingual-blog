@@ -27,21 +27,33 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
               = f.select :status, options_for_select([["下書き", "draft"],["公開", "published"]], article.status), {}, class: "text-gray-600 border border-gray-400 rounded"
 
           div class="flex items-baseline gap-1 mx-4"
-            /label for="cover_image_input" class="btn-unified cursor-pointer text-xs"
-            label for="cover_image_input" class="cursor-pointer" title="カバー画像"
-              | 🖼️
+            label for="cover_image_input" class="cursor-pointer hover:bg-blue-50" title="カバー画像"
+              = lucide_icon 'image', class: "w-5 h-5 text-gray-600"
             = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
-    
+
+            button type="button" data-action="click->image-upload#selectImage" class="cursor-pointer mb-2 text-gray-400 hover:bg-blue-50" title="画像を挿入"
+             = lucide_icon 'camera', class: "w-5 h-5 text-gray-500"
+
             - case button_type
             - when "new"
-              = f.submit "🌐", class: "cursor-pointer", title: "投稿"
+              button.cursor-pointer.hover:bg-blue-50.rounded.transition-colors type="submit" title="投稿"
+                = lucide_icon 'send', class: "w-5 h-5 text-gray-600"
             - when "edit"
-              = f.submit "🔄", class: "cursor-pointer", title: "更新"
-              = link_to "✖️", dashboard_articles_path, class: "cursor-pointer", title: "キャンセル"
-              = link_to "🗑️", dashboard_article_path(article), class: "cursor-pointer",title: "削除" , data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
+              button.cursor-pointer.hover:bg-blue-50.rounded.transition-colors type="submit" title="更新"
+                = lucide_icon 'refresh-cw', class: "w-5 h-5 text-gray-600"
+              = link_to dashboard_articles_path, class: "cursor-pointer hover:bg-blur-50", title: "キャンセル" do
+                = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
+              = link_to dashboard_article_path(article), class: "cursor-pointer",title: "削除" , data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
+                = lucide_icon 'trash', class: "w-5 h-5 text-gray-500"
             - when "translation"
-              = f.submit "🌐", class: "cursor-pointer", title: "翻訳"
-              = link_to "✖️", dashboard_article_path(original_article), class: "cursor-pointer", title: "キャンセル"
+              button.cursor-pointer.hover:bg-blue-50.rounded.transition-colors type="submit" title="翻訳を作成"
+                = lucide_icon 'languages', class: "w-5 h-5 text-gray-500"
+              = link_to dashboard_article_path(original_article), class: "cursor-pointer hover:bg-blue-50 rounded transition-colors", title: "キャンセル" do
+                = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
+
+
+
+
 
         div class="ml-auto flex gap-2 border-b border-gray-400"
           .flex.items-center.gap-1
@@ -50,10 +62,6 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
             = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "w-30 truncate text-gray-400 focus:outline-none", required: false }
           p
             = f.text_field :tag_list, placeholder: "tags", class: "text-gray-600 focus:outline-none"
-          p
-            button type="button" data-action="click->image-upload#selectImage" class="cursor-pointer mb-2 text-gray-400 text-sm"
-              /| 📷
-              | 画像を挿入
         p
           = f.text_field :title, required: true,
             class: "w-full border-b border-gray-400 placeholder-gray-400 p-2 focus:border-gray-400 focus:outline-none mb-3",

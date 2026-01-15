@@ -21,7 +21,8 @@
     - else
       = link_to "編集", edit_dashboard_article_path(article_data), class: "text-gray-600 hover:text-gray-800"
 
-    = link_to "📥", dashboard_article_export_path(article_data), class: "text-gray-600 hover:text-gray-800", title: "記事をエクスポート"
+      = link_to dashboard_article_export_path(article_data), class: "text-gray-500 hover:text-gray-800 hover:bg-blue-100 rounded transition-colors flex items-center", title: "Markdownエクスポート" do
+        = lucide_icon 'file-down', class: "w-5 h-5"
 
     - if article_data.translation.blank? && article_data.original?
       span.text-gray-400 |
