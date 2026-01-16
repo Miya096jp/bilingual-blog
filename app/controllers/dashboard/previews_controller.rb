@@ -4,13 +4,12 @@ class Dashboard::PreviewsController < ApplicationController
 
   def create
     content = params[:content]
-
-    # content = content.strip.gsub(/^[ \t]+/, "")
-
     html = Kramdown::Document.new(content,
       input: "GFM",
       syntax_highlighter: "rouge"
     ).to_html
+
+    clean_html = view_context.sanitize(html)
 
     render json: { html: html }
   rescue => e

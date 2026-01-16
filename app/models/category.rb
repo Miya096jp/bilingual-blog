@@ -2,7 +2,7 @@ class Category < ApplicationRecord
   belongs_to :user
   has_many :articles, dependent: :nullify
 
-  validates :name, presence: true, uniqueness: { scope: :locale }
+  validates :name, presence: true, uniqueness: { scope: [:locale, :user_id] }
   validates :locale, inclusion: { in: %w[ja en] }
 
   scope :for_locale, ->(locale) { where(locale: locale) }

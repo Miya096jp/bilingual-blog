@@ -1,11 +1,23 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+technology_ja:
+  name: 技術
+  description: 技術関連の記事
+  locale: ja
+  user: one
 
-one:
-  name: MyString
-  locale: MyString
-  description: MyText
+technology_en:
+  name: Technology
+  description: Technology related articles
+  locale: en
+  user: one
 
-two:
-  name: MyString
-  locale: MyString
-  description: MyText
+lifestyle_ja:
+  name: ライフスタイル
+  description: 日常生活の記事
+  locale: ja
+  user: two
+
+programming_ja:
+  name: プログラミング
+  description: プログラミング記事
+  locale: ja
+  user: blogger

@@ -1,4 +1,7 @@
 class Article < ApplicationRecord
+
+  include ActionView::Helpers::SanitizeHelper
+
   belongs_to :user
 
   validates :title, presence: true
@@ -50,11 +53,11 @@ class Article < ApplicationRecord
   end
 
   def content_html
-    # processed_content = content.strip.gsub(/^[ \t]+/, "")
-    Kramdown::Document.new(content,
+    html = Kramdown::Document.new(content,
       input: "GFM",
       syntax_highlighter: "rouge"
-                          ).to_html.html_safe
+    ).to_html
+    sanitize(html).html_safe
   end
 
   def content_preview(length = 100)

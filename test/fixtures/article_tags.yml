@@ -1,9 +1,11 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
 one:
-  article: one
-  tag: one
+  article: published_ja
+  tag: programming
 
 two:
-  article: two
-  tag: two
+  article: published_ja
+  tag: web
+
+three:
+  article: rails_article
+  tag: programming

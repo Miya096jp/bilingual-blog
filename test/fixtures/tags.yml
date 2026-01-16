@@ -1,7 +1,19 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+ruby:
+  name: ruby
+  user: one
 
-one:
-  name: MyString
+rails:
+  name: rails
+  user: one
 
-two:
-  name: MyString
+test:
+  name: test
+  user: one
+
+programming:
+  name: プログラミング
+  user: blogger
+
+web:
+  name: web
+  user: blogger
