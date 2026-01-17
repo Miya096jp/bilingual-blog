@@ -3,7 +3,7 @@
 
 / ヒーロー記事
 - if hero_article
-  .hero-article.m-4.max-w-4xl.mx-auto
+  .hero-article.m-4.max-w-4xl.mx-auto.mb-16
     - if @blog_setting&.show_hero_thumbnail && has_cover_image?(hero_article)
       .hero-thumbnail.mb-6
         = image_tag thumbnail_for_article(hero_article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
@@ -63,7 +63,10 @@
                       = link_to tag.name, user_articles_path(params[:username], filter.filter_params.merge(tag_id: tag.id)), class: "inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs hover:bg-blue-200"
                 
                 span= "#{t('blog.published_at')}: #{l(article.published_at, format: :blog_date)}"
-            
+                = render 'shared/like_button', article: article
+
             - if has_cover_image?(article)
               = image_tag thumbnail_for_article(article, @blog_setting), 
                   class: "w-20 h-20 object-cover rounded ml-4 flex-shrink-0"
+
+
