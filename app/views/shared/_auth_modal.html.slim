@@ -1,10 +1,10 @@
-.fixed.inset-0.bg-black.bg-opacity-50.flex.items-center.justify-center.z-50.hidden id="auth_modal_overlay" data-auth-modal-target="modal" data-action="click->auth-modal#closeOnOutsideClick"
-  .bg-white.rounded-lg.p-6.w-96.max-w-90vw
+.fixed.inset-0.z-50.flex.items-center.justify-center.hidden id="auth_modal_overlay" data-auth-modal-target="modal"
+  .absolute.inset-0.bg-black/80 data-action="click->auth-modal#closeModal"
+  .relative.bg-white.rounded-lg.p-6.w-96.max-w-90vw
     turbo-frame id="auth_form_frame"
       .flex.justify-between.items-center.mb-6
         h3.text-xl.font-semibold Sign in to your account
         button.text-gray-400.hover:text-gray-600 type="button" data-action="click->auth-modal#closeModal" ×
 
       = render "shared/social_buttons"
-
       = render "shared/login_form", resource: User.new, resource_name: :user
