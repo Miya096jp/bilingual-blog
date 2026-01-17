@@ -1,46 +1,46 @@
 .mb-4
-  = link_to "👁️ 公開プロフィールを確認", user_profile_path(current_user.username, locale: I18n.locale), target: "_blank", class: "text-blue-500 hover:text-blue-600 text-sm"
+  = link_to "👁️ Preview", user_profile_path(current_user.username, locale: I18n.locale), target: "_blank", class: "text-blue-500 hover:text-blue-600 text-sm"
 
-h1.text-2xl.font-bold.mb-6 プロフィール編集
+h1.text-2xl.font-bold.mb-6 Profile
 
 = form_with model: [:dashboard, @user], url: dashboard_profile_path, local: true, multipart: true do |f|
   .space-y-6
     div
-      = f.label :avatar, "アイコン画像", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :avatar, "Icon", class: "block text-sm font-medium text-gray-700 mb-2"
       = f.file_field :avatar, accept: "image/*", class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
     
     div
-      = f.label :nickname_ja, "ニックネーム", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :nickname_ja, "Nickname", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-2.gap-4
         div
-          = f.label :nickname_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
+          = f.label :nickname_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :nickname_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         div
           = f.label :nickname_en, "English", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :nickname_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
     
     div
-      = f.label :bio_ja, "自己紹介", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :bio_ja, "Biography", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-1.gap-4
         div
-          = f.label :bio_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
+          = f.label :bio_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
           = f.text_area :bio_ja, rows: 3, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         div
           = f.label :bio_en, "English", class: "block text-xs text-gray-500 mb-1"
           = f.text_area :bio_en, rows: 3, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
     
     div
-      = f.label :location_ja, "居住地", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :location_ja, "Location", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-2.gap-4
         div
-          = f.label :location_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
+          = f.label :location_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :location_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         div
           = f.label :location_en, "English", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :location_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
     
     div
-      = f.label :website, "ウェブサイト", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :website, "Website", class: "block text-sm font-medium text-gray-700 mb-2"
       = f.url_field :website, placeholder: "https://", class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
     
     .grid.grid-cols-1.md:grid-cols-2.gap-4
@@ -73,5 +73,5 @@ h1.text-2xl.font-bold.mb-6 プロフィール編集
         = f.text_field :hatena_handle, placeholder: "username", class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
 
     .flex.gap-3
-      = f.submit "更新", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
-      = link_to "キャンセル", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
+      = f.submit "Update", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
+      = link_to "Cancel", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"

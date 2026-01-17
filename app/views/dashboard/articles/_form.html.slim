@@ -18,41 +18,58 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
 
       = form_with model: article, url: form_url, local: true do |f|
 
-        div class="flex items-baseline mb-6 border-b border-gray-400"
+        div class="flex items-center mb-6 border-b border-gray-400 pb-2"
 
-          div class="flex items-baseline gap-4"
-            p
-              = f.select :locale, options_for_select([["日本語", "ja"], ["English", "en"]], article.locale), {}, { disabled: locale_disabled, class: "text-gray-600 border border-gray-400 rounded" }
-            p
-              = f.select :status, options_for_select([["下書き", "draft"],["公開", "published"]], article.status), {}, class: "text-gray-600 border border-gray-400 rounded"
+          div class="flex items-center gap-2"
+            = f.select :locale, options_for_select([["Japanese", "ja"], ["English", "en"]], article.locale), {}, { disabled: locale_disabled, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500" }
+            = f.select :status, options_for_select([["Draft", "draft"],["Publish", "published"]], article.status), {}, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500"
 
-          div class="flex items-baseline gap-1 mx-4"
-            label for="cover_image_input" class="cursor-pointer hover:bg-blue-50" title="カバー画像"
+          div class="flex items-center gap-1 mx-2"
+            label.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors for="cover_image_input"
               = lucide_icon 'image', class: "w-5 h-5 text-gray-600"
-            = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
+              = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
+              span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                | Cover Image
 
-            button type="button" data-action="click->image-upload#selectImage" class="cursor-pointer mb-2 text-gray-400 hover:bg-blue-50" title="画像を挿入"
-             = lucide_icon 'camera', class: "w-5 h-5 text-gray-500"
+            button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="button" data-action="click->image-upload#selectImage"
+              = lucide_icon 'camera', class: "w-5 h-5 text-gray-500"
+              span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                | Insert Image
 
             - case button_type
             - when "new"
-              button.cursor-pointer.hover:bg-blue-50.rounded.transition-colors type="submit" title="投稿"
+              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
                 = lucide_icon 'send', class: "w-5 h-5 text-gray-600"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Publish
+
             - when "edit"
-              button.cursor-pointer.hover:bg-blue-50.rounded.transition-colors type="submit" title="更新"
+              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
                 = lucide_icon 'refresh-cw', class: "w-5 h-5 text-gray-600"
-              = link_to dashboard_articles_path, class: "cursor-pointer hover:bg-blur-50", title: "キャンセル" do
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Update
+
+              = link_to dashboard_articles_path, class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
                 = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
-              = link_to dashboard_article_path(article), class: "cursor-pointer",title: "削除" , data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
-                = lucide_icon 'trash', class: "w-5 h-5 text-gray-500"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Cancel
+
+              = link_to dashboard_article_path(article), class: "relative group cursor-pointer hover:bg-red-50 rounded p-1 transition-colors", data: { "turbo-method": "delete", "turbo-confirm": "Are you sure?" } do
+                = lucide_icon 'trash', class: "w-5 h-5 text-gray-500 hover:text-red-500"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Delete
+
             - when "translation"
-              button.cursor-pointer.hover:bg-blue-50.rounded.transition-colors type="submit" title="翻訳を作成"
+              / Create Translation Button
+              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
                 = lucide_icon 'languages', class: "w-5 h-5 text-gray-500"
-              = link_to dashboard_article_path(original_article), class: "cursor-pointer hover:bg-blue-50 rounded transition-colors", title: "キャンセル" do
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Create Translation
+
+              = link_to dashboard_article_path(original_article), class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
                 = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
-
-
-
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Cancel
 
 
         div class="ml-auto flex gap-2 border-b border-gray-400"

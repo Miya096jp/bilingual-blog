@@ -1,20 +1,20 @@
-h1.text-2xl.font-bold.mb-6 カテゴリ管理
+h1.text-2xl.font-bold.mb-6 Category
 
 .tab-container data-controller="category-tabs"
   .tab-buttons.mb-6
     button.tab-button.active data-action="click->category-tabs#switchTab" data-target="ja" data-category-tabs-target="button"
-      | 日本語 (#{category_count_for_locale("ja")})
+      | Japanese (#{category_count_for_locale("ja")})
     button.tab-button data-action="click->category-tabs#switchTab" data-target="en" data-category-tabs-target="button"
       | English (#{category_count_for_locale("en")})
 
   .tab-content.active data-category-tabs-target="content" data-tab="ja"
     .mb-6
-      = link_to "日本語カテゴリを作成", new_dashboard_category_path(locale: "ja"), class: "btn-unified"
+      = link_to "Create", new_dashboard_category_path(locale: "ja"), class: "btn-unified"
     .bg-white.rounded-lg.border.border-gray-200.shadow-sm.overflow-hidden
       = render "category_table", categories: @ja_categories
 
   .tab-content data-category-tabs-target="content" data-tab="en"
     .mb-6
-      = link_to "英語カテゴリを作成", new_dashboard_category_path(locale: "en"), class: "btn-unified"
+      = link_to "Create", new_dashboard_category_path(locale: "en"), class: "btn-unified"
     .bg-white.rounded-lg.border.border-gray-200.shadow-sm.overflow-hidden
       = render "category_table", categories: @en_categories

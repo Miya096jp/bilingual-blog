@@ -3,10 +3,10 @@
     thead.bg-gray-50
       tr
         th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider ID
-        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider カテゴリ名
-        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider 説明
-        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider 記事数
-        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider アクション
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Name
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Discription
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Articles
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Action
     tbody.bg-white.divide-y.divide-gray-200
       - categories.each_with_index do |category, index|
         tr class="#{index.even? ? 'bg-white' : 'bg-gray-50'}"
@@ -17,8 +17,8 @@
           td.px-6.py-4.whitespace-nowrap.text-sm.text-gray-900= category.articles_count || 0
           td.px-6.py-4.whitespace-nowrap.text-sm.font-medium
             .flex.gap-2
-              = link_to "編集", edit_dashboard_category_path(category), class: "btn-unified text-sm"
-              = link_to "削除", dashboard_category_path(category), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }, class: "btn-unified text-sm"
+              = link_to "Edit", edit_dashboard_category_path(category), class: "btn-unified text-sm"
+              = link_to "Delete", dashboard_category_path(category), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }, class: "btn-unified text-sm"
 - else
   .p-8.text-center
-    p.text-gray-500.text-lg カテゴリがありません
+    p.text-gray-500.text-lg No category

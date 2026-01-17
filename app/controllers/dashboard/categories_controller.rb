@@ -19,7 +19,7 @@ class Dashboard::CategoriesController < ApplicationController
   def create
     @category = current_user.categories.build(category_params)
     # @category.locale = params[:locale]
-    @category.locale = params.dig(:category, :locale) || "ja"
+    # @category.locale = params.dig(:category, :locale) || "ja"
 
     respond_to do |format|
       if @category.save

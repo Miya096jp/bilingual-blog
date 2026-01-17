@@ -29,13 +29,8 @@ export default class extends Controller {
   fetchPreview() {
     const content = this.inputTarget.value;
 
-    console.log("=== プレビューデバッグ ===");
-    console.log("URL:", this.urlValue);
-    console.log("Content:", content);
-    console.log("Content length:", content.length);
-
     if (content.trim() === "") {
-      this.previewTarget.innerHTML = "<p>プレビューがここに表示されます</p>";
+      this.previewTarget.innerHTML = "<p>Preview will appear here</p>";
       return;
     }
 

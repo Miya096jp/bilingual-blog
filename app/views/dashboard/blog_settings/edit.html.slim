@@ -1,29 +1,29 @@
-h1.text-2xl.font-bold.mb-6 ブログ外観設定
+h1.text-2xl.font-bold.mb-6 Blog settings
 
 = form_with model: [:dashboard, @blog_setting], url: dashboard_blog_setting_path, local: true, multipart: true do |f|
   .space-y-6
     div
-      = f.label :blog_title_ja, "ブログタイトル", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :blog_title_ja, "Blog title", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-1.gap-4
         div
-          = f.label :blog_title_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
+          = f.label :blog_title_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :blog_title_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "私のブログ"
         div
           = f.label :blog_title_en, "English", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :blog_title_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "My Blog"
     
     div
-      = f.label :blog_subtitle_ja, "サブタイトル", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :blog_subtitle_ja, "Sub title", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-1.gap-4
         div
-          = f.label :blog_subtitle_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
-          = f.text_field :blog_subtitle_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "素晴らしいブログの説明"
+          = f.label :blog_subtitle_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
+          = f.text_field :blog_subtitle_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "ブログの説明"
         div
           = f.label :blog_subtitle_en, "English", class: "block text-xs text-gray-500 mb-1"
-          = f.text_field :blog_subtitle_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "An amazing blog description"
+          = f.text_field :blog_subtitle_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "Blog description"
     
     div data-controller="theme"
-      = f.label :theme_color, "テーマカラー", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :theme_color, "Colors", class: "block text-sm font-medium text-gray-700 mb-2"
       .flex.space-x-2
         - { default: "#ffffff", slate: "#0a1a2f", forest: "#1b4332", maroon: "#3a0a0a", midnight: "#222b45" }.each do |key, color|
           .relative
@@ -37,7 +37,7 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
           span.text-xs.text-gray-600= key.to_s
 
     div data-controller="layout-preview"
-      = f.label :layout_style, "記事一覧レイアウト", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :layout_style, "Layouts", class: "block text-sm font-medium text-gray-700 mb-2"
       .space-y-3
         .flex.items-center
           = f.radio_button :layout_style, "linear", id: "layout_linear", class: "mr-2"
@@ -47,7 +47,7 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
               .bg-gray-200 style="height: 4px; width: 80%;"
               .bg-gray-300 style="height: 6px; width: 100%;"
               .bg-gray-200 style="height: 4px; width: 80%;"
-            span.text-sm リニア表示
+            span.text-sm Linear
         
         .flex.items-center
           = f.radio_button :layout_style, "hero_tiles", id: "layout_hero_tiles", class: "mr-2"
@@ -58,7 +58,7 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
                 .bg-gray-300 style="width: 32%; height: 100%;"
                 .bg-gray-300 style="width: 32%; height: 100%;"
                 .bg-gray-300 style="width: 32%; height: 100%;"
-            span.text-sm ヒーロー＋タイル表示
+            span.text-sm Hero + tiles
         
         .flex.items-center
           = f.radio_button :layout_style, "hero_list", id: "layout_hero_list", class: "mr-2"
@@ -69,17 +69,17 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
               .bg-gray-200 style="height: 3px; width: 90%;"
               .bg-gray-200 style="height: 3px; width: 90%;"
               .bg-gray-200 style="height: 3px; width: 90%;"
-            span.text-sm ヒーロー＋リスト表示
+            span.text-sm Hero + list
 
 
         div
-          = f.label :show_hero_thumbnail, "ヒーロー記事のサムネイル表示", class: "block text-sm font-medium text-gray-700 mb-2"
+          = f.label :show_hero_thumbnail, "Thumbnail", class: "block text-sm font-medium text-gray-700 mb-2"
           .flex.items-center
             = f.check_box :show_hero_thumbnail, class: "mr-2"
-            = f.label :show_hero_thumbnail, "ヒーロー記事にサムネイル画像を表示する", class: "text-sm text-gray-600"
+            = f.label :show_hero_thumbnail, "Show hero article Thumbnail", class: "text-sm text-gray-600"
 
 
 
     .flex.gap-3
-      = f.submit "設定を保存", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
-      = link_to "キャンセル", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
+      = f.submit "Save", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
+      = link_to "Cancel", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
