@@ -23,7 +23,8 @@ TARGET_PATHS = [
   "db/schema.rb",
   "db/seeds.rb",
   "app/assets",
-  "app/javascript"
+  "app/javascript",
+  "test/"
 ]
 
 def collect_files
