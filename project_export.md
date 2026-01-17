@@ -1,5 +1,5 @@
 # Project Code Export (MVC + Routes + Schema)
-Exported at: 2025-12-27 12:32:12 +0900
+Exported at: 2026-01-17 09:21:47 +0900
 
 ---
 
@@ -15,6 +15,9 @@ end
 
 ```
 class Article < ApplicationRecord
+
+  include ActionView::Helpers::SanitizeHelper
+
   belongs_to :user
 
   validates :title, presence: true
@@ -34,7 +37,9 @@ class Article < ApplicationRecord
 
   has_many :article_tags, dependent: :destroy
   has_many :tags, through: :article_tags
+  has_many :likes, dependent: :destroy
 
+  before_destroy :purge_attachments
   before_save :set_published_at
   after_create :assign_pending_tags
 
@@ -64,11 +69,11 @@ class Article < ApplicationRecord
   end
 
   def content_html
-    # processed_content = content.strip.gsub(/^[ \t]+/, "")
-    Kramdown::Document.new(content,
+    html = Kramdown::Document.new(content,
       input: "GFM",
       syntax_highlighter: "rouge"
-                          ).to_html.html_safe
+    ).to_html
+    sanitize(html).html_safe
   end
 
   def content_preview(length = 100)
@@ -95,7 +100,18 @@ class Article < ApplicationRecord
     end
   end
 
+  def liked_by?(user)
+    return false unless user
+    likes.exists?(user_id: user.id)
+  end
+
   private
+
+  def purge_attachments
+    images.purge if images.attached?
+    cover_image.purge if cover_image.attached?
+  end
+
   def set_published_at
     if status == "published" && published_at.blank?
       self.published_at = Time.current
@@ -124,9 +140,15 @@ end
 
 ```
 class BlogSetting < ApplicationRecord
+  THEME_COLORS = %w[default slate forest maroon midnight].freeze
+
   belongs_to :user
 
-  validates :theme_color, inclusion: { in: %w[default slate forest maroon midnight] }
+  validates :theme_color, inclusion: { 
+    in: THEME_COLORS,
+    message: "%{value} is not a valid theme color" 
+  }
+
   validates :layout_style, inclusion: { in: %w[linear hero_tiles hero_list] }
 
   validates :user_id, uniqueness: true
@@ -164,7 +186,7 @@ class Category < ApplicationRecord
   belongs_to :user
   has_many :articles, dependent: :nullify
 
-  validates :name, presence: true, uniqueness: { scope: :locale }
+  validates :name, presence: true, uniqueness: { scope: [:locale, :user_id] }
   validates :locale, inclusion: { in: %w[ja en] }
 
   scope :for_locale, ->(locale) { where(locale: locale) }
@@ -215,6 +237,17 @@ class Contact < ApplicationRecord
 end
 ```
 
+## File: `app/models/like.rb`
+
+```
+class Like < ApplicationRecord
+  belongs_to :user
+  belongs_to :article, counter_cache: true
+
+  validates :user_id, uniqueness: { scope: :article_id }
+end
+```
+
 ## File: `app/models/tag.rb`
 
 ```
@@ -241,14 +274,8 @@ end
 
 ```
 class User < ApplicationRecord
-  # Include default devise modules. Others available are:
-  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
-  # devise :database_authenticatable, :registerable,
-  #        :recoverable, :rememberable, :validatable, :omniauthable, omniauth_providers: [ :github ]
-
-
   devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable,
+         :recoverable, :rememberable, :validatable, :confirmable,
          :omniauthable, omniauth_providers: [ :github, :google_oauth2 ]
 
 
@@ -262,8 +289,14 @@ class User < ApplicationRecord
   has_many :categories, dependent: :destroy
   has_many :tags, dependent: :destroy
   has_one :blog_setting, dependent: :destroy
+  has_many :likes, dependent: :destroy
 
   has_one_attached :avatar
+
+  before_destroy :purge_avatar
+
+  after_create :setup_analytics_async
+  after_destroy :cleanup_analytics_async
 
   def display_name(locale = I18n.locale)
     localized_nickname(locale).presence || localized_nickname(locale == "ja" ? "en" : "ja").presence || username
@@ -322,9 +355,34 @@ class User < ApplicationRecord
       new_user = create!(
         email: auth.info.email,
         password: Devise.friendly_token[0, 20],
-        username: auth.info.nickname || auth.info.name&.parameterize || auth.info.email.split("@").first
+        username: auth.info.nickname || auth.info.name&.parameterize || auth.info.email.split("@").first,
+        confirmed_at: Time.current
       )
       { user: new_user, is_new: true }
+    end
+  end
+
+  def analytics_dashboard_url
+    umami_share_url
+  end
+
+  def has_analytics?
+    analytics_setup_completed?
+  end
+
+  private
+
+  def purge_avatar
+    avatar.purge if avatar.attached?
+  end
+
+  def setup_analytics_async
+    UmamiSetupJob.perform_later(self)
+  end
+
+  def cleanup_analytics_async
+    if umami_website_id.present?
+      UmamiCleanupJob.perform_later(umami_website_id)
     end
   end
 end
@@ -477,18 +535,43 @@ class ApplicationController < ActionController::Base
   before_action :set_blog_setting
   before_action :configure_permitted_parameters, if: :devise_controller?
 
+  # skip_before_action :verify_authenticity_token
 
-  protect_from_forgery with: :exception
+  # protect_from_forgery with: :exception
+
+  # Devise関連のみCSRF検証をスキップ
+  skip_before_action :verify_authenticity_token, if: :devise_controller?
+  protect_from_forgery with: :exception, unless: :devise_controller?
+
 
   def set_locale
-    I18n.locale = params[:locale] || I18n.default_locale
+    if request.path.start_with?('/dashboard') || request.path.start_with?('/admin')
+      I18n.locale = I18n.default_locale
+    else
+      I18n.locale = params[:locale] || I18n.default_locale
+    end
   end
 
+  # def default_url_options
+  #   if request.path.start_with?('/dashboard') || request.path.start_with?('/admin')
+  #     {}
+  #   else
+  #     { locale: params[:locale] || I18n.locale || "ja" }
+  #   end
+  # end
+
   def default_url_options
-    # より安全な書き方
-    locale = params[:locale] || I18n.locale || "ja"
-    { locale: locale }
+    if request.path.start_with?('/users') || 
+      request.path.start_with?('/dashboard') || 
+      request.path.start_with?('/admin')
+      {}
+    else
+      { locale: params[:locale] || I18n.locale || "ja" }
+    end
   end
+
+
+
 
   def set_blog_setting
     if params[:username].present?
@@ -512,10 +595,14 @@ end
 
 ```
 class ArticlesController < ApplicationController
-  before_action :set_user
+  # before_action :set_user
+  before_action :set_blog_owner
+  before_action :set_blog_setting
   before_action :set_locale
+
   def index
-    @filter = ArticleFilterQuery.new(params.merge(user: @user))
+    # @filter = ArticleFilterQuery.new(params.merge(user: @user))
+    @filter = ArticleFilterQuery.new(params.merge(user: @blog_owner))
     @articles = @filter.call.page(params[:page]).per(10)
 
     if params[:from_translation_missing]
@@ -531,12 +618,22 @@ class ArticlesController < ApplicationController
 
   private
 
-  def set_user
-    @user = User.find_by!(username: params[:username])
+  def set_blog_owner
+    @blog_owner = User.find_by!(username: params[:username])
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path(locale: params[:locale]), alert: "ユーザーが見つかりません"
   end
+
+  # def set_user
+  #   @user = User.find_by!(username: params[:username])
+  # end
 
   def set_locale
     I18n.locale = params[:locale] || I18n.default_locale
+  end
+
+  def set_blog_setting
+    @blog_setting = @blog_owner.blog_setting || @blog_owner.build_blog_setting
   end
 end
 ```
@@ -545,24 +642,33 @@ end
 
 ```
 class CommentsController < ApplicationController
+  before_action :set_blog_owner
+  before_action :set_article
+
   def create
-    Rails.logger.info "XXXXXXXXXXXXXXXXXcreate calledXXXXXXXXXXXXXXXXXX"
-    Rails.logger.info "Params: #{params.inspect}"
-    @article = Article.find(params[:article_id])
-    @comment = Comment.new(comment_params)
-    @comment.article = @article
+    @comment = @article.comments.build(comment_params)
 
     if @comment.save
-      redirect_to user_article_path(@article.user.username, @article.id, locale: params[:locale]), notice: "コメントを投稿しました"
+      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]), 
+                  notice: "コメントを投稿しました"
     else
-      render "articles/show"
+      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]), 
+                  alert: "コメントの投稿に失敗しました"
     end
   end
 
   private
 
+  def set_blog_owner
+    @blog_owner = User.find_by!(username: params[:username])
+  end
+
+  def set_article
+    @article = @blog_owner.articles.published.find(params[:article_id])
+  end
+
   def comment_params
-    params.require(:comment).permit(:author_name, :website, :content)
+    params.require(:comment).permit(:author_name, :content, :website)
   end
 end
 ```
@@ -608,6 +714,34 @@ class ContactsController < ApplicationController
 end
 ```
 
+## File: `app/controllers/dashboard/account_controller.rb`
+
+```
+class Dashboard::AccountController < ApplicationController
+  before_action :authenticate_user!
+  layout "dashboard"
+
+  def delete_confirmation
+    @user = current_user
+  end
+end
+```
+
+## File: `app/controllers/dashboard/analytics_controller.rb`
+
+```
+class Dashboard::AnalyticsController < ApplicationController
+  before_action :authenticate_user!
+  layout "dashboard"
+
+  def index
+    @has_analytics = current_user.has_analytics?
+    @dashboard_url = current_user.analytics_dashboard_url
+    @setup_in_progress = !current_user.analytics_setup_completed?
+  end
+end
+```
+
 ## File: `app/controllers/dashboard/articles_controller.rb`
 
 ```
@@ -637,7 +771,7 @@ class Dashboard::ArticlesController < ApplicationController
     @article = current_user.articles.build(article_params)
 
     if @article.save
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "記事が作成されました"
+      redirect_to dashboard_articles_path, notice: "記事が作成されました"
     else
       render :new
     end
@@ -648,7 +782,7 @@ class Dashboard::ArticlesController < ApplicationController
 
   def update
     if @article.update(article_params)
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "記事が更新されました"
+      redirect_to dashboard_articles_path, notice: "記事が更新されました"
     else
       render :edit
     end
@@ -656,9 +790,9 @@ class Dashboard::ArticlesController < ApplicationController
 
   def destroy
     if @article.destroy
-      redirect_to dashboard_articles_path(locale: params[:locale], notice: "削除しました")
+      redirect_to dashboard_articles_path, notice: "削除しました"
     else
-      redirect_to edit_dashboard_article_path(@article, locale: params[:locale]), alert: "削除に失敗しました"
+      redirect_to edit_dashboard_article_path(@article), alert: "削除に失敗しました"
     end
   end
 
@@ -669,7 +803,7 @@ class Dashboard::ArticlesController < ApplicationController
   end
 
   def set_categories
-    locale = @article&.locale || params[:locale] || "ja"
+    locale = @article&.locale || params.dig(:article, :locale) || "ja"
     @categories = current_user.categories.for_locale(locale).order(:name)
   end
 
@@ -731,11 +865,12 @@ class Dashboard::CategoriesController < ApplicationController
 
   def create
     @category = current_user.categories.build(category_params)
-    @category.locale = params[:locale]
+    # @category.locale = params[:locale]
+    @category.locale = params.dig(:category, :locale) || "ja"
 
     respond_to do |format|
       if @category.save
-        format.html { redirect_to dashboard_categories_path(locale: params[:locale]), notice: "カテゴリが作成されました" }
+        format.html { redirect_to dashboard_categories_path, notice: "カテゴリが作成されました" }
         format.json { render json: { category: { id: @category.id, name: @category.name } } }
       else
         format.html { render new }
@@ -749,7 +884,7 @@ class Dashboard::CategoriesController < ApplicationController
 
   def update
     if @category.update(category_params)
-      redirect_to dashboard_categories_path(locale: params[:locale]), notice: "カテゴリが更新されました"
+      redirect_to dashboard_categories_path, notice: "カテゴリが更新されました"
     else
       render :edit
     end
@@ -757,7 +892,7 @@ class Dashboard::CategoriesController < ApplicationController
 
   def destroy
     @category.destroy
-    redirect_to dashboard_categories_path(locale: params[:locale]), notice: "カテゴリが削除されました"
+    redirect_to dashboard_categories_path, notice: "カテゴリが削除されました"
   end
 
   private
@@ -782,6 +917,7 @@ class Dashboard::CommentsController < ApplicationController
 
   def index
     @comments = Comment.includes(:article)
+                       .where(articles: { user_id: current_user.id })
                        .order(created_at: :desc)
                        .page(params[:page]).per(20)
   end
@@ -791,9 +927,9 @@ class Dashboard::CommentsController < ApplicationController
 
   def destroy
     if @comment.destroy
-      redirect_to dashboard_comments_path(locale: params[:locale], notice: "コメントを削除しました")
+      redirect_to dashboard_comments_path, notice: "コメントを削除しました"
     else
-      redirect_to dashboard_comments_path(locale: params[:locale], alert: "削除に失敗しました")
+      redirect_to dashboard_comments_path, alert: "削除に失敗しました"
     end
   end
 
@@ -894,13 +1030,12 @@ class Dashboard::PreviewsController < ApplicationController
 
   def create
     content = params[:content]
-
-    # content = content.strip.gsub(/^[ \t]+/, "")
-
     html = Kramdown::Document.new(content,
       input: "GFM",
       syntax_highlighter: "rouge"
     ).to_html
+
+    clean_html = view_context.sanitize(html)
 
     render json: { html: html }
   rescue => e
@@ -972,7 +1107,7 @@ class Dashboard::TranslationsController < ApplicationController
     @translation.user = current_user
 
     if @translation.save
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "翻訳記事が作成されました"
+      redirect_to dashboard_articles_path, notice: "翻訳記事が作成されました"
     else
       render :new
     end
@@ -983,7 +1118,7 @@ class Dashboard::TranslationsController < ApplicationController
 
   def update
     if @translation.update(translation_params)
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "翻訳記事が更新されました"
+      redirect_to dashboard_articles_path, notice: "翻訳記事が更新されました"
     else
 　　　render :edit
     end
@@ -991,9 +1126,9 @@ class Dashboard::TranslationsController < ApplicationController
 
   def destroy
     if @translation.destroy
-      redirect_to dashboard_articles_path(locale: params[:locale]), notice: "翻訳記事を削除しました"
+      redirect_to dashboard_articles_path, notice: "翻訳記事を削除しました"
     else
-      redirect_to edit_dashboard_article_translation_path(@original_article, locale: params[:locale]), alert: "削除に失敗しました"
+      redirect_to edit_dashboard_article_translation_path(@original_article), alert: "削除に失敗しました"
     end
   end
 
@@ -1035,13 +1170,62 @@ class LegalController < ApplicationController
 end
 ```
 
+## File: `app/controllers/likes_controller.rb`
+
+```
+class LikesController < ApplicationController
+  before_action :authenticate_user!
+  before_action :set_article
+
+  def create
+    @like = @article.likes.build(user: current_user)
+    
+    if @like.save
+      respond_to do |format|
+        format.html { redirect_back(fallback_location: user_article_path(@article.user.username, @article, locale: params[:locale])) }
+        format.turbo_stream { render turbo_stream: turbo_stream.replace("like_button_#{@article.id}", partial: 'shared/like_button', locals: { article: @article }) }
+      end
+    else
+      redirect_back(fallback_location: user_article_path(@article.user.username, @article, locale: params[:locale]), alert: "いいねできませんでした")
+    end
+  end
+
+  def destroy
+    @like = @article.likes.find_by(user: current_user)
+    @like&.destroy
+    
+    respond_to do |format|
+      format.html { redirect_back(fallback_location: user_article_path(@article.user.username, @article, locale: params[:locale])) }
+      format.turbo_stream { render turbo_stream: turbo_stream.replace("like_button_#{@article.id}", partial: 'shared/like_button', locals: { article: @article }) }
+    end
+  end
+
+  private
+
+  def set_article
+    @article = Article.find(params[:article_id])
+  end
+end
+```
+
 ## File: `app/controllers/profiles_controller.rb`
 
 ```
 class ProfilesController < ApplicationController
+  before_action :set_blog_owner
+
   def show
-    @user = User.find_by!(username: params[:username])
+    # @user = User.find_by!(username: params[:username])
+    @user = @blog_owner
     @current_locale = params[:locale] || I18n.locale
+  end
+
+  private
+
+  def set_blog_owner
+    @blog_owner = User.find_by!(username: params[:username])
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path(locale: params[:locale]), alert: "ユーザーが見つかりません"
   end
 end
 ```
@@ -1050,21 +1234,27 @@ end
 
 ```
 class SearchController < ApplicationController
+  before_action :set_blog_owner
+
   def index
-    @search_keyword = params[:q]
-    Rails.logger.info "Search keyword: #{@search_keyword}"
-    @articles = if @search_keyword.present?
-                  user = User.find_by(username: params[:username])
-                  user.articles.published
-                    .where(locale: params[:locale])
-                    .search(@search_keyword)
-                    .includes(:category, :tags)
-                    .order(published_at: :desc)
-                    .page(params[:page]).per(10)
+    @query = params[:q]
+    if @query.present?
+      @articles = @blog_owner.articles
+                             .published
+                             .by_locale(params[:locale])
+                             .search(@query)
+                             .page(params[:page]).per(10)
     else
-                  current_user.articles.none.page(1)
+      @articles = Article.none.page(1)
     end
-    @filter = ArticleFilterQuery.new(params.merge(user: user))
+  end
+
+  private
+
+  def set_blog_owner
+    @blog_owner = User.find_by!(username: params[:username])
+  rescue ActiveRecord::RecordNotFound
+    redirect_to root_path(locale: params[:locale]), alert: "ユーザーが見つかりません"
   end
 end
 ```
@@ -1094,6 +1284,39 @@ class CommentsController < ApplicationController
 end
 ```
 
+## File: `app/controllers/users/confirmations_controller.rb`
+
+```
+# frozen_string_literal: true
+
+class Users::ConfirmationsController < Devise::ConfirmationsController
+  # GET /resource/confirmation?confirmation_token=abcdef
+  def show
+    self.resource = resource_class.confirm_by_token(params[:confirmation_token])
+    yield resource if block_given?
+
+    if resource.errors.empty?
+      # 確認成功
+      set_flash_message!(:notice, :confirmed)
+      sign_in(resource_name, resource)
+      
+      # ビューを表示せず、直接リダイレクト
+      redirect_to after_confirmation_path_for(resource_name, resource)
+    else
+      # 確認失敗（トークンが無効など）
+      respond_with_navigational(resource.errors, status: :unprocessable_entity) { render :new }
+    end
+  end
+
+  protected
+
+  # 確認後のリダイレクト先
+  def after_confirmation_path_for(resource_name, resource)
+    dashboard_articles_path(locale: I18n.locale)
+  end
+end
+```
+
 ## File: `app/controllers/users/omniauth_callbacks_controller.rb`
 
 ```
@@ -1113,21 +1336,178 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     @user = result[:user]
 
     if @user.persisted?
+      # 重要: sign_in_and_redirectでセッションを確実に作成
+      sign_in_and_redirect @user, event: :authentication
       if result[:is_new]
         flash[:notice] = "アカウントを作成しました"
       else
         flash[:notice] = "既存アカウントでログインしました"
       end
-      redirect_to dashboard_articles_path
     else
-      rediret_to dashboard_articles_path
       session["devise.#{provider}_data"] = request.env["omniauth.auth"].except("extra")
-        redirect_to new_user_registration_url
+      redirect_to new_user_registration_url
     end
   end
 
+
+  # def handle_omniauth(provider)
+  #   result = User.from_omniauth(request.env["omniauth.auth"])
+  #   @user = result[:user]
+  #
+  #   if @user.persisted?
+  #     if result[:is_new]
+  #       flash[:notice] = "アカウントを作成しました"
+  #     else
+  #       flash[:notice] = "既存アカウントでログインしました"
+  #     end
+  #     redirect_to dashboard_articles_path
+  #   else
+  #     rediret_to dashboard_articles_path
+  #     session["devise.#{provider}_data"] = request.env["omniauth.auth"].except("extra")
+  #       redirect_to new_user_registration_url
+  #   end
+  # end
+
   def failure
     redirect_to root_path
+  end
+end
+```
+
+## File: `app/controllers/users/passwords_controller.rb`
+
+```
+class Users::PasswordsController < Devise::PasswordsController
+  def new
+    if turbo_frame_request?
+      self.resource = resource_class.new
+      render layout: false
+    else
+      redirect_to root_path(locale: I18n.locale), alert: "このページは利用できません"
+    end
+  end
+
+  protected
+
+  # パスワードリセット送信後のリダイレクト先を変更
+  def after_sending_reset_password_instructions_path_for(resource_name)
+    root_path
+  end
+end
+```
+
+## File: `app/controllers/users/registrations_controller.rb`
+
+```
+class Users::RegistrationsController < Devise::RegistrationsController
+  layout "dashboard", only: [:delete_confirmation]
+  respond_to :html, :turbo_stream
+
+  def new
+    if turbo_frame_request?
+      build_resource
+      render layout: false
+    else
+      redirect_to root_path(locale: I18n.locale), alert: "このページは利用できません"
+    end
+  end
+
+  def edit
+    if turbo_frame_request?
+      super
+    else
+      redirect_to edit_dashboard_profile_path(locale: I18n.locale), alert: "ダッシュボードから編集してください"
+    end
+  end
+
+  def delete_confirmation
+    @resource = current_user
+  end
+
+  def create
+    build_resource(sign_up_params)
+
+    resource.save
+    yield resource if block_given?
+    if resource.persisted?
+      if resource.active_for_authentication?
+        set_flash_message! :notice, :signed_up
+        sign_in(resource_name, resource)
+        respond_with resource, location: after_sign_up_path_for(resource)
+      else
+        set_flash_message! :notice, :"signed_up_but_#{resource.inactive_message}"
+        expire_data_after_sign_in!
+        respond_with resource, location: after_inactive_sign_up_path_for(resource)
+      end
+    else
+      clean_up_passwords resource
+      set_minimum_password_length
+
+      flash.now[:alert] = resource.errors.full_messages.join("\n")
+
+      respond_to do |format|
+        format.html { render :new, status: :unprocessable_entity }
+
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            "auth_form_frame",
+            template: "devise/registrations/new",
+            locals: { resource: resource, resource_name: resource_name }
+          )
+        end
+      end
+    end
+  end
+
+  protected
+
+  def after_sign_out_path_for(resource_or_scope)
+    root_path(locale: I18n.locale)
+  end
+end
+```
+
+## File: `app/controllers/users/sessions_controller.rb`
+
+```
+class Users::SessionsController < Devise::SessionsController
+  respond_to :html, :turbo_stream
+
+  def new
+    if turbo_frame_request?
+      self.resource = resource_class.new(sign_in_params)
+      render layout: false
+    else
+      redirect_to root_path(locale: I18n.locale), alert: "このページは利用できません"
+    end
+  end
+
+  def create
+    self.resource = warden.authenticate(auth_options)
+    if resource
+      set_flash_message!(:notice, :signed_in)
+      sign_in(resource_name, resource)
+      yield resource if block_given?
+      
+      redirect_to after_sign_in_path_for(resource), status: :see_other
+    else
+      self.resource = resource_class.new(sign_in_params)
+      clean_up_passwords(resource)
+
+      flash.now[:alert] = "メールアドレスまたはパスワードが違います。"
+
+      respond_to do |format|
+        format.html { render :new, status: :unprocessable_entity }
+
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(
+            "auth_form_frame",
+            template: "devise/sessions/new",
+            locals: { resource: resource, resource_name: resource_name }
+          )
+        end
+      end
+    end
   end
 end
 ```
@@ -1412,44 +1792,47 @@ h1.text-2xl.font-bold.mb-6 ユーザー詳細
 
 / ヒーロー記事
 - if hero_article
-  .hero-article.mb-12
+  .hero-article.m-4.max-w-4xl.mx-auto
     - if @blog_setting&.show_hero_thumbnail && has_cover_image?(hero_article)
-      .hero-thumbnail.mb-6.max-w-4xl.mx-auto
+      .hero-thumbnail.mb-6
         = image_tag thumbnail_for_article(hero_article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
-    .article-header.max-w-4xl.mx-auto
+    
+    .article-header
       h1.text-4xl.font-extrabold.mb-4.text-gray-900.border-b.border-gray-500.pb-2
         = link_to hero_article.title, user_article_path(hero_article.user.username, hero_article.id, locale: params[:locale])
-
+      
       .article-meta.pb-3.mb-4
         - if hero_article.category.present?
           p.pb-2
             | #{t('blog.category')}:
             = link_to hero_article.category.name, user_articles_path(params[:username], filter.filter_params.merge(category_id: hero_article.category.id))
-
         = render 'shared/article_tags', article: hero_article, filter_params: filter.filter_params
-
+      
       .meta-content-divider.text-center.mx-8
         span.text-gray-400.text-xl • • •
-
-    .article-content.medium-container style="all: revert;"
-      div class="medium"
-        = hero_article.content_html
-
-    .article-meta.max-w-4xl.mx-auto.text-right
-      p
-        | #{t('blog.published_at')}:
-        = hero_article.published_at&.strftime('%Y年%m月%d日')
-      p
-        | #{t('blog.updated_at')}:
-        = hero_article.updated_at&.strftime('%Y年%m月%d日')
-
-      - if hero_article.translation.present?
-        p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
+    
+    / ← ここを修正（article-contentクラスのみ使用）
+    article.article-content
+      = hero_article.content_html
+    
+    .article-meta.text-right.text-sm.text-gray-400.mt-6.flex.justify-between.items-end
+      .like-section
+        = render 'shared/like_button', article: hero_article, display_style: 'block'
+      .date-section
+        p
+          | #{t('blog.published_at')}:
+          = l(hero_article.published_at, format: :blog_date)
+        p
+          | #{t('blog.updated_at')}:
+          = l(hero_article.updated_at, format: :blog_date)
+        - if hero_article.translation.present?
+          p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
 
 / リスト記事
 - if list_articles.any?
   .list-section.max-w-4xl.mx-auto
-    h2.text-xl.font-semibold.mb-6.border-b.border-gray-200.pb-2 その他の記事
+    h2.text-xl.font-semibold.mb-6.border-b.border-gray-200.pb-2
+      | #{t('blog.more_stories')}
     .space-y-4
       - list_articles.each do |article|
         .list-article.border-b.border-gray-100.pb-4.last:border-b-0
@@ -1460,26 +1843,19 @@ h1.text-2xl.font-bold.mb-6 ユーザー詳細
               
               .flex.items-center.gap-4.text-sm.text-gray-500.mb-2
                 - if article.category.present?
-                  = link_to "#{t('blog.category')}: #{article.category.name}", user_articles_path(params[:username], filter.filter_params.merge(category_id: article.category.id)), class: "bg-gray-100.px-2.py-1.rounded.text-xs hover:bg-gray-200"
+                  = link_to "#{t('blogcategory')}: #{article.category.name}", user_articles_path(params[:username], filter.filter_params.merge(category_id: article.category.id)), class: "bg-gray-100 px-2 py-1 rounded text-xs hover:bg-gray-200"
               
                 - if article.tags.any?
                   .flex.items-center.gap-1
                     span #{t('blog.tags')}:
                     - article.tags.limit(3).each do |tag|
                       = link_to tag.name, user_articles_path(params[:username], filter.filter_params.merge(tag_id: tag.id)), class: "inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs hover:bg-blue-200"
-
-                span= "#{t('blog.published_at')}: #{article.published_at&.strftime('%Y年%m月%d日')}"
-
-
-/        | #{t('blog.published_at')}:
-              /.text-gray-600.text-sm= article.content_preview(100)
-              /
-              /.text-gray-600.text-sm= article.content_preview(100)
+                
+                span= "#{t('blog.published_at')}: #{l(article.published_at, format: :blog_date)}"
             
             - if has_cover_image?(article)
-              = image_tag thumbnail_for_article(article, blog_setting), 
+              = image_tag thumbnail_for_article(article, @blog_setting), 
                   class: "w-20 h-20 object-cover rounded ml-4 flex-shrink-0"
-
 ```
 
 ## File: `app/views/articles/_hero_tiles_layout.html.slim`
@@ -1490,85 +1866,87 @@ h1.text-2xl.font-bold.mb-6 ユーザー詳細
 
 / ヒーロー記事
 - if hero_article
-  .hero-article.mb-12
+  .hero-article.mb-12.max-w-4xl.mx-auto
     - if @blog_setting&.show_hero_thumbnail && has_cover_image?(hero_article)
-      .hero-thumbnail.max-w-4xl.mx-auto.mb-6
+      .hero-thumbnail.mb-6
         = image_tag thumbnail_for_article(hero_article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
-    .article-header.max-w-4xl.mx-auto
-      h1.text-4xl.font-extrabold.mb-4.text-gray-900.border-b.border-gray-500.pb-2
+    
+    .article-header
+      h1.text-4xl.font-extrabold.my-4.text-gray-900.border-b.border-gray-500.pb-2
         = link_to hero_article.title, user_article_path(hero_article.user.username, hero_article.id, locale: params[:locale])
-
+      
       .article-meta.pb-3.mb-4
         - if hero_article.category.present?
           p.pb-2
             | #{t('blog.category')}:
             = link_to hero_article.category.name, user_articles_path(params[:username], filter.filter_params.merge(category_id: hero_article.category.id))
-
         = render 'shared/article_tags', article: hero_article, filter_params: filter.filter_params
-
+      
       .meta-content-divider.text-center.mx-8
         span.text-gray-400.text-xl • • •
+    
+    article.article-content
+      = hero_article.content_html
+    
+    .article-meta.text-right.text-sm.text-gray-400.mt-6.flex.justify-between.items-end
+      .like-section
+        = render 'shared/like_button', article: hero_article, display_style: 'block'
+      .date-section
+        p
+          | #{t('blog.published_at')}:
+          = l(hero_article.published_at, format: :blog_date)
+        p
+          | #{t('blog.updated_at')}:
+          = l(hero_article.updated_at, format: :blog_date)
 
-    .article-content.medium-container style="all: revert;"
-      div class="medium"
-        = hero_article.content_html
-
-    .article-meta.max-w-4xl.mx-auto.text-right
-      p
-        | #{t('blog.published_at')}:
-        = hero_article.published_at&.strftime('%Y年%m月%d日')
-      p
-        | #{t('blog.updated_at')}:
-        = hero_article.updated_at&.strftime('%Y年%m月%d日')
-
-      - if hero_article.translation.present?
-        p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
+        - if hero_article.translation.present?
+          p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
 
 / タイル記事
 - if tile_articles.any?
-  .tiles-section
-    h2.text-xl.font-semibold.mb-6.text-center その他の記事
-    .grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-6.max-w-6xl.mx-auto
+  .tiles-section.max-w-6xl.mx-auto
+    h2.text-xl.font-semibold.mb-6.text-center
+      | #{t('blog.more_stories')}
+    .grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-6
       - tile_articles.each do |article|
         .tile-article
-          = render 'shared/article_thumbnail', article: article, blog_setting: blog_setting, filter_params: filter.filter_params
+          = render 'shared/article_thumbnail', article: article, blog_setting: @blog_setting, filter_params: filter.filter_params
 ```
 
 ## File: `app/views/articles/_linear_layout.html.slim`
 
 ```
 - articles.each do |article|
-  .article-item.mb-8.p-6.border-b.border-gray-500
-    .article-header.max-w-3xl.mx-auto
+  .article-item.mb-8.p-6.border-b.border-gray-500.max-w-4xl.mx-auto
+    .article-header
       h2.text-4xl.font-extrabold.mb-4.mt-8.text-gray-900.border-b.border-gray-500.pb-2
         = link_to article.title, user_article_path(article.user.username, article.id, locale: params[:locale])
-
+      
       .article-meta.pb-3.mb-4
         - if article.category.present?
           p.pb-2
             | #{t('blog.category')}:
             = link_to article.category.name, user_articles_path(params[:username], filter.filter_params.merge(category_id: article.category.id))
-
         = render 'shared/article_tags', article: article, filter_params: filter.filter_params
-
+      
       .meta-content-divider.text-center.mx-8
-        span.text-gray-400.text-xl • • 
-
-    .article-content.medium-container style="all: revert;"
-      div class="medium"
-        = article.content_html
-
-    .article-meta.max-w-3xl.mx-auto.text-right
-      p
-        | #{t('blog.published_at')}:
-        = article.published_at&.strftime('%Y年%m月%d日')
-      p
-        | #{t('blog.updated_at')}:
-        = article.updated_at&.strftime('%Y年%m月%d日')
-
-      - if article.translation.present?
-        p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(article.translation.user.username, article.translation.id, locale: article.translation.locale)
-
+        span.text-gray-400.text-xl • • •
+    
+    article.article-content
+      = article.content_html
+    
+    .article-meta.max-w-4xl.mx-auto.text-right.text-sm.text-gray-400.mt-6.flex.justify-between.items-end
+      .like-section
+        = render 'shared/like_button', article: article, display_style: 'block'
+      .data-section
+        p
+          | #{t('blog.published_at')}:
+          = l(article.published_at, format: :blog_date)
+        p
+          | #{t('blog.updated_at')}:
+          = l(article.updated_at, format: :blog_date)
+        - if article.translation.present?
+          p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(article.translation.user.username, article.translation.id, locale: article.translation.locale)
 ```
 
 ## File: `app/views/articles/index.html.slim`
@@ -1641,65 +2019,60 @@ h1.text-2xl.font-bold.mb-6 ユーザー詳細
 
 ```
 .article-items
-
   .article-title.max-w-5xl.mx-auto
-    h1.text-4xl.font-extrabold.mb-8.text-gray-900
+    h1.text-4xl.font-extrabold.my-4.text-gray-900
       = @article.title
   
   .article-meta.max-w-5xl.mx-auto.mb-4.border-b.border-gray-500
     .flex.items-center.mb-2
-      span.w-20.text-gray-500.text-right
+      span.w-25.text-gray-500.text-right
         = t('blog.published_at')
       span.w-4.text-gray-500.text-center
         | :
       span.text-gray-500
-        = @article.published_at&.strftime('%Y年%m月%d日')
-
+        = l(@article.published_at, format: :blog_date)
     .flex.items-center.mb-2
-      span.w-20.text-gray-500.text-right
+      span.w-25.text-gray-500.text-right
         = t('blog.updated_at')
       span.w-4.text-gray-500.text-center
         | :
       span.text-gray-500
-        = @article.updated_at&.strftime('%Y年%m月%d日')
-
+        = l(@article.updated_at, format: :blog_date)
     .flex.items-center.mb-2
       - if @article.category.present?
-        span.w-20.text-gray-500.text-right
+        span.w-25.text-gray-500.text-right
           = t('blog.category')
         span.w-4.text-gray-500.text-center
           | :
         span.text-gray-500.hover:text-gray-800
           = link_to @article.category.name, user_articles_path(locale: params[:locale], category_id: @article.category.id)
-
     .flex.items-center.mb-2
-      span.w-20.text-gray-500.text-right
+      span.w-25.text-gray-500.text-right
         = t('blog.tags')
       span.w-4.text-gray-500.text-center
         | :
       span
         = render 'shared/article_tags', article: @article, filter_params: {}
-
     - if @article.translation.present?
       .flex.items-center.mb-2
-        span.w-20.text-gray-500.text-right
+        span.w-25.text-gray-500.text-right
           = t('blog.translation')
         span.w-4.text-gray-500.text-center
           | :
         span
           = link_to "#{@article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(@article.translation.user.username, @article.translation.id, locale: @article.translation.locale), class: "pb-2 block text-gray-500 hover:text-gray-800"
-
-
+  
   - if @blog_setting&.show_hero_thumbnail && has_cover_image?(@article)
     .hero-thumbnail.max-w-5xl.mx-auto.mb-6
       = image_tag thumbnail_for_article(@article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
-
-  .article-content style="all: revert;"
-    div class="medium-wide"
+  
+  .max-w-5xl.mx-auto
+    article.article-content
       = @article.content_html
-
-/.section-devider.my-16.max-w-5xl.mx-auto
-/  .border-t.border-gray-600
+    
+    / いいねボタン（右下配置）
+    .flex.justify-end.mt-8
+      = render 'shared/like_button', article: @article, display_style: 'block'
 
 .section-divider.my-16.max-w-5xl.mx-auto.text-center
   .flex.items-center.justify-center.gap-4
@@ -1723,16 +2096,19 @@ h1.text-2xl.font-bold.mb-6 ユーザー詳細
           .text-gray-700= simple_format(comment.content)
     - else
       p= t('comments.none')
-
+  
   .comment-form.max-w-5xl.mx-auto.py-8
     = form_with model: Comment.new, url: user_article_comments_path(@article.user.username, @article.id), local: true do |f|
-      .flex.flex-col.w-1/2.mb-2
+      / .flex.flex-col.w-1/2.mb-2
+      .flex.flex-col.w-full.md:w-1/2.mb-2
         = f.label :author_name, "#{t('comments.author_name')}:", class: "mb-2"
         = f.text_field :author_name, required: true, class: "border-0 border-b border-gray-600 focus:outline-none"
-      .flex.flex-col.w-1/2.mb-2
+      / .flex.flex-col.w-1/2.mb-2
+      .flex.flex-col.w-full.md:w-1/2.mb-2
         = f.label :website, "#{t('comments.website')}:", class: "mb-2"
         = f.url_field :website, class: "border-0 border-b border-gray-600 focus:outline-none"
-      .flex.flex-col.w-1/2.mb-2
+      / .flex.flex-col.w-1/2.mb-2
+      .flex.flex-col.w-full.md:w-1/2.mb-2
         = f.label :content, "#{t('comments.content')}:", class: "mb-2"
         = f.text_area :content, rows: 5, required: true, class: "border border-gray-600 focus:outline-none"
       
@@ -1800,6 +2176,11 @@ p Find me in app/views/contacts/create.html.slim
       | このお問い合わせは Dual Pascal（ブログプラットフォーム）の運営に関するものです。
       br
       | 個別のブログ記事や著者への連絡は、各記事のコメント欄または著者のプロフィールページをご利用ください。
+      br
+      | This inquiry form is for the administration of Dual Pascal (blogging platform). 
+      bg
+      | To contact specific authors or regarding individual articles, please use the comment section of the article or the author's profile page.
+
 
   .bg-white.rounded-lg.border.border-gray-200.shadow-sm.p-6
     - if @contact.errors.any?
@@ -1831,6 +2212,54 @@ p Find me in app/views/contacts/create.html.slim
         = link_to "キャンセル", root_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
 ```
 
+## File: `app/views/dashboard/account/delete_confirmation.html.slim`
+
+```
+h1.text-2xl.font-bold.mb-6.text-red-600 アカウントの削除
+
+.bg-white.rounded-lg.border.border-red-200.shadow-sm.p-8
+  .bg-red-50.border.border-red-200.rounded-md.p-4.mb-6
+    h2.text-lg.font-semibold.text-red-800.mb-2 ⚠️ 警告
+    ul.text-red-700.text-sm.space-y-2
+      li • アカウントを削除すると、すべてのデータが完全に削除されます
+      li • 投稿した記事、カテゴリ、タグ、コメントがすべて削除されます
+      li • この操作は取り消すことができません
+      li • 削除後、同じメールアドレスで再登録することはできません
+
+  .mb-6
+    p.text-gray-700.mb-4 本当にアカウントを削除してもよろしいですか？
+    p.text-gray-600.text-sm 削除を続行する場合は、以下のボタンをクリックしてください。
+
+  = form_with url: user_registration_path, method: :delete, local: true, data: { turbo_confirm: "本当にアカウントを削除しますか？この操作は取り消せません。" } do |f|
+    .flex.gap-3
+      = f.submit "アカウントを削除する", class: "bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-md transition-colors font-semibold"
+      = link_to "キャンセル", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
+```
+
+## File: `app/views/dashboard/analytics/index.html.slim`
+
+```
+h1.text-2xl.font-bold.mb-6 Analytics
+
+- if @has_analytics
+  .bg-white.rounded-lg.border.border-gray-200.overflow-hidden
+    iframe src=@dashboard_url width="100%" height="700" frameborder="0" class="w-full"
+
+- elsif @setup_in_progress
+  .bg-blue-50.border.border-blue-200.rounded-lg.p-6.text-center
+    .mb-4
+      svg.mx-auto.h-12.w-12.text-blue-400 fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+    h3.text-lg.font-semibold.text-blue-900 Configuring...
+    p.text-blue-700 Please wait a moment.
+
+- else
+  .bg-red-50.border.border-red-200.rounded-lg.p-6.text-center
+    h3.text-lg.font-semibold.text-red-900 Analytics Setup Failed
+    p.text-red-700 Failed to set up the analytics environment. Please wait a few minutes and refresh the page. If the issue persists, please contact support.
+
+```
+
 ## File: `app/views/dashboard/articles/_article_row.slim`
 
 ```
@@ -1838,30 +2267,40 @@ p Find me in app/views/contacts/create.html.slim
   .flex-grow
     .font-semibold= article_data.title
     .text-sm.text-gray-500
-      = article_data.locale == "ja" ? "日本語" : "English"
+      = article_data.locale == "ja" ? "Japanese" : "English"
       | ・
-      = article_data.category&.name || '未設定'
+      = article_data.category&.name || 'No category'
       | ・
       = article_data.published_at&.strftime("%Y-%m-%d")
       | ・
-      = article_data.status == "draft" ? "下書き" : "公開"
+      = article_data.status == "draft" ? "Draft" : "Published"
       - if article_data.original? && article_data.has_translation?
-        | ・翻訳済み
+        | ・Translated
       - if article_data.translated?
-        | ・翻訳元: #{article_data.original_article.title}
-        /| ・翻訳元: 要チェック 
+        | ・Original: #{article_data.original_article.title}
 
   .flex.space-x-2.ml-4
     - if article_data.translated?
-      = link_to "翻訳編集", edit_dashboard_article_translation_path(article_data.original_article, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"
+      = link_to edit_dashboard_article_translation_path(article_data.original_article), class: "relative group text-gray-600 hover:text-gray-800 transition-colors"
+        = lucide_icon 'pencil', class: "w-5 h-5"
+        span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+          | Edit Translation
     - else
-      = link_to "編集", edit_dashboard_article_path(article_data, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"
-
-    = link_to "📥", dashboard_article_export_path(article_data, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800", title: "記事をエクスポート"
+      = link_to edit_dashboard_article_path(article_data), class: "relative group text-gray-600 hover:text-gray-800 transition-colors"
+        = lucide_icon 'pencil', class: "w-5 h-5"
+        span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+          | Edit
 
     - if article_data.translation.blank? && article_data.original?
-      span.text-gray-400 |
-      = link_to "翻訳作成", new_dashboard_article_translation_path(article_data, locale: params[:locale]), class: "text-gray-600 hover:text-gray-800"
+      = link_to new_dashboard_article_translation_path(article_data), class: "relative group text-gray-600 hover:text-gray-800 transition-colors"
+        = lucide_icon 'languages', class: "w-5 h-5"
+        span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+          | Add Translation
+
+    = link_to dashboard_article_export_path(article_data), class: "relative group text-gray-500 hover:text-gray-800 hover:bg-blue-100 rounded transition-colors flex items-center"
+      = lucide_icon 'file-down', class: "w-5 h-5"
+      span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+        | Export Markdown
 ```
 
 ## File: `app/views/dashboard/articles/_form.html.slim`
@@ -1873,7 +2312,7 @@ p Find me in app/views/contacts/create.html.slim
     - article.errors.full_messages.each do |message|
       li= message
 
-div data-controller="markdown-preview image-upload layout-switcher category-modal" data-markdown-preview-url-value=dashboard_preview_path(locale: params[:locale]) data-layout-switcher-translation-mode-value=is_translation data-category-modal-url-value="#{dashboard_categories_path(format: :json)}" data-category-modal-locale-value="#{article.locale || 'ja'}" class="layout-switcher"
+div data-controller="markdown-preview image-upload layout-switcher category-modal" data-markdown-preview-url-value=dashboard_preview_path data-layout-switcher-translation-mode-value=is_translation data-category-modal-url-value="#{dashboard_categories_path(format: :json)}" data-category-modal-locale-value="#{article.locale || 'ja'}" class="layout-switcher"
 
   div data-layout-switcher-target="buttons" class="layout-buttons flex gap-1 justify-center mb-2"
     button.layout-button type="button" data-action="click->layout-switcher#switchToSplit" data-mode="split" ⚏
@@ -1887,41 +2326,67 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
 
       = form_with model: article, url: form_url, local: true do |f|
 
-        div class="flex items-baseline mb-6 border-b border-gray-400"
+        div class="flex items-center mb-6 border-b border-gray-400 pb-2"
 
-          div class="flex items-baseline gap-4"
-            p
-              = f.select :locale, options_for_select([["日本語", "ja"], ["English", "en"]], article.locale), {}, { disabled: locale_disabled, class: "text-gray-600 border border-gray-400 rounded" }
-            p
-              = f.select :status, options_for_select([["下書き", "draft"],["公開", "published"]], article.status), {}, class: "text-gray-600 border border-gray-400 rounded"
+          div class="flex items-center gap-2"
+            = f.select :locale, options_for_select([["Japanese", "ja"], ["English", "en"]], article.locale), {}, { disabled: locale_disabled, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500" }
+            = f.select :status, options_for_select([["Draft", "draft"],["Publish", "published"]], article.status), {}, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500"
 
-          div class="flex items-baseline gap-1 mx-4"
-            /label for="cover_image_input" class="btn-unified cursor-pointer text-xs"
-            label for="cover_image_input" class="cursor-pointer" title="カバー画像"
-              | 🖼️
-            = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
-    
+          div class="flex items-center gap-1 mx-2"
+            label.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors for="cover_image_input"
+              = lucide_icon 'image', class: "w-5 h-5 text-gray-600"
+              = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
+              span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                | Cover Image
+
+            button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="button" data-action="click->image-upload#selectImage"
+              = lucide_icon 'camera', class: "w-5 h-5 text-gray-500"
+              span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                | Insert Image
+
             - case button_type
             - when "new"
-              = f.submit "🌐", class: "cursor-pointer", title: "投稿"
+              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
+                = lucide_icon 'send', class: "w-5 h-5 text-gray-600"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Publish
+
             - when "edit"
-              = f.submit "🔄", class: "cursor-pointer", title: "更新"
-              = link_to "✖️", dashboard_articles_path, class: "cursor-pointer", title: "キャンセル"
-              = link_to "🗑️", dashboard_article_path(article), class: "cursor-pointer",title: "削除" , data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" }
+              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
+                = lucide_icon 'refresh-cw', class: "w-5 h-5 text-gray-600"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Update
+
+              = link_to dashboard_articles_path, class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
+                = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Cancel
+
+              = link_to dashboard_article_path(article), class: "relative group cursor-pointer hover:bg-red-50 rounded p-1 transition-colors", data: { "turbo-method": "delete", "turbo-confirm": "Are you sure?" } do
+                = lucide_icon 'trash', class: "w-5 h-5 text-gray-500 hover:text-red-500"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Delete
+
             - when "translation"
-              = f.submit "🌐", class: "cursor-pointer", title: "翻訳"
-              = link_to "✖️", dashboard_article_path(original_article), class: "cursor-pointer", title: "キャンセル"
+              / Create Translation Button
+              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
+                = lucide_icon 'languages', class: "w-5 h-5 text-gray-500"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Create Translation
+
+              = link_to dashboard_article_path(original_article), class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
+                = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
+                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                  | Cancel
+
 
         div class="ml-auto flex gap-2 border-b border-gray-400"
           .flex.items-center.gap-1
-            button.text-gray-500.hover:text-gray-700.text-lg.font-bold type="button" data-action="click->category-modal#showModal" title="新しいカテゴリを追加" +
-            = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "text-gray-400 focus:outline-none", required: false, data: { category_modal_target: "select" } }
+            / button.text-gray-500.hover:text-gray-700.text-lg.font-bold type="button" data-action="click->category-modal#showModal" title="新しいカテゴリを追加" +
+            / = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "text-gray-400 focus:outline-none", required: false, data: { category_modal_target: "select" } }
+            = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "w-30 truncate text-gray-400 focus:outline-none", required: false }
           p
             = f.text_field :tag_list, placeholder: "tags", class: "text-gray-600 focus:outline-none"
-          p
-            button type="button" data-action="click->image-upload#selectImage" class="cursor-pointer mb-2 text-gray-400 text-sm"
-              /| 📷
-              | 画像を挿入
         p
           = f.text_field :title, required: true,
             class: "w-full border-b border-gray-400 placeholder-gray-400 p-2 focus:border-gray-400 focus:outline-none mb-3",
@@ -1930,25 +2395,19 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
             
           = f.text_area :content, required: true, style: "width: 100%; padding-bottom: 36rem;", data: { markdown_preview_target: "input", action: "input->markdown-preview#preview", image_upload_target: "textarea" }, class: "px-3 py-2 border-0 focus:ring-0 focus:outline-none focus:border-[1px] focus:border-gray-300"
 
-    .fixed.inset-0.bg-black.bg-opacity-50.flex.items-center.justify-center.z-50.hidden data-category-modal-target="modal"
-      .bg-white.rounded-lg.p-6.w-96.max-w-90vw
-        h3.text-lg.font-semibold.mb-4 新しいカテゴリを作成
 
-        form data-category-modal-target="form" data-action="submit->category-modal#submitForm"
-          .mb-4
-            label.block.text-sm.font-medium.text-gray-700.mb-2 カテゴリ名
-            input.w-full.border.border-gray-300.rounded-md.px-3.py-2.focus:outline-none.focus:ring-1.focus:ring-gray-500 type="text" name="category[name]" required="" placeholder="カテゴリ名を入力"
-          .flex.gap-3.justify-end
-            button.px-4.py-2.text-gray-600.border.border-gray-300.rounded-md.hover:bg-gray-50 type="button" data-action="click->category-modal#closeModal" キャンセル
-            button.px-4.py-2.bg-blue-500.text-white.rounded-md.hover:bg-blue-600 type="submit" 作成
+        / ========================================
+        / カテゴリ作成モーダルは MVP版では削除
+        / 将来実装する場合は Git履歴から復元
+        / ========================================
 
     div class="absolute top-0 bottom-0 left-1/2 w-[1px] bg-gray-400 layout-divider"
 
     div data-layout-switcher-target="preview" class="flex-1 pl-5 h-full overflow-hidden hover:overflow-y-auto preview-area"
       .medium-container style="all: revert;"
-        div data-markdown-preview-target="titlePreview" class="medium title-preview"
+        div data-markdown-preview-target="titlePreview" class="article-content"
           h1 プレビュータイトル
-        div data-markdown-preview-target="preview" class="medium" style="padding-bottom: 36rem;"
+        div data-markdown-preview-target="preview" class="article-content" style="padding-bottom: 36rem;"
           p プレビューがここに表示されます
 
     - if is_translation
@@ -1975,7 +2434,10 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
 ## File: `app/views/dashboard/articles/index.html.slim`
 
 ```
-= link_to "新しい記事を作成", new_dashboard_article_path(locale: params[:locale]), class: "text-blue-500 hover:text-blue-600 inline-block p-3"
+= link_to new_dashboard_article_path(locale: params[:locale]), class: "flex items-center gap-2 text-blue-500 hover:text-blue-600 transition-colors p-3 font-medium"
+  = lucide_icon 'pen-line', class: "w-5 h-5"
+  span.hidden.sm:inline.text-sm
+    | New Article
 
 .space-y-6
   - @original_articles.each do |article|
@@ -1988,8 +2450,8 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
           .p-3
             = render "dashboard/articles/article_row", article_data: article.translation
         - else
-          .p-3.text-gray-500
-            | 未翻訳
+          .p-3.text-gray-500.text-sm
+            | No translation
 
 = paginate @original_articles
 ```
@@ -2022,32 +2484,32 @@ h1
 ## File: `app/views/dashboard/blog_settings/edit.html.slim`
 
 ```
-h1.text-2xl.font-bold.mb-6 ブログ外観設定
+h1.text-2xl.font-bold.mb-6 Blog settings
 
 = form_with model: [:dashboard, @blog_setting], url: dashboard_blog_setting_path, local: true, multipart: true do |f|
   .space-y-6
     div
-      = f.label :blog_title_ja, "ブログタイトル", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :blog_title_ja, "Blog title", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-1.gap-4
         div
-          = f.label :blog_title_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
+          = f.label :blog_title_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :blog_title_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "私のブログ"
         div
           = f.label :blog_title_en, "English", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :blog_title_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "My Blog"
     
     div
-      = f.label :blog_subtitle_ja, "サブタイトル", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :blog_subtitle_ja, "Sub title", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-1.gap-4
         div
-          = f.label :blog_subtitle_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
-          = f.text_field :blog_subtitle_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "素晴らしいブログの説明"
+          = f.label :blog_subtitle_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
+          = f.text_field :blog_subtitle_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "ブログの説明"
         div
           = f.label :blog_subtitle_en, "English", class: "block text-xs text-gray-500 mb-1"
-          = f.text_field :blog_subtitle_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "An amazing blog description"
+          = f.text_field :blog_subtitle_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500", placeholder: "Blog description"
     
     div data-controller="theme"
-      = f.label :theme_color, "テーマカラー", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :theme_color, "Colors", class: "block text-sm font-medium text-gray-700 mb-2"
       .flex.space-x-2
         - { default: "#ffffff", slate: "#0a1a2f", forest: "#1b4332", maroon: "#3a0a0a", midnight: "#222b45" }.each do |key, color|
           .relative
@@ -2061,7 +2523,7 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
           span.text-xs.text-gray-600= key.to_s
 
     div data-controller="layout-preview"
-      = f.label :layout_style, "記事一覧レイアウト", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :layout_style, "Layouts", class: "block text-sm font-medium text-gray-700 mb-2"
       .space-y-3
         .flex.items-center
           = f.radio_button :layout_style, "linear", id: "layout_linear", class: "mr-2"
@@ -2071,7 +2533,7 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
               .bg-gray-200 style="height: 4px; width: 80%;"
               .bg-gray-300 style="height: 6px; width: 100%;"
               .bg-gray-200 style="height: 4px; width: 80%;"
-            span.text-sm リニア表示
+            span.text-sm Linear
         
         .flex.items-center
           = f.radio_button :layout_style, "hero_tiles", id: "layout_hero_tiles", class: "mr-2"
@@ -2082,7 +2544,7 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
                 .bg-gray-300 style="width: 32%; height: 100%;"
                 .bg-gray-300 style="width: 32%; height: 100%;"
                 .bg-gray-300 style="width: 32%; height: 100%;"
-            span.text-sm ヒーロー＋タイル表示
+            span.text-sm Hero + tiles
         
         .flex.items-center
           = f.radio_button :layout_style, "hero_list", id: "layout_hero_list", class: "mr-2"
@@ -2093,20 +2555,20 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
               .bg-gray-200 style="height: 3px; width: 90%;"
               .bg-gray-200 style="height: 3px; width: 90%;"
               .bg-gray-200 style="height: 3px; width: 90%;"
-            span.text-sm ヒーロー＋リスト表示
+            span.text-sm Hero + list
 
 
         div
-          = f.label :show_hero_thumbnail, "ヒーロー記事のサムネイル表示", class: "block text-sm font-medium text-gray-700 mb-2"
+          = f.label :show_hero_thumbnail, "Thumbnail", class: "block text-sm font-medium text-gray-700 mb-2"
           .flex.items-center
             = f.check_box :show_hero_thumbnail, class: "mr-2"
-            = f.label :show_hero_thumbnail, "ヒーロー記事にサムネイル画像を表示する", class: "text-sm text-gray-600"
+            = f.label :show_hero_thumbnail, "Show hero article Thumbnail", class: "text-sm text-gray-600"
 
 
 
     .flex.gap-3
-      = f.submit "設定を保存", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
-      = link_to "キャンセル", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
+      = f.submit "Save", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
+      = link_to "Cancel", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
 ```
 
 ## File: `app/views/dashboard/categories/_category_table.html.slim`
@@ -2117,10 +2579,10 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
     thead.bg-gray-50
       tr
         th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider ID
-        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider カテゴリ名
-        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider 説明
-        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider 記事数
-        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider アクション
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Name
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Discription
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Articles
+        th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Action
     tbody.bg-white.divide-y.divide-gray-200
       - categories.each_with_index do |category, index|
         tr class="#{index.even? ? 'bg-white' : 'bg-gray-50'}"
@@ -2131,11 +2593,11 @@ h1.text-2xl.font-bold.mb-6 ブログ外観設定
           td.px-6.py-4.whitespace-nowrap.text-sm.text-gray-900= category.articles_count || 0
           td.px-6.py-4.whitespace-nowrap.text-sm.font-medium
             .flex.gap-2
-              = link_to "編集", edit_dashboard_category_path(category), class: "btn-unified text-sm"
-              = link_to "削除", dashboard_category_path(category), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }, class: "btn-unified text-sm"
+              = link_to "Edit", edit_dashboard_category_path(category), class: "btn-unified text-sm"
+              = link_to "Delete", dashboard_category_path(category), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }, class: "btn-unified text-sm"
 - else
   .p-8.text-center
-    p.text-gray-500.text-lg カテゴリがありません
+    p.text-gray-500.text-lg No category
 ```
 
 ## File: `app/views/dashboard/categories/edit.html.slim`
@@ -2175,24 +2637,24 @@ h1.text-2xl.font-bold.mb-6 カテゴリを編集
 ## File: `app/views/dashboard/categories/index.html.slim`
 
 ```
-h1.text-2xl.font-bold.mb-6 カテゴリ管理
+h1.text-2xl.font-bold.mb-6 Category
 
 .tab-container data-controller="category-tabs"
   .tab-buttons.mb-6
     button.tab-button.active data-action="click->category-tabs#switchTab" data-target="ja" data-category-tabs-target="button"
-      | 日本語 (#{category_count_for_locale("ja")})
+      | Japanese (#{category_count_for_locale("ja")})
     button.tab-button data-action="click->category-tabs#switchTab" data-target="en" data-category-tabs-target="button"
       | English (#{category_count_for_locale("en")})
 
   .tab-content.active data-category-tabs-target="content" data-tab="ja"
     .mb-6
-      = link_to "日本語カテゴリを作成", new_dashboard_category_path(locale: "ja"), class: "btn-unified"
+      = link_to "Create", new_dashboard_category_path(locale: "ja"), class: "btn-unified"
     .bg-white.rounded-lg.border.border-gray-200.shadow-sm.overflow-hidden
       = render "category_table", categories: @ja_categories
 
   .tab-content data-category-tabs-target="content" data-tab="en"
     .mb-6
-      = link_to "英語カテゴリを作成", new_dashboard_category_path(locale: "en"), class: "btn-unified"
+      = link_to "Create", new_dashboard_category_path(locale: "en"), class: "btn-unified"
     .bg-white.rounded-lg.border.border-gray-200.shadow-sm.overflow-hidden
       = render "category_table", categories: @en_categories
 ```
@@ -2200,7 +2662,7 @@ h1.text-2xl.font-bold.mb-6 カテゴリ管理
 ## File: `app/views/dashboard/categories/new.html.slim`
 
 ```
-h1.text-2xl.font-bold.mb-6 新しいカテゴリを作成
+h1.text-2xl.font-bold.mb-6 Create a new category
 
 - if @category.errors.any?
   .bg-red-50.border.border-red-200.rounded-md.p-4.mb-6
@@ -2212,39 +2674,39 @@ h1.text-2xl.font-bold.mb-6 新しいカテゴリを作成
 .bg-white.rounded-lg.border.border-gray-200.shadow-sm.p-6
   = form_with model: [:dashboard, @category], local: true, class: "space-y-6" do |f|
     div
-      = f.label :name, "カテゴリ名", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :name, "Name", class: "block text-sm font-medium text-gray-700 mb-2"
       = f.text_field :name, required: true, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
 
     div
-      = f.label :description, "説明(任意)", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :description, "Description", class: "block text-sm font-medium text-gray-700 mb-2"
       = f.text_area :description, rows: 4, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
 
     div
-      = f.label :locale, "言語", class: "block text-sm font-medium text-gray-700 mb-2"
-      = f.select :locale, options_for_select([["日本語", "ja"], ["English", "en"]], @category.locale), {}, { disabled: true, class: "w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-gray-500" }
+      = f.label :locale, "Language", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.select :locale, options_for_select([["Japanese", "ja"], ["English", "en"]], @category.locale), {}, { disabled: true, class: "w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-gray-500" }
       small.block.text-gray-500.text-sm.mt-1
-        | 言語は作成時に決定され、後から変更できません
+        | Language cannot be changed later
 
     .flex.gap-3
-      = f.submit "カテゴリを作成", class: "btn-unified"
-      = link_to "キャンセル", dashboard_categories_path, class: "btn-unified"
+      = f.submit "Create", class: "btn-unified"
+      = link_to "Cancel", dashboard_categories_path, class: "btn-unified"
 ```
 
 ## File: `app/views/dashboard/comments/index.html.slim`
 
 ```
-h1.text-2xl.font-bold.mb-6 コメント管理
+h1.text-2xl.font-bold.mb-6 Comments
 
 .bg-white.rounded-lg.border.border-gray-200.shadow-sm.overflow-hidden
   - if @comments.any?
     table.w-full
       thead.bg-gray-50
         tr
-          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider 記事タイトル
-          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider コメント者
-          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider コメント内容(抜粋)
-          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider 投稿日
-          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider アクション
+          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Article
+          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Commenter
+          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Content
+          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Posted
+          th.px-6.py-3.text-left.text-xs.font-medium.text-gray-500.uppercase.tracking-wider Action
       tbody.bg-white.divide-y.divide-gray-200
         - @comments.each_with_index do |comment, index|
           tr class="#{index.even? ? 'bg-white' : 'bg-gray-50'}"
@@ -2256,11 +2718,11 @@ h1.text-2xl.font-bold.mb-6 コメント管理
             td.px-6.py-4.whitespace-nowrap.text-sm.text-gray-500= comment.created_at.strftime('%Y/%m/%d %H:%M')
             td.px-6.py-4.whitespace-nowrap.text-sm.font-medium
               .flex.gap-2
-                = link_to "詳細", dashboard_comment_path(comment, locale: params[:locale]), class: "btn-unified text-sm"
-                = link_to "削除", dashboard_comment_path(comment, locale: params[:locale]), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }, class: "btn-unified text-sm"
+                = link_to "Details", dashboard_comment_path(comment), class: "btn-unified text-sm"
+                = link_to "Delete", dashboard_comment_path(comment), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }, class: "btn-unified text-sm"
   - else
     .p-8.text-center
-      p.text-gray-500.text-lg コメントはまだありません
+      p.text-gray-500.text-lg No comments
 
 - if @comments.respond_to?(:current_page)
   .px-6.py-4.bg-gray-50.border-t.border-gray-200
@@ -2295,56 +2757,56 @@ p
 h3 コメント内容
 = simple_format(@comment.content)
 
-= link_to "削除", dashboard_comment_path(@comment, locale: params[:locale]), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }
-= link_to "一覧に戻る", dashboard_comments_path(locale: params[:locale])
+= link_to "削除", dashboard_comment_path(@comment), data: { turbo_method: :delete, turbo_confirm: "削除しますか？" }
+= link_to "一覧に戻る", dashboard_comments_path
 ```
 
 ## File: `app/views/dashboard/profiles/edit.html.slim`
 
 ```
 .mb-4
-  = link_to "👁️ 公開プロフィールを確認", user_profile_path(current_user.username, locale: I18n.locale), target: "_blank", class: "text-blue-500 hover:text-blue-600 text-sm"
+  = link_to "👁️ Preview", user_profile_path(current_user.username, locale: I18n.locale), target: "_blank", class: "text-blue-500 hover:text-blue-600 text-sm"
 
-h1.text-2xl.font-bold.mb-6 プロフィール編集
+h1.text-2xl.font-bold.mb-6 Profile
 
 = form_with model: [:dashboard, @user], url: dashboard_profile_path, local: true, multipart: true do |f|
   .space-y-6
     div
-      = f.label :avatar, "アイコン画像", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :avatar, "Icon", class: "block text-sm font-medium text-gray-700 mb-2"
       = f.file_field :avatar, accept: "image/*", class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
     
     div
-      = f.label :nickname_ja, "ニックネーム", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :nickname_ja, "Nickname", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-2.gap-4
         div
-          = f.label :nickname_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
+          = f.label :nickname_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :nickname_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         div
           = f.label :nickname_en, "English", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :nickname_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
     
     div
-      = f.label :bio_ja, "自己紹介", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :bio_ja, "Biography", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-1.gap-4
         div
-          = f.label :bio_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
+          = f.label :bio_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
           = f.text_area :bio_ja, rows: 3, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         div
           = f.label :bio_en, "English", class: "block text-xs text-gray-500 mb-1"
           = f.text_area :bio_en, rows: 3, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
     
     div
-      = f.label :location_ja, "居住地", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :location_ja, "Location", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-2.gap-4
         div
-          = f.label :location_ja, "日本語", class: "block text-xs text-gray-500 mb-1"
+          = f.label :location_ja, "Japanese", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :location_ja, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         div
           = f.label :location_en, "English", class: "block text-xs text-gray-500 mb-1"
           = f.text_field :location_en, class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
     
     div
-      = f.label :website, "ウェブサイト", class: "block text-sm font-medium text-gray-700 mb-2"
+      = f.label :website, "Website", class: "block text-sm font-medium text-gray-700 mb-2"
       = f.url_field :website, placeholder: "https://", class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
     
     .grid.grid-cols-1.md:grid-cols-2.gap-4
@@ -2377,8 +2839,8 @@ h1.text-2xl.font-bold.mb-6 プロフィール編集
         = f.text_field :hatena_handle, placeholder: "username", class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
 
     .flex.gap-3
-      = f.submit "更新", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
-      = link_to "キャンセル", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
+      = f.submit "Update", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
+      = link_to "Cancel", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
 ```
 
 ## File: `app/views/dashboard/translations/edit.html.slim`
@@ -2490,52 +2952,71 @@ p Find me in app/views/admin/translations/show.html.slim
 ## File: `app/views/devise/passwords/edit.html.erb`
 
 ```
-<h2>Change your password</h2>
+<div class="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+  <h2 class="text-2xl font-bold mb-6">Change your password</h2>
 
-<%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :put }) do |f| %>
-  <%= render "devise/shared/error_messages", resource: resource %>
-  <%= f.hidden_field :reset_password_token %>
+  <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :put, class: "space-y-4" }) do |f| %>
+    <%= render "devise/shared/error_messages", resource: resource %>
+    <%= f.hidden_field :reset_password_token %>
 
-  <div class="field">
-    <%= f.label :password, "New password" %><br />
-    <% if @minimum_password_length %>
-      <em>(<%= @minimum_password_length %> characters minimum)</em><br />
-    <% end %>
-    <%= f.password_field :password, autofocus: true, autocomplete: "new-password" %>
+    <div>
+      <%= f.label :password, "New password", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <% if @minimum_password_length %>
+        <p class="text-xs text-gray-500 mb-2">(<%= @minimum_password_length %> characters minimum)</p>
+      <% end %>
+      <%= f.password_field :password, autofocus: true, autocomplete: "new-password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
+    </div>
+
+    <div>
+      <%= f.label :password_confirmation, "Confirm new password", class: "block text-sm font-medium text-gray-700 mb-2" %>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
+    </div>
+
+    <div class="mt-6">
+      <%= f.submit "Change my password", class: "w-full btn-unified" %>
+    </div>
+  <% end %>
+
+  <div class="text-center mt-4">
+    <%= link_to "Back to login", root_path, class: "text-blue-600 hover:text-blue-800" %>
   </div>
-
-  <div class="field">
-    <%= f.label :password_confirmation, "Confirm new password" %><br />
-    <%= f.password_field :password_confirmation, autocomplete: "new-password" %>
-  </div>
-
-  <div class="actions">
-    <%= f.submit "Change my password" %>
-  </div>
-<% end %>
-
-<%= render "devise/shared/links" %>
+</div>
 ```
 
 ## File: `app/views/devise/passwords/new.html.erb`
 
 ```
-<h2>Forgot your password?</h2>
-
-<%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post }) do |f| %>
-  <%= render "devise/shared/error_messages", resource: resource %>
-
-  <div class="field">
-    <%= f.label :email %><br />
-    <%= f.email_field :email, autofocus: true, autocomplete: "email" %>
+<turbo-frame id="auth_form_frame">
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-xl font-semibold">Reset password</h3>
   </div>
 
-  <div class="actions">
-    <%= f.submit "Send me reset password instructions" %>
-  </div>
-<% end %>
+  <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post, class: "space-y-4" }, data: { turbo: false }) do |f| %>
+    <%= render "devise/shared/error_messages", resource: resource %>
 
-<%= render "devise/shared/links" %>
+    <div>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email", placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
+    </div>
+
+    <p class="text-sm text-gray-600">
+      We'll send you a link to reset your password.
+    </p>
+
+    <div class="mt-6">
+      <%= f.submit "Send reset instructions", class: "w-full btn-unified" %>
+    </div>
+  <% end %>
+
+  <div class="text-center mt-4">
+    <span class="text-gray-600">Remember your password?</span>
+    <%= link_to "Log in", new_session_path(resource_name), data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+
+  <div class="text-center mt-2">
+    <span class="text-gray-600">Don't have an account?</span>
+    <%= link_to "Sign up", new_registration_path(resource_name), data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+</turbo-frame>
 ```
 
 ## File: `app/views/devise/registrations/edit.html.erb`
@@ -2589,71 +3070,57 @@ p Find me in app/views/admin/translations/show.html.slim
 ## File: `app/views/devise/registrations/new.html.erb`
 
 ```
-<h2>Sign up</h2>
-
-<%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
-  <%= render "devise/shared/error_messages", resource: resource %>
-
-  <div class="field">
-    <%= f.label :username %><br />
-    <%= f.text_field :username, autofocus: true %>
+<turbo-frame id="auth_form_frame">
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-xl font-semibold">Create account</h3> 
   </div>
 
-  <div class="field">
-    <%= f.label :email %><br />
-    <%= f.email_field :email, autofocus: true, autocomplete: "email" %>
-  </div>
+  <%= render "shared/social_buttons" %>
 
-  <div class="field">
-    <%= f.label :password %>
-    <% if @minimum_password_length %>
-    <em>(<%= @minimum_password_length %> characters minimum)</em>
-    <% end %><br />
-    <%= f.password_field :password, autocomplete: "new-password" %>
-  </div>
+  <%= form_for(resource, as: resource_name, url: registration_path(resource_name), data: { turbo: "false" }, html: { class: "space-y-4"}) do |f| %>
+    <%= render "devise/shared/error_messages", resource: resource %>
 
-  <div class="field">
-    <%= f.label :password_confirmation %><br />
-    <%= f.password_field :password_confirmation, autocomplete: "new-password" %>
-  </div>
+    <div>
+      <%= f.text_field :username, autofocus: true, autocomplete: "username", placeholder: "Username", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
+    </div>
+    
+    <div>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email", placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
+    </div>
 
-  <div class="actions">
-    <%= f.submit "Sign up" %>
-  </div>
-<% end %>
+    <div>
+      <%= f.password_field :password, autocomplete: "new-password", placeholder: "Password (#{@minimum_password_length} characters minimum)", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
+    </div>
 
-<%= render "devise/shared/links" %>
+    <div>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password", placeholder: "Password confirmation", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
+    </div>
+
+    <div class="mt-6">
+      <%= f.submit "Sign up", class: "w-full btn-unified" %>
+    </div>
+  <% end %>
+
+  <div class="text-center mt-4">
+    <span class="text-gray-600">Already have an account?</span>
+    <%= link_to "Log in", new_session_path(resource_name), data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800" %>
+  </div>
+</turbo-frame>
 ```
 
 ## File: `app/views/devise/sessions/new.html.erb`
 
 ```
-<h2>Log in</h2>
-
-<%= form_for(resource, as: resource_name, url: session_path(resource_name)) do |f| %>
-  <div class="field">
-    <%= f.label :email %><br />
-    <%= f.email_field :email, autofocus: true, autocomplete: "email" %>
+<%# app/views/devise/sessions/new.html.erb %>
+<turbo-frame id="auth_form_frame">
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-xl font-semibold">Sign in</h3>
   </div>
 
-  <div class="field">
-    <%= f.label :password %><br />
-    <%= f.password_field :password, autocomplete: "current-password" %>
-  </div>
-
-  <% if devise_mapping.rememberable? %>
-    <div class="field">
-      <%= f.check_box :remember_me %>
-      <%= f.label :remember_me %>
-    </div>
-  <% end %>
-
-  <div class="actions">
-    <%= f.submit "Log in" %>
-  </div>
-<% end %>
-
-<%= render "devise/shared/links" %>
+  <%# 共通のSlimパーシャルを呼び出す %>
+  <%= render "shared/social_buttons" %>
+  <%= render "shared/login_form", resource: resource, resource_name: resource_name %>
+</turbo-frame>
 ```
 
 ## File: `app/views/devise/shared/_error_messages.html.erb`
@@ -2788,81 +3255,131 @@ p Find me in app/views/admin/translations/show.html.slim
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-
     <%= yield :head %>
-
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
     <link rel="icon" href="/icon.png" type="image/png">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/icon.png">
-
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="text-lg bg-white min-h-screen flex flex-col" data-controller="auth-modal" data-action="keydown->auth-modal#closeOnEscape">
-    <!-- ページヘッダー -->
-    <header class="site-header mb-4">
-      <div class="header-container w-full">
-        <div class="header-content">
-          <%#<nav class="main-nav w-full bg-gray-200">%>
-          <nav class="main-nav w-full theme-header">
-            <nav class="nav-inner flex max-w-6xl mx-auto items-center justify-end gap-4 h-12 px-6">
+  <body class="text-lg bg-white min-h-screen flex flex-col" data-controller="auth-modal mobile-menu" data-action="keydown->auth-modal#closeOnEscape">
+    
+    <!-- ナビゲーションヘッダー -->
+    <header class="site-header">
+      <nav class="theme-header w-full">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6">
+          
+          <!-- トップバー: ブログオーナー + メニューボタン -->
+          <div class="flex items-center justify-between h-12">
+            
+            <!-- 左側: ブログオーナー（常に表示） -->
+            <div class="flex items-center gap-2">
+              <% if @blog_owner.present? %>
+                <% if @blog_owner.avatar.attached? %>
+                  <%= image_tag @blog_owner.avatar, class: "w-8 h-8 rounded-full" %>
+                <% else %>
+                  <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-semibold">
+                    <%= @blog_owner.username&.first&.upcase || "?" %>
+                  </div>
+                <% end %>
+                <%= link_to @blog_owner.username, user_profile_path(username: @blog_owner.username, locale: params[:locale]), class: "hover:!text-gray-400 font-medium text-sm sm:text-base" %>
+              <% end %>
+            </div>
 
-            <%= link_to locale_switch_label, locale_switch_url(locale_switch_target), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded" %>
+            <!-- 右側: デスクトップメニュー（768px以上で表示） -->
+            <div class="hidden md:flex items-center gap-4 lg:gap-6">
+              
+              <!-- 言語切り替え -->
+              <%= link_to locale_switch_label, locale_switch_url(locale_switch_target), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded text-sm whitespace-nowrap" %>
 
-             <!-- 検索フォームを追加 -->
-    <% if params[:username].present? %>
-      <div class="header-search">
-        <%= form_with url: user_search_path(params[:username], locale: params[:locale] || 'ja'), method: :get, local: true, class: "search-form flex items-center gap-2" do |f| %>
-          <%= f.text_field :q,
-              placeholder: t('blog.search.placeholder'),
-              class: "search-input w-64 border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-4 py-1",
-              value: params[:q] %>
-          <%= f.submit t('blog.search.button'),
-              class: "btn-unified text-sm" %>
-        <% end %>
-      </div>
-    <% end %>
+              <!-- 検索フォーム -->
+              <% if params[:username].present? %>
+                <%= form_with url: user_search_path(params[:username], locale: params[:locale] || 'ja'), method: :get, local: true, class: "flex items-center gap-2" do |f| %>
+                  <%= f.text_field :q,
+                      placeholder: t('blog.search.placeholder'),
+                      class: "w-32 lg:w-48 border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-3 py-1 text-sm",
+                      value: params[:q] %>
+                  <%= f.submit t('blog.search.button'),
+                      class: "btn-unified text-sm whitespace-nowrap !py-1" %>
+                <% end %>
+              <% end %>
 
-            <div class="flex items-center gap-4">
+              <!-- Dashboard / Sign in -->
               <% if user_signed_in? %>
-                <%= link_to "Dashboard", dashboard_articles_path, class: "text-gray-200 hover:text-gray-100 font-medium" %>
-                <div class="flex items-center gap-2">
-                  <% if current_user.avatar.attached? %>
-                    <%= image_tag current_user.avatar, class: "w-8 h-8 rounded-full" %>
-                  <% else %>
-                    <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm">
-                      <%= current_user.display_name.first %>
-                    </div>
-                  <% end %>
-                  <%= link_to current_user.display_name, user_profile_path(current_user.username), locale: params[:locale], class: "text-gray-200 hover:text-gray-100 font-medium" %>
-                </div>
+                <%= link_to "Dashboard", dashboard_articles_path, class: "hover:!text-gray-400 font-medium text-sm whitespace-nowrap" %>
               <% else %>
-                <button data-action="click->auth-modal#showModal" class="btn-unified text-sm">
+                <button data-action="click->auth-modal#showModal" 
+                        class="bg-blue-600 !text-white rounded cursor-pointer text-sm font-medium hover:bg-blue-500 transition-colors whitespace-nowrap !py-1 px-5">
                   Sign in
                 </button>
               <% end %>
             </div>
-            </nav>
-           </nav>
-          <div class="text-center py-10">
-            <%= link_to (@blog_setting&.display_title(I18n.locale) || "Dual Pascal"), user_articles_path(@blog_setting.user.username, locale: I18n.locale), class: "text-4xl font-bold py-4 inline-block blog-title" %>
-            <% if @blog_setting&.display_subtitle(I18n.locale).present? %>
-              <p class="text-lg text-gray-600 mt-2"><%= @blog_setting.display_subtitle(I18n.locale) %></p>
+
+            <!-- モバイルメニューボタン（767px以下で表示） -->
+            <button class="md:hidden p-2 text-gray-200" data-action="click->mobile-menu#toggle" aria-label="メニュー">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- モバイルメニュー（展開式、767px以下で表示） -->
+          <div class="hidden md:hidden border-t border-gray-400/30 py-3" data-mobile-menu-target="menu">
+            
+            <!-- 検索フォーム -->
+            <% if params[:username].present? %>
+              <div class="mb-3 px-3">
+                <%= form_with url: user_search_path(params[:username], locale: params[:locale] || 'ja'), method: :get, local: true, class: "flex flex-col gap-2" do |f| %>
+                  <%= f.text_field :q,
+                      placeholder: t('blog.search.placeholder'),
+                      class: "w-full border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-3 py-2 text-sm",
+                      value: params[:q] %>
+                  <%= f.submit t('blog.search.button'),
+                      class: "btn-unified text-sm w-full" %>
+                <% end %>
+              </div>
+            <% end %>
+
+            <!-- 言語切り替え -->
+            <div class="mb-3">
+              <%= link_to locale_switch_label, locale_switch_url(locale_switch_target), class: "block text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm" %>
+            </div>
+
+            <!-- Dashboard / Sign in -->
+            <% if user_signed_in? %>
+              <%= link_to "Dashboard", dashboard_articles_path, class: "block text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm" %>
+            <% else %>
+              <button data-action="click->auth-modal#showModal" class="block w-full text-left text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm">
+                Sign in
+              </button>
             <% end %>
           </div>
-          <div class="max-w-6xl mx-auto px-6 border-b border-gray-500"></div>
 
         </div>
+      </nav>
+
+      <!-- ブログタイトルエリア -->
+      <div class="text-center py-6 sm:py-10">
+        <% if @blog_setting&.user %>
+          <%= link_to (@blog_setting.display_title(I18n.locale) || "Dual Pascal"), 
+              user_articles_path(@blog_setting.user.username, locale: I18n.locale), 
+              class: "text-2xl sm:text-3xl md:text-4xl font-bold py-4 inline-block blog-title" %>
+        <% else %>
+          <%= link_to "Dual Pascal", root_path, class: "text-2xl sm:text-3xl md:text-4xl font-bold py-4 inline-block blog-title" %>
+        <% end %>
+
+        <% if @blog_setting&.display_subtitle(I18n.locale).present? %>
+          <p class="text-base sm:text-lg text-gray-600 mt-2 px-4"><%= @blog_setting.display_subtitle(I18n.locale) %></p>
+        <% end %>
       </div>
+      
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 border-b border-gray-500"></div>
     </header>
 
+    <!-- フラッシュメッセージ -->
     <% flash.each do |type, message| %>
-      <div class="flash-message text-red-700 p-4 mb-4 max-w-6xl text-center">
+      <div class="flash-message text-red-700 p-4 mb-4 max-w-6xl mx-auto text-center">
         <p><%= message %></p>
       </div>
     <% end %>
@@ -2871,28 +3388,46 @@ p Find me in app/views/admin/translations/show.html.slim
   
     <!-- メインコンテンツ -->
     <main class="main-content flex-grow">
-      <div class="content-container max-w-6xl mx-auto px-6 mb-8">
+      <div class="content-container max-w-6xl mx-auto px-4 sm:px-6 mb-8">
         <%= yield %>
       </div>
     </main>
 
+    <!-- フッター -->
+    <footer class="site-footer">
+      <div class="footer-container w-full theme-footer border-t border-gray-200">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+          
+          <!-- 上段：リンクエリア -->
+          <div class="flex flex-col sm:flex-row flex-wrap justify-center sm:justify-between gap-4 sm:gap-6 mb-6 text-sm">
+            <nav class="flex flex-wrap justify-center gap-x-4 sm:gap-x-6 gap-y-2">
+              <%= link_to t('footer.terms'), terms_of_service_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
+              <%= link_to t('footer.privacy'), privacy_policy_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
+              <%= link_to t('footer.disclaimer'), disclaimer_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
+              <%= link_to t('footer.contact'), new_contact_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
+            </nav>
+            
+            <div class="flex items-center justify-center gap-2">
+              <%= link_to "Photos by Unsplash", "https://unsplash.com/", target: "_blank", rel: "noopener", class: "opacity-70 hover:opacity-100 hover:text-white transition-all text-sm" %>
+            </div>
+          </div>
 
-<!-- フッター部分の更新 -->
-<footer class="site-footer">
-  <div class="footer-container w-full theme-footer">
-    <div class="footer-content max-w-6xl mx-auto px-6 py-4">
-      <div class="flex justify-between items-center">
-        <p>© 2025 Dual Pascal. All rights reserved.</p>
-        <div class="flex gap-4">
-          <%= link_to "利用規約", terms_of_service_path, class: "text-sm hover:text-white" %>
-          <%= link_to "プライバシーポリシー", privacy_policy_path, class: "text-sm hover:text-white" %>
-          <%= link_to "免責事項", disclaimer_path, class: "text-sm hover:text-white" %>
-          <%= link_to "運営への問い合わせ", new_contact_path, class: "text-sm hover:text-white" %>
+          <!-- 下段：コピーライトエリア -->
+          <div class="pt-6 border-t border-gray-500/20 text-center text-sm opacity-80">
+            <p>
+              <% custom_title = @blog_setting&.localized_title(I18n.locale) %>
+              <% if custom_title.present? %>
+                <strong><%= custom_title %></strong> <span class="text-xs">powered by</span> Dual Pascal.
+              <% else %>
+                Dual Pascal.
+              <% end %>
+              All rights reserved. © <%= Time.current.year %>
+            </p>
+          </div>
+          
         </div>
       </div>
-    </div>
-  </div>
-</footer>
+    </footer>
   </body>
 </html>
 ```
@@ -2915,64 +3450,182 @@ p Find me in app/views/admin/translations/show.html.slim
     <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
 
     <%= javascript_importmap_tags %>
+    <style>
+/* デスクトップ: 警告を非表示 */
+#screen-size-warning {
+  display: none;
+}
+
+            /* タブレット・スマホ: 警告を表示、コンテンツを非表示 */
+            @media (max-width: 1023px) {
+              #screen-size-warning {
+                display: flex !important;
+              }
+              #dashboard-content {
+                display: none !important;
+              }
+            }
+    </style>
   </head>
-  <body class="text-lg bg-white min-h-screen flex flex-col">
-    <header class="mb-4 w-full theme-header">
-      <div class="dashboard-nav flex max-w-6xl mx-auto items-center justify-between h-12">
-        <div class="nav-left flex mx-2">
-        <h1>
-          <%= link_to "管理画面", dashboard_articles_path, class: "mx-2 hover:text-white" %>
+  <body class="text-lg bg-white">
+
+    <div id="screen-size-warning" class="fixed inset-0 bg-gray-900 text-white flex items-center justify-center p-6 z-50">
+      <div class="text-center max-w-md">
+        <svg class="w-24 h-24 mx-auto mb-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+
+        <h1 class="text-3xl font-bold mb-4">
+          デスクトップ環境を<br>ご利用ください
         </h1>
-          <div class="nav-links">
-            <%= link_to "カテゴリ", dashboard_categories_path, class: "mx-2 hover:text-white" %>
-            <%= link_to "コメント", dashboard_comments_path, class: "mx-2 hover:text-white" %>
-            <%= link_to "プロフィール", edit_dashboard_profile_path, class: "mx-2 hover:text-white" %>
-            <%= link_to "ブログ設定", edit_dashboard_blog_setting_path, class: "mx-2 hover:text-white" %>
-            <%= link_to "サイトを見る", user_articles_path(current_user.username, locale: I18n.locale), target: "_blank", class: "mx-2 hover:text-white" %>
+
+        <p class="text-lg text-gray-300 mb-8">
+        ダッシュボードはPC・タブレット<br>
+        （横向き）での利用を推奨しています
+        </p>
+
+        <div class="bg-gray-800 rounded-lg p-4 mb-8">
+          <p class="text-sm text-gray-400 mb-2">推奨環境</p>
+          <ul class="text-sm text-gray-300 space-y-1 text-left">
+            <li>• 画面幅: 1024px 以上</li>
+            <li>• Chrome, Firefox, Safari, Edge</li>
+          </ul>
+        </div>
+
+        <%= link_to "ブログを見る", root_path, class: "inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition" %>
+      </div>
+    </div>
+
+    <div id="dashboard-content" class="min-h-screen flex flex-col">
+<header class="mb-4 w-full theme-header">
+        <div class="dashboard-nav flex max-w-6xl mx-auto items-center justify-between h-12 px-2">
+          <div class="flex items-center">
+            <h1 class="mr-6">
+              <%= link_to "Dashboard", dashboard_articles_path, class: "font-bold text-lg hover:text-white transition-colors" %>
+            </h1>
+
+            <div class="nav-links flex items-center">
+              <%= link_to dashboard_categories_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
+                <%= lucide_icon 'square-library', class: "w-5 h-5" %>
+                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  Categories
+                </span>
+              <% end %>
+
+              <%= link_to dashboard_comments_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
+                <%= lucide_icon 'message-square', class: "w-5 h-5" %>
+                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  Comments
+                </span>
+              <% end %>
+
+              <%= link_to edit_dashboard_profile_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
+                <%= lucide_icon 'user', class: "w-5 h-5" %>
+                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  Profile
+                </span>
+              <% end %>
+
+              <%= link_to edit_dashboard_blog_setting_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
+                <%= lucide_icon 'settings', class: "w-5 h-5" %>
+                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  Settings
+                </span>
+              <% end %>
+
+              <%= link_to dashboard_analytics_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
+                <%= lucide_icon 'bar-chart-3', class: "w-5 h-5" %>
+                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  Analytics
+                </span>
+              <% end %>
+
+              <%= link_to user_articles_path(current_user.username, locale: I18n.locale), target: "_blank", class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
+                <%= lucide_icon 'external-link', class: "w-5 h-5" %>
+                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                  View Site
+                </span>
+              <% end %>
+
+              <% if current_user.admin? %>
+                <div class="h-6 w-px bg-gray-600 mx-2"></div>
+                <%= link_to admin_users_path, class: "mx-2 text-yellow-400 hover:text-yellow-200 font-bold text-sm flex items-center gap-1" do %>
+                  ユーザー管理
+                <% end %>
+                <%= link_to admin_articles_path, class: "mx-2 text-yellow-400 hover:text-yellow-200 font-bold text-sm flex items-center gap-1" do %>
+                  全記事管理
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="user-info flex items-center gap-4 text-sm">
+            <% if user_signed_in? %>
+              <div class="hidden sm:flex items-center text-gray-400">
+                <span class="mr-2">Signed in as</span>
+                <span class="font-semibold text-red-500"><%= current_user.username %></span>
+              </div>
+              
+              <%= link_to destroy_user_session_path, 
+                  data: { "turbo-method": "delete" }, 
+                  class: "text-gray-300 hover:text-white transition-colors flex items-center gap-1 ml-2" do %>
+                <span class="hidden sm:inline">Logout</span>
+                <%= lucide_icon 'log-out', class: "w-4 h-4" %>
+              <% end %>
+            <% else %>
+              <%= link_to "Login", new_user_session_path, class: "text-white hover:text-gray-200" %>
+            <% end %>
           </div>
         </div>
-        
-        <div class="user-info">
-          <% if user_signed_in? %>
-            <span class="text-gray-300">
-              ログイン中: <%= current_user.username %>
-            </span>
-            <%= link_to "ログアウト", destroy_user_session_path, 
-              data: { "turbo-method": "delete" },
-              class: "mx-2 hover:text-white"
-                %>
-          <% else %>
-            <%= link_to "ログイン", new_user_session_path %>
-          <% end %>
+      </header>
+
+      <% flash.each do |type, message| %>
+        <div class="flash-message text-green-700 p-4 mb-4 max-w-6xl text-center">
+          <p><%= message %></p>
         </div>
-      </div>
-    </header>
+      <% end %>
 
-    <% flash.each do |type, message| %>
-      <div class="flash-message text-green-700 p-4 mb-4 max-w-6xl text-center">
-        <p><%= message %></p>
-      </div>
-    <% end %>
-
-    <div class="container max-w-6xl mx-auto px-6 mb-8 flex-grow">
+      <div class="container max-w-6xl mx-auto px-6 mb-8 flex-grow">
         <%= yield %>
-    </div>
-
-<!-- ダッシュボードフッター部分の更新 -->
-<footer class="site-footer">
-  <div class="footer-container w-full theme-footer">
-    <div class="footer-content max-w-6xl mx-auto px-6 py-4">
-      <div class="flex justify-between items-center">
-        <p>© 2025 Dual Pascal. All rights reserved.</p>
-        <div class="flex gap-4 text-sm">
-          <%= link_to "利用規約", terms_of_service_path, class: "hover:text-white" %>
-          <%= link_to "プライバシーポリシー", privacy_policy_path, class: "hover:text-white" %>
-          <%= link_to "免責事項", disclaimer_path, class: "hover:text-white" %>
-        </div>
       </div>
-    </div>
-  </div>
-</footer>
+
+
+      <footer class="site-footer mt-auto">
+        <div class="footer-container w-full theme-footer border-t border-gray-200">
+          <div class="max-w-6xl mx-auto px-6 py-8">
+
+            <%# 上段：リンクエリア %>
+            <div class="flex flex-wrap justify-center md:justify-between gap-6 mb-6 text-sm">
+              <nav class="flex flex-wrap justify-center gap-x-6 gap-y-2">
+                <%= link_to "利用規約", terms_of_service_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
+                <%= link_to "プライバシーポリシー", privacy_policy_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
+                <%= link_to "免責事項", disclaimer_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
+                <%= link_to "運営への問い合わせ", new_contact_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
+                <%= link_to "退会", dashboard_delete_account_confirmation_path, class: "text-red-400 hover:text-red-300 transition-colors" %>
+              </nav>
+
+              <div class="flex items-center gap-2">
+                <%= link_to "Photos by Unsplash", "https://unsplash.com/", target: "_blank", rel: "noopener", class: "opacity-70 hover:opacity-100 hover:text-white transition-all" %>
+              </div>
+            </div>
+
+            <%# 下段：コピーライトエリア %>
+            <div class="pt-6 border-t border-gray-500/20 text-center text-sm opacity-80">
+              <p>
+              <% custom_title = @blog_setting&.localized_title(I18n.locale) %>
+              <% if custom_title.present? %>
+                <strong><%= custom_title %></strong> <span class="text-xs">powered by</span> Dual Pascal.
+              <% else %>
+                Dual Pascal.
+              <% end %>
+              All rights reserved. © <%= Time.current.year %>
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </footer>
+        </div>
   </body>
 </html>
 ```
@@ -3052,7 +3705,7 @@ html
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 1. 免責事項の概要
         p.text-gray-700.leading-relaxed
-          | Dual Pascal（以下「当サービス」）は、ユーザーが安心してご利用いただけるよう努めておりますが、技術的制約等により完全性を保証することはできません。本免責事項は、当サービスの利用に関して運営者が負う責任の範囲を明確にするものです。
+          | Dual Pascal（以下「当サービス」）は、可能な限り安定したサービスの提供に努めますが、個人によって運営されており、技術的な制約や運営者の事情により完全性を保証することはできません。本免責事項は、当サービスの利用に関して運営者が負う責任の範囲を明確にするものです。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 2. サービス内容に関する免責
@@ -3060,9 +3713,9 @@ html
           p.text-gray-700.leading-relaxed
             | 1. 運営者は、当サービスの内容について、その正確性、安全性、有用性、完全性、継続性等について、明示的にも暗黙的にも一切保証いたしません。
           p.text-gray-700.leading-relaxed
-            | 2. 当サービスは現状有姿で提供されており、運営者は技術的瑕疵やセキュリティホール等の存在可能性を否定いたしません。
+            | 2. 当サービスは「現状有姿（As is）」で提供されており、運営者はバグ、技術的瑕疵、セキュリティホール等の存在可能性を否定いたしません。
           p.text-gray-700.leading-relaxed
-            | 3. 運営者は、ユーザーが当サービスを利用することによって得られる情報等について、その正確性、有用性、完全性等について一切保証いたしません。
+            | 3. 運営者は、ユーザーが当サービスを利用することによって得られる情報等について、いかなる保証も行いません。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 3. ユーザー投稿コンテンツに関する免責
@@ -3072,66 +3725,55 @@ html
           p.text-gray-700.leading-relaxed
             | 2. ユーザーコンテンツが第三者の著作権、肖像権、その他の権利を侵害した場合、当該ユーザーが自己の責任と費用負担において解決するものとし、運営者は一切の責任を負いません。
           p.text-gray-700.leading-relaxed
-            | 3. ユーザーコンテンツの正確性、適法性、道徳性等については、投稿したユーザーが全ての責任を負うものとし、運営者は一切関与いたしません。
+            | 3. ユーザーコンテンツの正確性、適法性、道徳性等については、投稿したユーザーが全ての責任を負うものとします。
 
       section
-        h2.text-xl.font-semibold.mb-4.text-gray-900 4. システム障害・データ消失に関する免責
+        h2.text-xl.font-semibold.mb-4.text-gray-900 4. システム障害・データ消失・サービス終了に関する免責
         .space-y-4
           p.text-gray-700.leading-relaxed
-            | 1. 運営者は、以下の事由によるサービスの中断、停止、データの消失等について一切の責任を負いません。
+            | 1. 運営者は、以下の事由によるサービスの中断、停止、終了、データの消失等について一切の責任を負いません。
           ul.list-disc.ml-6.text-gray-700.space-y-1
-            li システムメンテナンス
-            li サーバー機器の故障、不具合
-            li 自然災害、停電
-            li 通信回線の障害
+            li システムメンテナンス（定期・緊急を問わず）
+            li サーバー機器の故障、不具合、通信回線の障害
+            li 自然災害、停電、不可抗力
             li サイバー攻撃、不正アクセス
-            li その他運営者の責に帰さない事由
+            li 運営者の事情によるサービスの提供終了
           p.text-gray-700.leading-relaxed
-            | 2. ユーザーは自己の責任において、重要なデータについては定期的にバックアップを取ることを推奨いたします。
+            | 2. 当サービスはデータの永続的な保存を保証するものではありません。ユーザーは自己の責任において、重要な記事データ等については定期的にバックアップを取ることを強く推奨いたします。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 5. 第三者サービスとの連携に関する免責
         .space-y-4
           p.text-gray-700.leading-relaxed
-            | 1. 当サービスでは、GitHub、Google等の第三者が提供するOAuthサービスを利用した認証機能を提供しております。これらの第三者サービスに関する問題については、運営者は一切の責任を負いません。
+            | 1. 当サービスでは、GitHub、Google等の第三者が提供する外部サービスと連携した機能（OAuth認証など）を提供しています。これらの外部サービスの不具合や仕様変更に起因する問題について、運営者は責任を負いません。
           p.text-gray-700.leading-relaxed
-            | 2. 当サービスに外部サイトへのリンクが含まれる場合がありますが、リンク先サイトの内容、安全性等について運営者は一切の責任を負いません。
+            | 2. 当サービスからリンクされた外部サイトの内容や安全性について、運営者は一切の責任を負いません。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 6. 損害賠償の限定
         .space-y-4
           p.text-gray-700.leading-relaxed
-            | 1. 運営者の債務不履行または不法行為によりユーザーに損害が生じた場合、運営者の損害賠償責任は、現実に発生した直接損害に限定され、特別損害、間接損害、逸失利益、精神的損害等については、一切責任を負いません。
+            | 1. 運営者の債務不履行または不法行為によりユーザーに損害が生じた場合、運営者の損害賠償責任は、現実に発生した直接かつ通常の損害に限定され、特別損害、間接損害、逸失利益、精神的損害等については、一切責任を負いません。
           p.text-gray-700.leading-relaxed
-            | 2. 前項の規定にかかわらず、運営者の故意または重過失による場合は、この限りではありません。
+            | 2. ユーザーが有料サービスを利用している場合、賠償額の上限は、当該ユーザーが過去12ヶ月間に支払った利用料金の総額とします。
           p.text-gray-700.leading-relaxed
-            | 3. 消費者契約法の適用がある場合、同法の規定に従います。
+            | 3. 消費者契約法の適用がある場合など、法令により免責が認められない場合は、同法の規定に従います。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 7. ユーザー間トラブルに関する免責
         .space-y-4
           p.text-gray-700.leading-relaxed
-            | 1. ユーザー間で生じたトラブル、争議等については、当事者間で解決していただくものとし、運営者は一切関与いたしません。
+            | 1. ユーザー間で生じたトラブル、争議等については、当事者間で解決していただくものとし、運営者は原則として介入いたしません。
           p.text-gray-700.leading-relaxed
-            | 2. ただし、運営者が必要と認めた場合には、コンテンツの削除、ユーザーアカウントの停止等の措置を取ることがあります。
+            | 2. ただし、運営者が必要と認めた場合には、利用規約に基づきコンテンツの削除、アカウントの停止等の措置を取ることがあります。
 
       section
-        h2.text-xl.font-semibold.mb-4.text-gray-900 8. 法令の遵守
+        h2.text-xl.font-semibold.mb-4.text-gray-900 8. 免責事項の変更
         p.text-gray-700.leading-relaxed
-          | ユーザーは、当サービスの利用にあたり、関連する法令を遵守し、第三者の権利を侵害しないよう注意する責任を負います。法令違反や権利侵害に起因する問題については、当該ユーザーが全ての責任を負うものとします。
+          | 運営者は、必要に応じて本免責事項を変更することがあります。変更後の免責事項は、当サイトに掲載された時点で効力を生じるものとします。
 
       section
-        h2.text-xl.font-semibold.mb-4.text-gray-900 9. 免責事項の変更
-        .space-y-4
-          p.text-gray-700.leading-relaxed
-            | 1. 運営者は、必要に応じて本免責事項を変更することがあります。
-          p.text-gray-700.leading-relaxed
-            | 2. 変更後の免責事項は、当サイトに掲載された時点で効力を生じるものとします。
-          p.text-gray-700.leading-relaxed
-            | 3. 重要な変更については、適切な方法でユーザーに通知いたします。
-
-      section
-        h2.text-xl.font-semibold.mb-4.text-gray-900 10. お問い合わせ
+        h2.text-xl.font-semibold.mb-4.text-gray-900 9. お問い合わせ
         p.text-gray-700.leading-relaxed
           | 本免責事項に関するご質問は、
           = link_to "お問い合わせフォーム", new_contact_path, class: "text-blue-600 hover:text-blue-800 underline"
@@ -3182,36 +3824,33 @@ html
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 1. 個人情報の定義
         p.text-gray-700.leading-relaxed
-          | 本プライバシーポリシーにおいて、「個人情報」とは、個人情報保護法にいう「個人情報」を指すものとし、生存する個人に関する情報であって、当該情報に含まれる氏名、生年月日、住所、電話番号、連絡先その他の記述等により特定の個人を識別できる情報及び容貌、指紋、声紋にかかるデータ、及び健康保険証の保険者番号などの当該情報単体から特定の個人を識別できる情報（個人識別情報）を指します。
+          | 本プライバシーポリシーにおいて、「個人情報」とは、個人情報保護法にいう「個人情報」を指すものとし、当該情報に含まれる氏名、生年月日、住所、電話番号、連絡先その他の記述等により特定の個人を識別できる情報を指します。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 2. 個人情報の収集方法
         .space-y-4
           p.text-gray-700.leading-relaxed
-            | 運営者は、ユーザーが利用登録をする際に、メールアドレス、ユーザーネーム等の個人情報をお尋ねすることがあります。また、ユーザーと提携先などとの間でなされたユーザーの個人情報を含む取引記録や決済に関する情報を、運営者の提携先（情報提供元、広告主、広告配信先などを含みます。以下、「提携先」といいます。）などから収集することがあります。
+            | 運営者は、ユーザーが利用登録をする際に、メールアドレス、ユーザー名等の個人情報をお尋ねします。また、将来的に有料サービスを提供する場合には、決済に必要な情報をお尋ねすることがあります。
           p.text-gray-700.leading-relaxed
-            | 運営者は、ユーザーについて、利用したサービスやソフトウェア、購入した商品、閲覧したページや広告の履歴、検索した検索キーワード、利用日時、利用の方法、利用環境、郵便番号や性別、職業、年齢、ユーザーのIPアドレス、クッキー情報、位置情報、端末の個体識別情報などの履歴情報および特性情報を、ユーザー運営者や提携先のサービスを利用し、またはページを閲覧する際に収集します。
+            | また、ユーザーが本サービスを利用する際に、IPアドレス、クッキー（Cookie）情報、端末情報、ブラウザ情報、利用日時などの履歴情報および特性情報を収集します。これは本サービスの不正利用防止およびサービス改善のために利用されます。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 3. 個人情報を収集・利用する目的
         .space-y-4
           p.text-gray-700.leading-relaxed 運営者が個人情報を収集・利用する目的は、以下のとおりです。
           ul.list-disc.ml-6.text-gray-700.space-y-2
-            li 運営者サービスの提供・運営のため
-            li ユーザーからのお問い合わせに回答するため
-            li 運営者が行うアンケートやキャンペーンに関するご連絡のため
-            li ユーザーの本人確認のため
-            li ユーザーが利用中のサービスの新機能、更新情報、キャンペーン等及び運営者が提供する他のサービスの案内のため
-            li メンテナンス、重要なお知らせなど必要に応じたご連絡のため
-            li 利用規約に違反したユーーや、不正・不当な目的でサービスを利用しようとするユーザーの特定をし、ご利用をお断りするため
+            li 本サービスの提供・運営および品質向上のため
+            li ユーザーからのお問い合わせに回答するため（本人確認を行うことを含む）
+            li 本サービスの新機能、更新情報、メンテナンス、重要なお知らせなどをご連絡するため
+            li 利用規約に違反したユーザーや、不正・不当な目的でサービスを利用しようとするユーザーを特定し、ご利用をお断りするため
             li ユーザーにご自身の登録情報の閲覧や変更、削除、ご利用状況の閲覧を行っていただくため
-            li 有料サービスにおいて、ユーザーに利用料金を請求するため
+            li 将来的に有料サービスを提供する場合の、利用料金の請求および決済処理のため
             li 上記の利用目的に付随する目的
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 4. 利用目的の変更
         p.text-gray-700.leading-relaxed
-          | 運営者は、利用目的が変更前と関連性を有すると合理的に認められる場合に限り、個人情報の利用目的を変更するものとします。利用目的の変更を行った場合には、変更後の目的について、運営者所定の方法により、ユーザーに通知し、または本ウェブサイト上に公表するものとします。
+          | 運営者は、利用目的が変更前と関連性を有すると合理的に認められる場合に限り、個人情報の利用目的を変更するものとします。変更を行った場合には、本ウェブサイト上に公表するものとします。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 5. 個人情報の第三者提供
@@ -3222,49 +3861,27 @@ html
             li 人の生命、身体または財産の保護のために必要がある場合であって、本人の同意を得ることが困難であるとき
             li 公衆衛生の向上または児童の健全な育成の推進のために特に必要がある場合であって、本人の同意を得ることが困難であるとき
             li 国の機関もしくは地方公共団体またはその委託を受けた者が法令の定める事務を遂行することに対して協力する必要がある場合であって、本人の同意を得ることにより当該事務の遂行に支障を及ぼすおそれがあるとき
-            li 予め次の事項を告知あるいは公表し、かつ運営者が個人情報保護委員会に届出をしたとき
-            ul.list-disc.ml-6.text-gray-600.space-y-1.mt-2
-              li 利用目的に第三者への提供を含むこと
-              li 第三者に提供されるデータの項目
-              li 第三者への提供の手段または方法
-              li 本人の求めに応じて個人情報の第三者への提供を停止すること
-              li 本人の求めを受け付ける方法
+            li 決済処理やアクセス解析など、利用目的の達成に必要な範囲内において個人情報の取扱いの全部または一部を委託する場合
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 6. 個人情報の開示
-        .space-y-4
-          p.text-gray-700.leading-relaxed
-            | 運営者は、本人から個人情報の開示を求められたときは、本人に対し、遅滞なくこれを開示します。ただし、開示することにより次のいずれかに該当する場合は、その全部または部を開示しないこともあり、開示しない決定をした場合には、その旨を遅滞なく通知します。
-          ul.list-disc.ml-6.text-gray-700.space-y-1
-            li 本人または第三者の生命、身体、財産その他の権利利益を害するおそれがある場合
-            li 運営者の業務の適正な実施に著しい支障を及ぼすおそれがある場合
-            li その他法令に違反することとなる場合
+        p.text-gray-700.leading-relaxed
+          | 運営者は、本人から個人情報の開示を求められたときは、本人に対し、遅滞なくこれを開示します。ただし、開示することにより本人または第三者の権利利益を害するおそれがある場合や、業務の適正な実施に著しい支障を及ぼすおそれがある場合は、その全部または一部を開示しないこともあります。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 7. 個人情報の訂正および削除
-        .space-y-4
-          p.text-gray-700.leading-relaxed
-            | 1. ユーザーは、運営者の保有する自己の個人情報が誤った情報である場合には、運営者が定める手続きにより、運営者に対して個人情報の訂正、追加または削除（以下、「訂正等」といいます。）を請求することができます。
-          p.text-gray-700.leading-relaxed
-            | 2. 運営者は、ユーザーから前項の請求を受けてその請求に理由があると判断した場合には、遅滞なく、当該個人情報の訂正等を行うものとします。
-          p.text-gray-700.leading-relaxed
-            | 3. 運営者は、前項の規定に基づき訂正等を行った場合、または訂正等を行わない旨の決定をしたときは遅滞なく、これをユーザーに通知します。
+        p.text-gray-700.leading-relaxed
+          | ユーザーは、運営者の保有する自己の個人情報が誤った情報である場合には、運営者が定める手続きにより、個人情報の訂正、追加または削除を請求することができます。運営者は、その請求に応じる必要があると判断した場合には、遅滞なく当該個人情報の訂正等を行います。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 8. 個人情報の利用停止等
-        .space-y-4
-          p.text-gray-700.leading-relaxed
-            | 運営者は、本人から、個人情報が、利用目的の範囲を超えて取り扱われているという理由、または不正の手段により取得されたものであるという理由により、その利用の停止または消去（以下、「利用停止等」といいます。）を求められた場合には、遅滞なく必要な調査を行います。
-          p.text-gray-700.leading-relaxed
-            | 前項の調査結果に基づき、その請求に理由があると判断した場合には、遅滞なく、当該個人情報の利用停止等を行います。ただし、個人情報の利用停止等に多額の費用を有する場合その他利用停止等を行うことが困難な場合であって、ユーザーの権利利益を保護するために必要なこれに代わるべき措置をとれる場合は、この代替策を講じるものとします。
+        p.text-gray-700.leading-relaxed
+          | 運営者は、本人から、個人情報が利用目的の範囲を超えて取り扱われているという理由、または不正の手段により取得されたものであるという理由により、その利用の停止または消去を求められた場合には、遅滞なく必要な調査を行い、その結果に基づき個人情報の利用停止等を行います。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 9. プライバシーポリシーの変更
-        .space-y-4
-          p.text-gray-700.leading-relaxed
-            | 1. 本ポリシーの内容は、法令その他本ポリシーに別段の定めのある事項を除いて、ユーザーに通知することなく、変更することができるものとします。
-          p.text-gray-700.leading-relaxed
-            | 2. 運営者が別途定める場合を除いて、変更後のプライバシポリシーは、本ウェブサイトに掲載したときから効力を生じるものとします。
+        p.text-gray-700.leading-relaxed
+          | 本ポリシーの内容は、ユーザーに通知することなく、変更することができるものとします。変更後のプライバシーポリシーは、本ウェブサイトに掲載したときから効力を生じるものとします。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 10. お問い合わせ窓口
@@ -3279,7 +3896,6 @@ html
           | 本ポリシーに関するお問い合わせは
           = link_to "こちら", new_contact_path, class: "text-blue-600 hover:text-blue-800 underline"
           | からお願いいたします。
-
 ```
 
 ## File: `app/views/legal/terms_of_service.en.html.slim`
@@ -3353,8 +3969,8 @@ html
             li 運営者、本サービスの他のユーザー、または第三者の知的財産権、肖像権、プライバシー、名誉その他の権利または利益を侵害する行為
             li 本サービスを通じ、以下のような有害な情報を送信する行為
             ul.list-disc.ml-6.text-gray-600.space-y-1.mt-2
-              li 過度に暴力的な表現
-              li 露骨な性的表現
+              li 暴力的な表現
+              li 性的表現
               li 人種、国籍、信条、性別、社会的身分、門地等による差別につながる表現
               li 自殺、自傷行為、薬物乱用を誘引または助長する表現
               li その他反社会的な内容を含み他人に不快感を与える表現
@@ -3362,9 +3978,6 @@ html
             li 本サービスの運営を妨害するおそれのある行為
             li 運営者のサーバーやネットワーク等に不正にアクセスする行為
             li 第三者のIDまたはパスワードを不正に使用する行為
-            li 営業、宣伝、広告、勧誘、その他営利を目的とする行為
-            li 面識のない異性との出会いや交際を目的とする行為
-            li 他のユーザーに関する個人情報の収集または蓄積行為
             li 違法、不正または不当な目的を持って本サービスを利用する行為
             li 反社会的勢力に対して直接または間接に利益を供与する行為
             li その他、運営者が不適切と判断する行為
@@ -3384,11 +3997,7 @@ html
         h2.text-xl.font-semibold.mb-4.text-gray-900 第6条（著作権）
         .space-y-4
           p.text-gray-700.leading-relaxed
-            | 1. ユーザーが本サービスを利用して投稿したテキスト、画像、動画等のコンテンツの著作権は、当該ユーザーその他既存の権利者に留保されます。
-          p.text-gray-700.leading-relaxed
-            | 2. ユーザーは、投稿したコンテンツについて、運営者が本サービスの運営、改善、プロモーション等に必要な範囲で利用（複製、送信、表示、配布等を含みます。）することについて、無償で許諾するものとします。
-          p.text-gray-700.leading-relaxed
-            | 3. 前項の利用許諾は、ユーザーが本サービスを退会した場合であっても、合理的な期間、存続するものとします。
+            |  ユーザーが本サービスを利用して投稿したテキスト、画像、動画等のコンテンツの著作権は、当該ユーザーその他既存の権利者に留保されます。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 第7条（利用制限および登録抹消）
@@ -3398,12 +4007,8 @@ html
           ul.list-disc.ml-6.text-gray-700.space-y-1
             li 本規約のいずれかの条項に違反した場合
             li 登録事項に虚偽の事実があることが判明した場合
-            li 料金等の支払債務の不履行があった場合
             li 運営者からの連絡に対し、一定期間返答がない場合
-            li 本サービスについて、最後の用から一定期間利用がない場合
             li その他、運営者が本サービスの利用を適当でないと判断した場合
-          p.text-gray-700.leading-relaxed
-            | 2. 前項各号のいずれかに該当した場合、ユーザーは、当然に運営者に対する一切の債務について期限の利益を失い、その時点において負担する一切の債務を直ちに一括して弁済しなければなりません。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 第8条（料金および支払方法）
@@ -3411,7 +4016,7 @@ html
           p.text-gray-700.leading-relaxed
             | 1. 本サービスは現在無料で提供されております。
           p.text-gray-700.leading-relaxed
-            | 2. 運営者は、本サービスの一部または全部を有料化する権利を留保します。有料化を行う場合は、事前にユーザーに対し適切な方法で通知いたします。
+            | 2. 運営者は、本サービスを有料化する権利を留保します。有料化を行う場合は、事前にユーザーに対し適切な方法で通知いたします。
           p.text-gray-700.leading-relaxed
             | 3. 有料化後の料金およびお支払い方法については、別途定めるものとします。
 
@@ -3421,7 +4026,7 @@ html
           p.text-gray-700.leading-relaxed
             | 1. 運営者は、本サービスに事実上または法律上の瑕疵（安全性、信頼性、正確性、完全性、有効性、特定の目的への適合性、セキュリティなどに関する欠陥、エラーやバグ、権利侵害などを含みます。）がないことを明示的にも黙示的にも保証しておりません。
           p.text-gray-700.leading-relaxed
-            | 2. 運営者は、本サービスに起因してユーザーに生じたあらゆる損害について、一切の責任を負いません。ただし、本サービスに関する運営者とユーザーとの間の契約が消費者契約法に定める消費者契約となる場合、この免責規定は適されません。
+            | 2. 運営者は、本サービスに起因してユーザーに生じたあらゆる損害について、一切の責任を負いません。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 第10条（サービス内容の変更等）
@@ -3447,7 +4052,7 @@ html
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 第13条（通知または連絡）
         p.text-gray-700.leading-relaxed
-          | ユーザーと運営者との間の通知または連絡は、運営者の定める方法によって行うものとします。運営者、ユーザーから、運営者が別途定める方式に従った変更届け出がない限り、現在登録されている連絡先が有効なものとみなして当該連絡先へ通知または連絡を行い、これらは、発信時にユーザーへ到達したものとみなします。
+          | ユーザーと運営者との間の通知または連絡は、運営者の定める方法によって行うものとします。運営者は現在登録されている連絡先が有効なものとみなして当該連絡先へ通知または連絡を行い、これらは、発信時にユーザーへ到達したものとみなします。
 
       section
         h2.text-xl.font-semibold.mb-4.text-gray-900 第14条（権利義務の譲渡の禁止）
@@ -3463,7 +4068,7 @@ html
             | 2. 本サースに関して紛争が生じた場合には、運営者の所在地を管轄する裁判所を専属的合意管轄とします。
 
       .mt-12.pt-8.border-t.border-gray-200.text-right.text-gray-600
-        p 制定日：2025年1月1日
+        p 制定日：2026年1月1日
         p.mt-2
           | 本規約に関するお問い合わせは
           = link_to "こちら", new_contact_path, class: "text-blue-600 hover:text-blue-800 underline"
@@ -3474,45 +4079,45 @@ html
 ## File: `app/views/profiles/show.html.slim`
 
 ```
-.profile-header.mb-8
+.profile-header.my-8
   .flex.items-center.gap-6
-    - if @user.avatar.attached?
-      = image_tag @user.avatar, class: "w-24 h-24 rounded-full"
+    - if @blog_owner.avatar.attached?
+      = image_tag @blog_owner.avatar, class: "w-24 h-24 rounded-full"
     - else
       .w-24.h-24.bg-gray-300.rounded-full.flex.items-center.justify-center
-        span.text-3xl.text-gray-600 #{@user.display_name.first}
+        span.text-3xl.text-gray-600 #{@blog_owner.display_name.first}
 
     div
-      h1.text-3xl.font-bold= @user.display_name(@current_locale)
-      - if @user.localized_location(@current_locale).present?
-        p.text-gray-600 #{@user.localized_location(@current_locale)}
+      h1.text-3xl.font-bold= @blog_owner.display_name(@current_locale)
+      - if @blog_owner.localized_location(@current_locale).present?
+        p.text-gray-600 #{@blog_owner.localized_location(@current_locale)}
 
-      - if @user.localized_bio(@current_locale).present?
-        p.mt-2= simple_format(@user.localized_bio(@current_locale))
+      - if @blog_owner.localized_bio(@current_locale).present?
+        p.mt-2= simple_format(@blog_owner.localized_bio(@current_locale))
 
-      - if @user.website.present? || @user.twitter_handle.present? || @user.facebook_handle.present?
+      - if @blog_owner.website.present? || @blog_owner.twitter_handle.present? || @blog_owner.facebook_handle.present?
 
         .flex.flex_wrap.gap-3.mt-4
-          - if @user.website.present?
-            = link_to @user.website, target: "_blank" do
+          - if @blog_owner.website.present?
+            = link_to @blog_owner.website, target: "_blank" do
               | 🌐 Website
-          - if @user.twitter_handle.present?
-            = link_to "https://x.com/#{@user.twitter_handle.delete('@')}", target: "_blank" do
+          - if @blog_owner.twitter_handle.present?
+            = link_to "https://x.com/#{@blog_owner.twitter_handle.delete('@')}", target: "_blank" do
               | X
-          - if @user.facebook_handle.present?
-            = link_to "https://facebook.com/#{@user.facebook_handle}", target: "_blank" do
+          - if @blog_owner.facebook_handle.present?
+            = link_to "https://facebook.com/#{@blog_owner.facebook_handle}", target: "_blank" do
               | Facebook
-            - if @user.github_handle.present?
-              = link_to "https://github.com/#{@user.github_handle}", target: "_blank" do
+            - if @blog_owner.github_handle.present?
+              = link_to "https://github.com/#{@blog_owner.github_handle}", target: "_blank" do
                 | GitHub
-            - if @user.qiita_handle.present?
-              = link_to "https://qiita.com/#{@user.qiita_handle}", target: "_blank" do
+            - if @blog_owner.qiita_handle.present?
+              = link_to "https://qiita.com/#{@blog_owner.qiita_handle}", target: "_blank" do
                 | Qiita
-            - if @user.zenn_handle.present?
-              = link_to "https://zenn.dev/#{@user.zenn_handle}", target: "_blank" do
+            - if @blog_owner.zenn_handle.present?
+              = link_to "https://zenn.dev/#{@blog_owner.zenn_handle}", target: "_blank" do
                 | Zenn
-            - if @user.hatena_handle.present?
-              = link_to "https://#{@user.hatena_handle}.hatenablog.com/", target: "_blank" do
+            - if @blog_owner.hatena_handle.present?
+              = link_to "https://#{@blog_owner.hatena_handle}.hatenablog.com/", target: "_blank" do
                 | はてなブログ
 ```
 
@@ -3686,9 +4291,15 @@ h1= t('blog.search.results')
       = blog_setting&.display_title(I18n.locale) || "Dual Pascal"
   
   .mt-3
-    h3.text-lg.font-semibold.line-clamp-2
-      = link_to article.title, user_article_path(article.user.username, article.id, locale: article.locale),
-          class: "text-gray-900 hover:text-blue-600"
+    .flex.items-center.justify-between.mb-2
+      h3.text-lg.font-semibold.line-clamp-2.flex-1
+        = link_to article.title, user_article_path(article.user.username, article.id, locale: article.locale),
+            class: "text-gray-900 hover:text-blue-600"
+      .ml-2
+        = render 'shared/like_button', article: article
+
+    span.text-sm.text-gray-400
+      | "#{t('blog.published_at')}: #{l(article.published_at, format: :blog_date)}"
 
   .flex.flex-wrap.items-center.gap-3.mt-2.text-xs.text-gray-600
     - if article.category.present?
@@ -3704,56 +4315,90 @@ h1= t('blog.search.results')
           span.inline-block.bg-blue-100.text-blue-800.px-2.py-1.rounded.text-xs
             = link_to tag.name, user_articles_path(params[:username], filter_params.merge(tag_id: tag.id)), class: ""
 
-      span
-        | #{t('blog.published_at')}: 
-        = article.published_at&.strftime('%Y年%m月%d日') || article.created_at.strftime('%Y年%m月%d日')
+      / span
+      /   | #{t('blog.published_at')}: 
+      /   = article.published_at&.strftime('%Y年%m月%d日') || article.created_at.strftime('%Y年%m月%d日')
 ```
 
 ## File: `app/views/shared/_auth_modal.html.slim`
 
 ```
-.fixed.inset-0.bg-black.bg-opacity-50.flex.items-center.justify-center.z-50.hidden data-auth-modal-target="modal" data-action="click->auth-modal#closeOnOutsideClick"
-  .bg-white.rounded-lg.p-6.w-96.max-w-90vw data-action="click->auth-modal#stopPropagation"
-    .flex.justify-between.items-center.mb-6
-      h3.text-xl.font-semibold data-auth-modal-target="title" Sign in to your account
-      button.text-gray-400.hover:text-gray-600 data-action="click->auth-modal#closeModal" ×
-    
-    / OAuth ボタン
-    .space-y-3.mb-6
-      = button_to omniauth_authorize_path(:user, :github), data: { turbo: false }, class: "w-full btn-unified flex items-center justify-center gap-2" do
-        | Continue with GitHub
-      = button_to omniauth_authorize_path(:user, :google_oauth2), data: { turbo: false }, class: "w-full btn-unified flex items-center justify-center gap-2" do
-        | Continue with Google
-    
-    .relative.mb-6
-      .absolute.inset-0.flex.items-center
-        .w-full.border-t.border-gray-300
-      .relative.flex.justify-center.text-sm
-        span.bg-white.px-2.text-gray-500 or
-    
-    / Sign in フォーム
-    .signin-form data-auth-modal-target="signinForm"
-      = form_with model: User.new, url: user_session_path, local: true, class: "space-y-4" do |f|
-        .space-y-4
-          = f.email_field :email, placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
-          = f.password_field :password, placeholder: "Password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
-        = f.submit "Sign in", class: "w-full btn-unified"
-      .text-center.mt-4
-        span.text-gray-600 Don't have an account? 
-        button.text-blue-600.hover:text-blue-800 data-action="click->auth-modal#switchToSignup" Sign up
-    
-    / Sign up フォーム（初期状態は非表示）
-    .signup-form.hidden data-auth-modal-target="signupForm"
-      = form_with model: User.new, url: user_registration_path, local: true, class: "space-y-4" do |f|
-        .space-y-4
-          = f.email_field :email, placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
-          = f.text_field :username, placeholder: "Username", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
-          = f.password_field :password, placeholder: "Password (6 characters minimum)", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
-          = f.password_field :password_confirmation, placeholder: "Confirm Password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
-        = f.submit "Create account", class: "w-full btn-unified"
-      .text-center.mt-4
-        span.text-gray-600 Already have an account? 
-        button.text-blue-600.hover:text-blue-800 data-action="click->auth-modal#switchToSignin" Sign in
+.fixed.inset-0.bg-black.bg-opacity-50.flex.items-center.justify-center.z-50.hidden id="auth_modal_overlay" data-auth-modal-target="modal" data-action="click->auth-modal#closeOnOutsideClick"
+  .bg-white.rounded-lg.p-6.w-96.max-w-90vw
+    turbo-frame id="auth_form_frame"
+      .flex.justify-between.items-center.mb-6
+        h3.text-xl.font-semibold Sign in to your account
+        button.text-gray-400.hover:text-gray-600 type="button" data-action="click->auth-modal#closeModal" ×
+
+      = render "shared/social_buttons"
+
+      = render "shared/login_form", resource: User.new, resource_name: :user
+```
+
+## File: `app/views/shared/_like_button.html.slim`
+
+```
+- display_class = local_assigns[:display_style] == 'block' ? 'flex items-center gap-1' : 'inline-flex items-center gap-1'
+
+div id="like_button_#{article.id}" class=display_class
+  - if user_signed_in?
+    - if article.liked_by?(current_user)
+      / いいね済み（赤いハート）
+      = button_to user_article_like_path(article.user.username, article, locale: params[:locale]), 
+          method: :delete,
+          class: "like-btn liked" do
+        svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-red-500"
+          path d="m11.645 20.91-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z"
+    - else
+      = button_to user_article_likes_path(article.user.username, article, locale: params[:locale]),
+          method: :post,
+          class: "like-btn" do
+        svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-800"
+          path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
+  - else
+    button.like-btn disabled=true
+      svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-800"
+        path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
+  
+  - if article.likes_count > 0
+    span.text-sm.text-gray-600.ml-1 = article.likes_count
+```
+
+## File: `app/views/shared/_login_form.html.slim`
+
+```
+- if flash[:alert].present?
+  .mb-4.bg-red-50.border-l-4.border-red-500.text-red-700.p-4.text-sm role="alert"
+    p = flash[:alert]
+
+= form_with model: User.new, url: user_session_path, data: { turbo_frame: "_top" }, class: "space-y-4" do |f|
+  .space-y-4
+    = f.email_field :email, placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+    = f.password_field :password, placeholder: "Password", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true
+    = f.submit "Sign in", class: "w-full btn-unified"
+
+    .text-right
+      = link_to "Forgot password?", new_user_password_path, data: { turbo_frame: "auth_form_frame" }, class: "text-sm text-blue-600 hover:text-blue-800"
+
+.text-center.mt-4
+  span.text-gray-600 Don't have an account? 
+  = link_to "Sign up", new_user_registration_path, data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800"
+```
+
+## File: `app/views/shared/_social_buttons.html.slim`
+
+```
+.space-y-3.mb-6
+  = button_to omniauth_authorize_path(:user, :github), data: { turbo: false }, class: "w-full btn-unified flex items-center justify-center gap-2" do
+    | Continue with GitHub
+  = button_to omniauth_authorize_path(:user, :google_oauth2), data: { turbo: false }, class: "w-full btn-unified flex items-center justify-center gap-2" do
+    | Continue with Google
+
+.relative.mb-6
+  .absolute.inset-0.flex.items-center
+    .w-full.border-t.border-gray-300
+  .relative.flex.justify-center.text-sm
+    span.bg-white.px-2.text-gray-500 or
 ```
 
 ## File: `app/views/welcome/index.html.slim`
@@ -3780,35 +4425,23 @@ h1= t('blog.search.results')
 Rails.application.routes.draw do
   get "contacts/new"
   get "contacts/create"
-  devise_for :users, controllers: { omniauth_callbacks: "users/omniauth_callbacks" }
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
+  root to: redirect('/ja/u/admin/articles')
+
+  devise_for :users, 
+    controllers: { 
+      omniauth_callbacks: "users/omniauth_callbacks",
+      sessions: "users/sessions",
+      registrations: "users/registrations",
+      passwords: "users/passwords",
+      confirmations: "users/confirmations"
+    }
+
   get "up" => "rails/health#show", as: :rails_health_check
-
-# Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-# get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-# get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
-
-# Defines the root path route ("/")
-# root "posts#index"
-
-
-
-# scope "/:locale", constraints: { locale: /ja|en/ } do
-#   root "home#index"
-#
-#   get "/:username/articles", to: "articles#index", constraints: { username: /[^\/]+/ }, as: :user_articles
-#   get "/:username/articles/:id", to: "articles#show", constraints: { username: /[^\/]+/ }, as: :user_article
-#   post "/:username/articles/:article_id/comments", to: "comments#create", constraints: { username: /[^\/]+/ }, as: :user_article_comments
-#   get "search", to: "search#index"
-#   get ":username/profile", to: "profile#show", constraints: { username: /[^\/]+/ }, as: :user_profile
-# end
 
 
 scope "/:locale", constraints: { locale: /ja|en/ } do
-  root "welcome#index"
+  # root "welcome#index"
 
   scope "u" do
     get "/:username/search", to: "search#index", as: :user_search
@@ -3816,6 +4449,8 @@ scope "/:locale", constraints: { locale: /ja|en/ } do
     get "/:username/articles/:id", to: "articles#show", as: :user_article
     post "/:username/articles/:article_id/comments", to: "comments#create", as: :user_article_comments
     get ":username/profile", to: "profiles#show", as: :user_profile
+    post "/:username/articles/:article_id/likes", to: "likes#create", as: :user_article_likes
+    delete "/:username/articles/:article_id/likes", to: "likes#destroy", as: :user_article_like
   end
 
   get "/terms-of-service", to: "legal#terms_of_service", as: :terms_of_service
@@ -3838,6 +4473,8 @@ namespace :dashboard do
   resources :images, only: [ :create ]
   resource :profile, only: %i[edit update]
   resource :blog_setting, only: %i[edit update]
+  resources :analytics, only: [ :index ]
+  get "account/delete", to: "account#delete_confirmation", as: :delete_account_confirmation
 end
 
 get "/dashboard", to: redirect("/dashboard/articles")
@@ -3868,7 +4505,7 @@ end
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_27_004959) do
+ActiveRecord::Schema[8.0].define(version: 2026_01_15_054057) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -3921,6 +4558,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_27_004959) do
     t.datetime "updated_at", null: false
     t.bigint "category_id"
     t.bigint "user_id", null: false
+    t.integer "likes_count", default: 0
     t.index ["category_id"], name: "index_articles_on_category_id"
     t.index ["original_article_id"], name: "index_articles_on_original_article_id"
     t.index ["published_at"], name: "index_articles_on_published_at"
@@ -3931,7 +4569,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_27_004959) do
     t.bigint "user_id", null: false
     t.string "blog_title_ja"
     t.string "blog_subtitle_ja"
-    t.string "theme_color", default: "slate"
+    t.string "theme_color", default: "default"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "blog_title_en"
@@ -3975,6 +4613,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_27_004959) do
     t.index ["resolved"], name: "index_contacts_on_resolved"
   end
 
+  create_table "likes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "article_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["article_id"], name: "index_likes_on_article_id"
+    t.index ["user_id", "article_id"], name: "index_likes_on_user_id_and_article_id", unique: true
+    t.index ["user_id"], name: "index_likes_on_user_id"
+  end
+
   create_table "tags", force: :cascade do |t|
     t.string "name", null: false
     t.datetime "created_at", null: false
@@ -4009,6 +4657,14 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_27_004959) do
     t.string "zenn_handle"
     t.string "hatena_handle"
     t.integer "status", default: 0, null: false
+    t.string "umami_website_id"
+    t.string "umami_share_url"
+    t.boolean "analytics_setup_completed", default: false
+    t.string "confirmation_token"
+    t.datetime "confirmed_at"
+    t.datetime "confirmation_sent_at"
+    t.string "unconfirmed_email"
+    t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["role"], name: "index_users_on_role"
@@ -4026,6 +4682,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_27_004959) do
   add_foreign_key "blog_settings", "users"
   add_foreign_key "categories", "users"
   add_foreign_key "comments", "articles"
+  add_foreign_key "likes", "articles"
+  add_foreign_key "likes", "users"
   add_foreign_key "tags", "users"
 end
 ```
@@ -4033,178 +4691,125 @@ end
 ## File: `db/seeds.rb`
 
 ```
-puts "Starting to create seed data..."
-
+puts "データベースをクリーンアップ中..."
 Comment.destroy_all
 Article.destroy_all
 Category.destroy_all
+Tag.destroy_all
+BlogSetting.destroy_all
 User.destroy_all
 
-puts "Creating users..."
+puts "ユーザーを作成中..."
 
-# 管理者アカウント
-admin_user = User.find_or_initialize_by(email: "admin@example.com")
-admin_user.password = "password"
-admin_user.password_confirmation = "password"
-admin_user.role = :admin
-admin_user.username = "admin"
-admin_user.save!
+# 管理者ユーザー
+admin = User.create!(
+  username: "admin",
+  email: "admin@example.com",
+  password: "password",
+  password_confirmation: "password",
+  role: :admin,
+  confirmed_at: Time.current 
+)
 
-# テスト用ユーザー
-test_user = User.find_or_initialize_by(email: "test@example.com")
-test_user.password = "password"
-test_user.password_confirmation = "password"
-test_user.role = :user
-test_user.username = "testuser"
-test_user.save!
+# 一般ユーザー1
+alice = User.create!(
+  username: "alice",
+  email: "alice@example.com",
+  password: "password",
+  password_confirmation: "password",
+  role: :user,
+  confirmed_at: Time.current 
+)
 
-puts "Creating categories..."
+# 一般ユーザー2
+bob = User.create!(
+  username: "bob",
+  email: "bob@example.com",
+  password: "password",
+  password_confirmation: "password",
+  role: :user,
+  confirmed_at: Time.current 
+)
 
-# カテゴリ作成（admin_userに紐付け）
-ja_programming = admin_user.categories.create!(name: 'プログラミング', locale: 'ja', description: 'プログラミング関連の記事')
-ja_daily = admin_user.categories.create!(name: '日常', locale: 'ja', description: '日常の出来事について')
-ja_tech = admin_user.categories.create!(name: '技術Tips', locale: 'ja', description: '開発で役立つ技術情報')
+puts "ユーザー作成完了: #{User.count}名"
 
-en_programming = admin_user.categories.create!(name: 'Programming', locale: 'en', description: 'Articles about programming')
-en_daily = admin_user.categories.create!(name: 'Daily Life', locale: 'en', description: 'About daily life')
-en_tech = admin_user.categories.create!(name: 'Tech Tips', locale: 'en', description: 'Useful technical information')
-
-categories_ja = [ ja_programming, ja_daily, ja_tech ]
-categories_en = [ en_programming, en_daily, en_tech ]
-
-puts "Creating articles..."
-
-30.times do |i|
-  category = categories_ja.sample  # ランダムにカテゴリを選択
-
-  ja_article = admin_user.articles.create!(  # admin_user.articles.create!に変更
-    title: "日本語記事#{i + 1}",
-    locale: 'ja',
-    content: <<~CONTENT,
-      # プログラミング学習第#{i + 1}回
-#{'      '}
-      第#{i + 1}回目の**日本語記事**です。
-#{'      '}
-      ## 学習内容
-      - Ruby基礎
-      - Rails入門
-      - `puts "Hello World"`
-
-```ruby
-      def hello
-        puts "Hello, World! - #{i + 1}"
-      end
-```
-#{'      '}
-      **カテゴリ**: #{category.name}
-    CONTENT
-    status: :published,
-    published_at: (30 - i).days.ago + rand(24).hours,
-    category: category,
-    tag_list: [ 'プログラミング', 'Ruby', 'Rails', '初心者', '学習' ].sample(rand(2..4)).join(', ')
+# ブログ設定を作成
+[admin, alice, bob].each do |user|
+  BlogSetting.create!(
+    user: user,
+    blog_title_ja: "#{user.username}のブログ",
+    blog_title_en: "#{user.username}'s Blog",
+    layout_style: "linear",
+    theme_color: "default",
+    show_hero_thumbnail: false
   )
+end
 
-  # 偶数番号の記事には英語翻訳を追加
-  if i.even?
-    en_category = categories_en.sample
+puts "記事を作成中..."
 
-    admin_user.articles.create!(  # admin_user.articles.create!に変更
-      title: "English Article #{i + 1}",
-      locale: 'en',
-      content: <<~CONTENT,
-        # Programming Study Part #{i + 1}
-#{'        '}
-        This is the #{i + 1}th **English article**.
-#{'        '}
-        ## Learning Content
-        - Ruby Basics
-        - Rails Introduction
-        - `puts "Hello World"`
-
-```ruby
-        def hello
-          puts "Hello, World! - #{i + 1}"
-        end
-```
-#{'        '}
-        **Category**: #{en_category.name}
-      CONTENT
+# 各ユーザーに3記事ずつ作成
+[admin, alice, bob].each do |user|
+  3.times do |i|
+    # 日本語記事（オリジナル）
+    article_ja = Article.create!(
+      user: user,
+      title: "sample-title-#{i + 1}",
+      content: "sample-content-#{i + 1}",
+      locale: "ja",
       status: :published,
-      published_at: ja_article.published_at,
-      original_article: ja_article,
-      category: en_category,
-      tag_list: [ 'Programming', 'Ruby', 'Rails', 'Beginner', 'Learning' ].sample(rand(2..4)).join(', ')
+      published_at: Time.current - (i + 1).days
+    )
+    
+    # 英語翻訳記事
+    article_en = Article.create!(
+      user: user,
+      title: "sample-title-#{i + 1}-EN",
+      content: "sample-content-#{i + 1}-EN (translation)",
+      locale: "en",
+      status: :published,
+      published_at: Time.current - (i + 1).days,
+      original_article: article_ja
+    )
+    
+    # 各記事に1件コメントを追加
+    Comment.create!(
+      article: article_ja,
+      author_name: "test-commenter",
+      content: "this is a test comment",
+      website: nil
+    )
+    
+    Comment.create!(
+      article: article_en,
+      author_name: "test-commenter",
+      content: "this is a test comment on EN article",
+      website: nil
     )
   end
 end
 
-# 下書き記事
-3.times do |i|
-  admin_user.articles.create!(  # admin_user.articles.create!に変更
-    title: "下書き記事 #{i + 1}",
-    locale: "ja",
-    content: "この記事は準備中です...",
-    status: :draft,
-    category: categories_ja.sample
-  )
-end
+puts "記事作成完了: #{Article.count}件"
+puts "コメント作成完了: #{Comment.count}件"
 
-# コメントのseed（新規追加）
-puts 'Creating comment seed data...'
-
-# 日本語記事へのコメント
-Article.where(locale: 'ja', status: :published).each_with_index do |article, index|
-  rand(1..2).times do |i|
-    Comment.find_or_create_by(
-      article: article,
-      author_name: "コメント者#{index + 1}-#{i + 1}",
-      content: "とても参考になりました。#{[ '勉強になります！', 'ありがとうございます。', '続きが楽しみです。', 'わかりやすい解説でした。' ].sample}"
-    ) do |comment|
-      # published_atがnilの場合はcreated_atを使用
-      base_time = article.published_at || article.created_at
-      comment.created_at = base_time + rand(1..10).days
-    end
-  end
-end
-
-# 英語記事へのコメント
-Article.where(locale: 'en', status: :published).each_with_index do |article, index|
-  rand(1..2).times do |i|
-    Comment.find_or_create_by(
-      article: article,
-      author_name: "User#{index + 1}-#{i + 1}",
-      content: "#{[ 'Great article!', 'Very helpful, thanks!', 'Looking forward to more.', 'Well explained.' ].sample}"
-    ) do |comment|
-      comment.website = [ '', 'https://example.com', 'https://github.com/user' ].sample
-      # published_atがnilの場合はcreated_atを使用
-      base_time = article.published_at || article.created_at
-      comment.created_at = base_time + rand(1..7).days
-    end
-  end
-end
-
-puts "管理者ユーザーを作成しました: #{admin_user.email}"
-puts "テストユーザーを作成しました: #{test_user.email}"
-puts 'Admin user created!'
-puts 'Login credentials:'
-puts 'Email: admin@example.com'
-puts 'Password: password'
-puts '========================================='
-
-puts 'Seed data creation completed!'
-puts "Total Articles: #{Article.count}"
-puts "Japanese Articles: #{Article.where(locale: 'ja').count}"
-puts "English Articles: #{Article.where(locale: 'en').count}"
-puts "Categories (ja): #{Category.where(locale: 'ja').count}"
-puts "Categories (en): #{Category.where(locale: 'en').count}"
-puts "Total Users: #{User.count}"
+puts "\n" + "="*50
+puts "Seedsデータ作成完了！"
+puts "="*50
+puts "\nログイン情報:"
+puts "管理者: admin@example.com / password"
+puts "Alice: alice@example.com / password"
+puts "Bob: bob@example.com / password"
+puts "\nアクセス先:"
+puts "Admin: http://localhost:3000/u/admin/articles?locale=ja"
+puts "Alice: http://localhost:3000/u/alice/articles?locale=ja"
+puts "Bob: http://localhost:3000/u/bob/articles?locale=ja"
+puts "="*50
 ```
 
 ## File: `app/assets/builds/tailwind.css`
 
 ```
-/*! tailwindcss v4.1.16 | MIT License | https://tailwindcss.com */
-@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-rotate-x:initial;--tw-rotate-y:initial;--tw-rotate-z:initial;--tw-skew-x:initial;--tw-skew-y:initial;--tw-space-y-reverse:0;--tw-space-x-reverse:0;--tw-divide-y-reverse:0;--tw-border-style:solid;--tw-leading:initial;--tw-font-weight:initial;--tw-tracking:initial;--tw-shadow:0 0 #0000;--tw-shadow-color:initial;--tw-shadow-alpha:100%;--tw-inset-shadow:0 0 #0000;--tw-inset-shadow-color:initial;--tw-inset-shadow-alpha:100%;--tw-ring-color:initial;--tw-ring-shadow:0 0 #0000;--tw-inset-ring-color:initial;--tw-inset-ring-shadow:0 0 #0000;--tw-ring-inset:initial;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-offset-shadow:0 0 #0000;--tw-outline-style:solid;--tw-blur:initial;--tw-brightness:initial;--tw-contrast:initial;--tw-grayscale:initial;--tw-hue-rotate:initial;--tw-invert:initial;--tw-opacity:initial;--tw-saturate:initial;--tw-sepia:initial;--tw-drop-shadow:initial;--tw-drop-shadow-color:initial;--tw-drop-shadow-alpha:100%;--tw-drop-shadow-size:initial}}}@layer theme{:root,:host{--font-sans:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";--font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;--color-red-50:oklch(97.1% .013 17.38);--color-red-100:oklch(93.6% .032 17.717);--color-red-200:oklch(88.5% .062 18.334);--color-red-300:oklch(80.8% .114 19.571);--color-red-500:oklch(63.7% .237 25.331);--color-red-600:oklch(57.7% .245 27.325);--color-red-700:oklch(50.5% .213 27.518);--color-red-800:oklch(44.4% .177 26.899);--color-orange-300:oklch(83.7% .128 66.29);--color-orange-600:oklch(64.6% .222 41.116);--color-orange-800:oklch(47% .157 37.304);--color-yellow-100:oklch(97.3% .071 103.193);--color-yellow-800:oklch(47.6% .114 61.907);--color-green-100:oklch(96.2% .044 156.743);--color-green-300:oklch(87.1% .15 154.449);--color-green-400:oklch(79.2% .209 151.711);--color-green-500:oklch(72.3% .219 149.579);--color-green-600:oklch(62.7% .194 149.214);--color-green-700:oklch(52.7% .154 150.069);--color-green-800:oklch(44.8% .119 151.328);--color-emerald-900:oklch(37.8% .077 168.94);--color-blue-50:oklch(97% .014 254.604);--color-blue-100:oklch(93.2% .032 255.585);--color-blue-200:oklch(88.2% .059 254.128);--color-blue-300:oklch(80.9% .105 251.813);--color-blue-400:oklch(70.7% .165 254.624);--color-blue-500:oklch(62.3% .214 259.815);--color-blue-600:oklch(54.6% .245 262.881);--color-blue-700:oklch(48.8% .243 264.376);--color-blue-800:oklch(42.4% .199 265.638);--color-indigo-900:oklch(35.9% .144 278.697);--color-purple-500:oklch(62.7% .265 303.9);--color-purple-600:oklch(55.8% .288 302.321);--color-gray-50:oklch(98.5% .002 247.839);--color-gray-100:oklch(96.7% .003 264.542);--color-gray-200:oklch(92.8% .006 264.531);--color-gray-300:oklch(87.2% .01 258.338);--color-gray-400:oklch(70.7% .022 261.325);--color-gray-500:oklch(55.1% .027 264.364);--color-gray-600:oklch(44.6% .03 256.802);--color-gray-700:oklch(37.3% .034 259.733);--color-gray-800:oklch(27.8% .033 256.848);--color-gray-900:oklch(21% .034 264.665);--color-stone-900:oklch(21.6% .006 56.043);--color-black:#000;--color-white:#fff;--spacing:.25rem;--container-xs:20rem;--container-2xl:42rem;--container-3xl:48rem;--container-4xl:56rem;--container-5xl:64rem;--container-6xl:72rem;--text-xs:.75rem;--text-xs--line-height:calc(1/.75);--text-sm:.875rem;--text-sm--line-height:calc(1.25/.875);--text-base:1rem;--text-base--line-height:calc(1.5/1);--text-lg:1.125rem;--text-lg--line-height:calc(1.75/1.125);--text-xl:1.25rem;--text-xl--line-height:calc(1.75/1.25);--text-2xl:1.5rem;--text-2xl--line-height:calc(2/1.5);--text-3xl:1.875rem;--text-3xl--line-height:calc(2.25/1.875);--text-4xl:2.25rem;--text-4xl--line-height:calc(2.5/2.25);--text-5xl:3rem;--text-5xl--line-height:1;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--font-weight-extrabold:800;--tracking-wider:.05em;--leading-relaxed:1.625;--radius-md:.375rem;--radius-lg:.5rem;--default-transition-duration:.15s;--default-transition-timing-function:cubic-bezier(.4,0,.2,1);--default-font-family:var(--font-sans);--default-mono-font-family:var(--font-mono)}}@layer base{*,:after,:before,::backdrop{box-sizing:border-box;border:0 solid;margin:0;padding:0}::file-selector-button{box-sizing:border-box;border:0 solid;margin:0;padding:0}html,:host{-webkit-text-size-adjust:100%;tab-size:4;line-height:1.5;font-family:var(--default-font-family,ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji");font-feature-settings:var(--default-font-feature-settings,normal);font-variation-settings:var(--default-font-variation-settings,normal);-webkit-tap-highlight-color:transparent}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;-webkit-text-decoration:inherit;-webkit-text-decoration:inherit;-webkit-text-decoration:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:var(--default-mono-font-family,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace);font-feature-settings:var(--default-mono-font-feature-settings,normal);font-variation-settings:var(--default-mono-font-variation-settings,normal);font-size:1em}small{font-size:80%}sub,sup{vertical-align:baseline;font-size:75%;line-height:0;position:relative}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}:-moz-focusring{outline:auto}progress{vertical-align:baseline}summary{display:list-item}ol,ul,menu{list-style:none}img,svg,video,canvas,audio,iframe,embed,object{vertical-align:middle;display:block}img,video{max-width:100%;height:auto}button,input,select,optgroup,textarea{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}::file-selector-button{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}:where(select:is([multiple],[size])) optgroup{font-weight:bolder}:where(select:is([multiple],[size])) optgroup option{padding-inline-start:20px}::file-selector-button{margin-inline-end:4px}::placeholder{opacity:1}@supports (not ((-webkit-appearance:-apple-pay-button))) or (contain-intrinsic-size:1px){::placeholder{color:currentColor}@supports (color:color-mix(in lab, red, red)){::placeholder{color:color-mix(in oklab,currentcolor 50%,transparent)}}}textarea{resize:vertical}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-date-and-time-value{min-height:1lh;text-align:inherit}::-webkit-datetime-edit{display:inline-flex}::-webkit-datetime-edit-fields-wrapper{padding:0}::-webkit-datetime-edit{padding-block:0}::-webkit-datetime-edit-year-field{padding-block:0}::-webkit-datetime-edit-month-field{padding-block:0}::-webkit-datetime-edit-day-field{padding-block:0}::-webkit-datetime-edit-hour-field{padding-block:0}::-webkit-datetime-edit-minute-field{padding-block:0}::-webkit-datetime-edit-second-field{padding-block:0}::-webkit-datetime-edit-millisecond-field{padding-block:0}::-webkit-datetime-edit-meridiem-field{padding-block:0}::-webkit-calendar-picker-indicator{line-height:1}:-moz-ui-invalid{box-shadow:none}button,input:where([type=button],[type=reset],[type=submit]){appearance:button}::file-selector-button{appearance:button}::-webkit-inner-spin-button{height:auto}::-webkit-outer-spin-button{height:auto}[hidden]:where(:not([hidden=until-found])){display:none!important}}@layer components;@layer utilities{.pointer-events-none{pointer-events:none}.visible{visibility:visible}.sr-only{clip-path:inset(50%);white-space:nowrap;border-width:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.absolute{position:absolute}.fixed{position:fixed}.relative{position:relative}.static{position:static}.inset-0{inset:calc(var(--spacing)*0)}.top-0{top:calc(var(--spacing)*0)}.bottom-0{bottom:calc(var(--spacing)*0)}.left-1{left:calc(var(--spacing)*1)}.left-1\/2{left:50%}.z-50{z-index:50}.float-left{float:left}.float-right{float:right}.container{width:100%}@media (min-width:40rem){.container{max-width:40rem}}@media (min-width:48rem){.container{max-width:48rem}}@media (min-width:64rem){.container{max-width:64rem}}@media (min-width:80rem){.container{max-width:80rem}}@media (min-width:96rem){.container{max-width:96rem}}.mx-2{margin-inline:calc(var(--spacing)*2)}.mx-4{margin-inline:calc(var(--spacing)*4)}.mx-8{margin-inline:calc(var(--spacing)*8)}.mx-auto{margin-inline:auto}.my-16{margin-block:calc(var(--spacing)*16)}.mt-1{margin-top:calc(var(--spacing)*1)}.mt-2{margin-top:calc(var(--spacing)*2)}.mt-3{margin-top:calc(var(--spacing)*3)}.mt-4{margin-top:calc(var(--spacing)*4)}.mt-8{margin-top:calc(var(--spacing)*8)}.mt-12{margin-top:calc(var(--spacing)*12)}.mr-2{margin-right:calc(var(--spacing)*2)}.mr-3{margin-right:calc(var(--spacing)*3)}.mb-1{margin-bottom:calc(var(--spacing)*1)}.mb-2{margin-bottom:calc(var(--spacing)*2)}.mb-3{margin-bottom:calc(var(--spacing)*3)}.mb-4{margin-bottom:calc(var(--spacing)*4)}.mb-6{margin-bottom:calc(var(--spacing)*6)}.mb-8{margin-bottom:calc(var(--spacing)*8)}.mb-12{margin-bottom:calc(var(--spacing)*12)}.ml-2{margin-left:calc(var(--spacing)*2)}.ml-4{margin-left:calc(var(--spacing)*4)}.ml-6{margin-left:calc(var(--spacing)*6)}.ml-auto{margin-left:auto}.line-clamp-2{-webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden}.block{display:block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.inline{display:inline}.inline-block{display:inline-block}.inline-flex{display:inline-flex}.table{display:table}.h-4{height:calc(var(--spacing)*4)}.h-6{height:calc(var(--spacing)*6)}.h-8{height:calc(var(--spacing)*8)}.h-12{height:calc(var(--spacing)*12)}.h-20{height:calc(var(--spacing)*20)}.h-24{height:calc(var(--spacing)*24)}.h-32{height:calc(var(--spacing)*32)}.h-48{height:calc(var(--spacing)*48)}.h-64{height:calc(var(--spacing)*64)}.h-full{height:100%}.h-screen{height:100vh}.min-h-screen{min-height:100vh}.w-1{width:calc(var(--spacing)*1)}.w-1\/2{width:50%}.w-4{width:calc(var(--spacing)*4)}.w-6{width:calc(var(--spacing)*6)}.w-8{width:calc(var(--spacing)*8)}.w-12{width:calc(var(--spacing)*12)}.w-20{width:calc(var(--spacing)*20)}.w-24{width:calc(var(--spacing)*24)}.w-32{width:calc(var(--spacing)*32)}.w-64{width:calc(var(--spacing)*64)}.w-96{width:calc(var(--spacing)*96)}.w-\[1px\]{width:1px}.w-full{width:100%}.max-w-2xl{max-width:var(--container-2xl)}.max-w-3xl{max-width:var(--container-3xl)}.max-w-4xl{max-width:var(--container-4xl)}.max-w-5xl{max-width:var(--container-5xl)}.max-w-6xl{max-width:var(--container-6xl)}.max-w-xs{max-width:var(--container-xs)}.flex-1{flex:1}.flex-shrink-0{flex-shrink:0}.flex-grow{flex-grow:1}.border-collapse{border-collapse:collapse}.transform{transform:var(--tw-rotate-x,)var(--tw-rotate-y,)var(--tw-rotate-z,)var(--tw-skew-x,)var(--tw-skew-y,)}.cursor-pointer{cursor:pointer}.list-disc{list-style-type:disc}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-baseline{align-items:baseline}.items-center{align-items:center}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}.justify-center{justify-content:center}.justify-end{justify-content:flex-end}.gap-1{gap:calc(var(--spacing)*1)}.gap-2{gap:calc(var(--spacing)*2)}.gap-3{gap:calc(var(--spacing)*3)}.gap-4{gap:calc(var(--spacing)*4)}.gap-5{gap:calc(var(--spacing)*5)}.gap-6{gap:calc(var(--spacing)*6)}:where(.space-y-1>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*1)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*1)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-2>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*2)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*2)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-3>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*3)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*3)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-4>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*4)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*4)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-6>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*6)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*6)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-8>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*8)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*8)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-x-2>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing)*2)*var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing)*2)*calc(1 - var(--tw-space-x-reverse)))}:where(.divide-y>:not(:last-child)){--tw-divide-y-reverse:0;border-bottom-style:var(--tw-border-style);border-top-style:var(--tw-border-style);border-top-width:calc(1px*var(--tw-divide-y-reverse));border-bottom-width:calc(1px*calc(1 - var(--tw-divide-y-reverse)))}:where(.divide-gray-200>:not(:last-child)){border-color:var(--color-gray-200)}.truncate{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.overflow-hidden{overflow:hidden}.rounded{border-radius:.25rem}.rounded-full{border-radius:3.40282e38px}.rounded-lg{border-radius:var(--radius-lg)}.rounded-md{border-radius:var(--radius-md)}.border{border-style:var(--tw-border-style);border-width:1px}.border-0{border-style:var(--tw-border-style);border-width:0}.border-2{border-style:var(--tw-border-style);border-width:2px}.border-t{border-top-style:var(--tw-border-style);border-top-width:1px}.border-b{border-bottom-style:var(--tw-border-style);border-bottom-width:1px}.border-blue-200{border-color:var(--color-blue-200)}.border-gray-100{border-color:var(--color-gray-100)}.border-gray-200{border-color:var(--color-gray-200)}.border-gray-300{border-color:var(--color-gray-300)}.border-gray-400{border-color:var(--color-gray-400)}.border-gray-500{border-color:var(--color-gray-500)}.border-gray-600{border-color:var(--color-gray-600)}.border-green-300{border-color:var(--color-green-300)}.border-green-400{border-color:var(--color-green-400)}.border-orange-300{border-color:var(--color-orange-300)}.border-red-200{border-color:var(--color-red-200)}.border-red-300{border-color:var(--color-red-300)}.bg-black{background-color:var(--color-black)}.bg-blue-50{background-color:var(--color-blue-50)}.bg-blue-100{background-color:var(--color-blue-100)}.bg-blue-300{background-color:var(--color-blue-300)}.bg-blue-500{background-color:var(--color-blue-500)}.bg-emerald-900{background-color:var(--color-emerald-900)}.bg-gray-50{background-color:var(--color-gray-50)}.bg-gray-100{background-color:var(--color-gray-100)}.bg-gray-200{background-color:var(--color-gray-200)}.bg-gray-300{background-color:var(--color-gray-300)}.bg-gray-400{background-color:var(--color-gray-400)}.bg-gray-500{background-color:var(--color-gray-500)}.bg-gray-700{background-color:var(--color-gray-700)}.bg-gray-800{background-color:var(--color-gray-800)}.bg-green-100{background-color:var(--color-green-100)}.bg-green-500{background-color:var(--color-green-500)}.bg-indigo-900{background-color:var(--color-indigo-900)}.bg-purple-500{background-color:var(--color-purple-500)}.bg-red-50{background-color:var(--color-red-50)}.bg-red-100{background-color:var(--color-red-100)}.bg-red-500{background-color:var(--color-red-500)}.bg-stone-900{background-color:var(--color-stone-900)}.bg-white{background-color:var(--color-white)}.bg-yellow-100{background-color:var(--color-yellow-100)}.object-cover{object-fit:cover}.p-2{padding:calc(var(--spacing)*2)}.p-3{padding:calc(var(--spacing)*3)}.p-4{padding:calc(var(--spacing)*4)}.p-6{padding:calc(var(--spacing)*6)}.p-8{padding:calc(var(--spacing)*8)}.px-2{padding-inline:calc(var(--spacing)*2)}.px-2\.5{padding-inline:calc(var(--spacing)*2.5)}.px-3{padding-inline:calc(var(--spacing)*3)}.px-4{padding-inline:calc(var(--spacing)*4)}.px-6{padding-inline:calc(var(--spacing)*6)}.px-8{padding-inline:calc(var(--spacing)*8)}.py-0{padding-block:calc(var(--spacing)*0)}.py-0\.5{padding-block:calc(var(--spacing)*.5)}.py-1{padding-block:calc(var(--spacing)*1)}.py-2{padding-block:calc(var(--spacing)*2)}.py-3{padding-block:calc(var(--spacing)*3)}.py-4{padding-block:calc(var(--spacing)*4)}.py-8{padding-block:calc(var(--spacing)*8)}.py-10{padding-block:calc(var(--spacing)*10)}.py-16{padding-block:calc(var(--spacing)*16)}.pt-8{padding-top:calc(var(--spacing)*8)}.pr-5{padding-right:calc(var(--spacing)*5)}.pb-2{padding-bottom:calc(var(--spacing)*2)}.pb-3{padding-bottom:calc(var(--spacing)*3)}.pb-4{padding-bottom:calc(var(--spacing)*4)}.pl-5{padding-left:calc(var(--spacing)*5)}.text-center{text-align:center}.text-left{text-align:left}.text-right{text-align:right}.text-2xl{font-size:var(--text-2xl);line-height:var(--tw-leading,var(--text-2xl--line-height))}.text-3xl{font-size:var(--text-3xl);line-height:var(--tw-leading,var(--text-3xl--line-height))}.text-4xl{font-size:var(--text-4xl);line-height:var(--tw-leading,var(--text-4xl--line-height))}.text-5xl{font-size:var(--text-5xl);line-height:var(--tw-leading,var(--text-5xl--line-height))}.text-base{font-size:var(--text-base);line-height:var(--tw-leading,var(--text-base--line-height))}.text-lg{font-size:var(--text-lg);line-height:var(--tw-leading,var(--text-lg--line-height))}.text-sm{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.text-xl{font-size:var(--text-xl);line-height:var(--tw-leading,var(--text-xl--line-height))}.text-xs{font-size:var(--text-xs);line-height:var(--tw-leading,var(--text-xs--line-height))}.leading-relaxed{--tw-leading:var(--leading-relaxed);line-height:var(--leading-relaxed)}.font-bold{--tw-font-weight:var(--font-weight-bold);font-weight:var(--font-weight-bold)}.font-extrabold{--tw-font-weight:var(--font-weight-extrabold);font-weight:var(--font-weight-extrabold)}.font-medium{--tw-font-weight:var(--font-weight-medium);font-weight:var(--font-weight-medium)}.font-semibold{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.tracking-wider{--tw-tracking:var(--tracking-wider);letter-spacing:var(--tracking-wider)}.whitespace-nowrap{white-space:nowrap}.text-blue-400{color:var(--color-blue-400)}.text-blue-500{color:var(--color-blue-500)}.text-blue-600{color:var(--color-blue-600)}.text-blue-800{color:var(--color-blue-800)}.text-gray-200{color:var(--color-gray-200)}.text-gray-300{color:var(--color-gray-300)}.text-gray-400{color:var(--color-gray-400)}.text-gray-500{color:var(--color-gray-500)}.text-gray-600{color:var(--color-gray-600)}.text-gray-700{color:var(--color-gray-700)}.text-gray-800{color:var(--color-gray-800)}.text-gray-900{color:var(--color-gray-900)}.text-green-600{color:var(--color-green-600)}.text-green-700{color:var(--color-green-700)}.text-green-800{color:var(--color-green-800)}.text-orange-600{color:var(--color-orange-600)}.text-red-500{color:var(--color-red-500)}.text-red-600{color:var(--color-red-600)}.text-red-700{color:var(--color-red-700)}.text-red-800{color:var(--color-red-800)}.text-white{color:var(--color-white)}.text-yellow-800{color:var(--color-yellow-800)}.uppercase{text-transform:uppercase}.italic{font-style:italic}.underline{text-decoration-line:underline}.placeholder-gray-400::placeholder{color:var(--color-gray-400)}.shadow-md{--tw-shadow:0 4px 6px -1px var(--tw-shadow-color,#0000001a),0 2px 4px -2px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 3px 0 var(--tw-shadow-color,#0000001a),0 1px 2px -1px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.outline{outline-style:var(--tw-outline-style);outline-width:1px}.filter{filter:var(--tw-blur,)var(--tw-brightness,)var(--tw-contrast,)var(--tw-grayscale,)var(--tw-hue-rotate,)var(--tw-invert,)var(--tw-saturate,)var(--tw-sepia,)var(--tw-drop-shadow,)}.transition{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to,opacity,box-shadow,transform,translate,scale,rotate,filter,-webkit-backdrop-filter,backdrop-filter,display,content-visibility,overlay,pointer-events;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-colors{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.peer-checked\:ring-2:is(:where(.peer):checked~*){--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(2px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.peer-checked\:ring-blue-400:is(:where(.peer):checked~*){--tw-ring-color:var(--color-blue-400)}.file\:mr-4::file-selector-button{margin-right:calc(var(--spacing)*4)}.file\:rounded::file-selector-button{border-radius:.25rem}.file\:border-0::file-selector-button{border-style:var(--tw-border-style);border-width:0}.file\:bg-blue-50::file-selector-button{background-color:var(--color-blue-50)}.file\:px-4::file-selector-button{padding-inline:calc(var(--spacing)*4)}.file\:py-2::file-selector-button{padding-block:calc(var(--spacing)*2)}.file\:text-sm::file-selector-button{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.file\:font-semibold::file-selector-button{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.file\:text-blue-700::file-selector-button{color:var(--color-blue-700)}.last\:border-b-0:last-child{border-bottom-style:var(--tw-border-style);border-bottom-width:0}@media (hover:hover){.hover\:overflow-y-auto:hover{overflow-y:auto}.hover\:border-gray-400:hover{border-color:var(--color-gray-400)}.hover\:bg-blue-200:hover{background-color:var(--color-blue-200)}.hover\:bg-blue-600:hover{background-color:var(--color-blue-600)}.hover\:bg-gray-50:hover{background-color:var(--color-gray-50)}.hover\:bg-gray-100:hover{background-color:var(--color-gray-100)}.hover\:bg-gray-200:hover{background-color:var(--color-gray-200)}.hover\:bg-gray-600:hover{background-color:var(--color-gray-600)}.hover\:text-blue-600:hover{color:var(--color-blue-600)}.hover\:text-blue-800:hover{color:var(--color-blue-800)}.hover\:text-gray-100:hover{color:var(--color-gray-100)}.hover\:text-gray-300:hover{color:var(--color-gray-300)}.hover\:text-gray-600:hover{color:var(--color-gray-600)}.hover\:text-gray-700:hover{color:var(--color-gray-700)}.hover\:text-gray-800:hover{color:var(--color-gray-800)}.hover\:text-green-800:hover{color:var(--color-green-800)}.hover\:text-orange-800:hover{color:var(--color-orange-800)}.hover\:text-red-800:hover{color:var(--color-red-800)}.hover\:text-white:hover{color:var(--color-white)}.hover\:file\:bg-blue-100:hover::file-selector-button{background-color:var(--color-blue-100)}}.focus\:border-\[1px\]:focus{border-style:var(--tw-border-style);border-width:1px}.focus\:border-gray-300:focus{border-color:var(--color-gray-300)}.focus\:border-gray-400:focus{border-color:var(--color-gray-400)}.focus\:ring-0:focus{--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(0px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.focus\:ring-1:focus{--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(1px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.focus\:ring-blue-500:focus{--tw-ring-color:var(--color-blue-500)}.focus\:ring-gray-400:focus{--tw-ring-color:var(--color-gray-400)}.focus\:ring-gray-500:focus{--tw-ring-color:var(--color-gray-500)}.focus\:outline-none:focus{--tw-outline-style:none;outline-style:none}@media (min-width:48rem){.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (min-width:64rem){.lg\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}}}.layout-switcher.mode-split .text-area,.layout-switcher.mode-split .preview-area{flex:1;display:block}.layout-switcher.mode-split .original-preview-area{display:none}.layout-switcher.mode-text-only .text-area{flex:1;display:block}.layout-switcher.mode-text-only .preview-area,.layout-switcher.mode-text-only .original-preview-area,.layout-switcher.mode-text-only .layout-divider,.layout-switcher.mode-preview-only .text-area{display:none}.layout-switcher.mode-preview-only .preview-area{flex:1;display:block}.layout-switcher.mode-preview-only .original-preview-area,.layout-switcher.mode-preview-only .layout-divider{display:none}.layout-switcher.mode-original-preview .text-area{flex:1;display:block}.layout-switcher.mode-original-preview .preview-area{display:none}.layout-switcher.mode-original-preview .original-preview-area{flex:1;display:block}.layout-switcher.mode-original-preview .layout-divider{display:block}.layout-buttons button{cursor:pointer;background:#fff;border:1px solid #ccc;border-radius:4px;min-width:32px;height:32px;padding:4px 8px;font-size:16px}.layout-buttons button:hover{background:#f3f4f6}.layout-buttons button.active{background:#e5e7eb;border-color:#6b7280}.layout-switcher{width:100%;height:100%}.default-theme .theme-header{border-bottom:1px solid #e5e7eb;color:#374151!important;background-color:#f9fafb!important}.default-theme .theme-header a{color:#374151!important}.default-theme .theme-header a:hover{color:#1f2937!important}.default-theme .theme-header button{color:#374151!important}.default-theme .theme-header button:hover{color:#1f2937!important}.default-theme .theme-footer{color:#374151!important;background-color:#f9fafb!important;border-top:1px solid #e5e7eb!important}.default-theme .theme-footer a{color:#374151!important}.default-theme .theme-footer a:hover{color:#1f2937!important}.slate-theme .blog-title{color:#222b45!important}.slate-theme .theme-header,.slate-theme .theme-footer{color:#e5e7eb!important;background-color:#222b45!important}.forest-theme .blog-title{color:#1b4332!important}.forest-theme .theme-header,.forest-theme .theme-footer{color:#e5e7eb!important;background-color:#1b4332!important}.maroon-theme .blog-title{color:#3a0a0a!important}.maroon-theme .theme-header,.maroon-theme .theme-footer{color:#e5e7eb!important;background-color:#3a0a0a!important}.midnight-theme .blog-title{color:#0a1a2f!important}.midnight-theme .theme-header,.midnight-theme .theme-footer{color:#e5e7eb!important;background-color:#0a1a2f!important}[data-markdown-preview-target=preview] img{object-fit:contain;border-radius:4px;width:100%;height:auto;margin:10px 0}.article-content img{object-fit:contain;object-fit:contain;border-radius:4px;max-width:100%;height:auto;max-height:500px;margin:15px auto;display:block;box-shadow:0 2px 8px #0000001a}.tab-container{margin:20px 0}.tab-buttons{border-bottom:2px solid #ddd;margin-bottom:20px;display:flex}.tab-button{cursor:pointer;background:#f5f5f5;border:none;border-top:2px solid #0000;margin-right:2px;padding:10px 20px}.tab-button.active{background:#fff;border-top-color:#007bff;font-weight:700}.tab-content{display:none}.tab-content.active{display:block}@property --tw-rotate-x{syntax:"*";inherits:false}@property --tw-rotate-y{syntax:"*";inherits:false}@property --tw-rotate-z{syntax:"*";inherits:false}@property --tw-skew-x{syntax:"*";inherits:false}@property --tw-skew-y{syntax:"*";inherits:false}@property --tw-space-y-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-space-x-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-divide-y-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}@property --tw-leading{syntax:"*";inherits:false}@property --tw-font-weight{syntax:"*";inherits:false}@property --tw-tracking{syntax:"*";inherits:false}@property --tw-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-shadow-color{syntax:"*";inherits:false}@property --tw-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-inset-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-inset-shadow-color{syntax:"*";inherits:false}@property --tw-inset-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-ring-color{syntax:"*";inherits:false}@property --tw-ring-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-inset-ring-color{syntax:"*";inherits:false}@property --tw-inset-ring-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-ring-inset{syntax:"*";inherits:false}@property --tw-ring-offset-width{syntax:"<length>";inherits:false;initial-value:0}@property --tw-ring-offset-color{syntax:"*";inherits:false;initial-value:#fff}@property --tw-ring-offset-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-outline-style{syntax:"*";inherits:false;initial-value:solid}@property --tw-blur{syntax:"*";inherits:false}@property --tw-brightness{syntax:"*";inherits:false}@property --tw-contrast{syntax:"*";inherits:false}@property --tw-grayscale{syntax:"*";inherits:false}@property --tw-hue-rotate{syntax:"*";inherits:false}@property --tw-invert{syntax:"*";inherits:false}@property --tw-opacity{syntax:"*";inherits:false}@property --tw-saturate{syntax:"*";inherits:false}@property --tw-sepia{syntax:"*";inherits:false}@property --tw-drop-shadow{syntax:"*";inherits:false}@property --tw-drop-shadow-color{syntax:"*";inherits:false}@property --tw-drop-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-drop-shadow-size{syntax:"*";inherits:false}```
+/*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-translate-x:0;--tw-translate-y:0;--tw-translate-z:0;--tw-rotate-x:initial;--tw-rotate-y:initial;--tw-rotate-z:initial;--tw-skew-x:initial;--tw-skew-y:initial;--tw-space-y-reverse:0;--tw-space-x-reverse:0;--tw-divide-y-reverse:0;--tw-border-style:solid;--tw-leading:initial;--tw-font-weight:initial;--tw-tracking:initial;--tw-shadow:0 0 #0000;--tw-shadow-color:initial;--tw-shadow-alpha:100%;--tw-inset-shadow:0 0 #0000;--tw-inset-shadow-color:initial;--tw-inset-shadow-alpha:100%;--tw-ring-color:initial;--tw-ring-shadow:0 0 #0000;--tw-inset-ring-color:initial;--tw-inset-ring-shadow:0 0 #0000;--tw-ring-inset:initial;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-offset-shadow:0 0 #0000;--tw-outline-style:solid;--tw-blur:initial;--tw-brightness:initial;--tw-contrast:initial;--tw-grayscale:initial;--tw-hue-rotate:initial;--tw-invert:initial;--tw-opacity:initial;--tw-saturate:initial;--tw-sepia:initial;--tw-drop-shadow:initial;--tw-drop-shadow-color:initial;--tw-drop-shadow-alpha:100%;--tw-drop-shadow-size:initial}}}@layer theme{:root,:host{--font-sans:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";--font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;--color-red-50:oklch(97.1% .013 17.38);--color-red-100:oklch(93.6% .032 17.717);--color-red-200:oklch(88.5% .062 18.334);--color-red-300:oklch(80.8% .114 19.571);--color-red-400:oklch(70.4% .191 22.216);--color-red-500:oklch(63.7% .237 25.331);--color-red-600:oklch(57.7% .245 27.325);--color-red-700:oklch(50.5% .213 27.518);--color-red-800:oklch(44.4% .177 26.899);--color-red-900:oklch(39.6% .141 25.723);--color-orange-300:oklch(83.7% .128 66.29);--color-orange-600:oklch(64.6% .222 41.116);--color-orange-800:oklch(47% .157 37.304);--color-yellow-100:oklch(97.3% .071 103.193);--color-yellow-200:oklch(94.5% .129 101.54);--color-yellow-400:oklch(85.2% .199 91.936);--color-yellow-800:oklch(47.6% .114 61.907);--color-green-100:oklch(96.2% .044 156.743);--color-green-300:oklch(87.1% .15 154.449);--color-green-400:oklch(79.2% .209 151.711);--color-green-500:oklch(72.3% .219 149.579);--color-green-600:oklch(62.7% .194 149.214);--color-green-700:oklch(52.7% .154 150.069);--color-green-800:oklch(44.8% .119 151.328);--color-emerald-900:oklch(37.8% .077 168.94);--color-blue-50:oklch(97% .014 254.604);--color-blue-100:oklch(93.2% .032 255.585);--color-blue-200:oklch(88.2% .059 254.128);--color-blue-300:oklch(80.9% .105 251.813);--color-blue-400:oklch(70.7% .165 254.624);--color-blue-500:oklch(62.3% .214 259.815);--color-blue-600:oklch(54.6% .245 262.881);--color-blue-700:oklch(48.8% .243 264.376);--color-blue-800:oklch(42.4% .199 265.638);--color-blue-900:oklch(37.9% .146 265.522);--color-indigo-900:oklch(35.9% .144 278.697);--color-purple-500:oklch(62.7% .265 303.9);--color-purple-600:oklch(55.8% .288 302.321);--color-gray-50:oklch(98.5% .002 247.839);--color-gray-100:oklch(96.7% .003 264.542);--color-gray-200:oklch(92.8% .006 264.531);--color-gray-300:oklch(87.2% .01 258.338);--color-gray-400:oklch(70.7% .022 261.325);--color-gray-500:oklch(55.1% .027 264.364);--color-gray-600:oklch(44.6% .03 256.802);--color-gray-700:oklch(37.3% .034 259.733);--color-gray-800:oklch(27.8% .033 256.848);--color-gray-900:oklch(21% .034 264.665);--color-stone-900:oklch(21.6% .006 56.043);--color-black:#000;--color-white:#fff;--spacing:.25rem;--container-xs:20rem;--container-md:28rem;--container-2xl:42rem;--container-3xl:48rem;--container-4xl:56rem;--container-5xl:64rem;--container-6xl:72rem;--text-xs:.75rem;--text-xs--line-height:calc(1/.75);--text-sm:.875rem;--text-sm--line-height:calc(1.25/.875);--text-base:1rem;--text-base--line-height:calc(1.5/1);--text-lg:1.125rem;--text-lg--line-height:calc(1.75/1.125);--text-xl:1.25rem;--text-xl--line-height:calc(1.75/1.25);--text-2xl:1.5rem;--text-2xl--line-height:calc(2/1.5);--text-3xl:1.875rem;--text-3xl--line-height:calc(2.25/1.875);--text-4xl:2.25rem;--text-4xl--line-height:calc(2.5/2.25);--text-5xl:3rem;--text-5xl--line-height:1;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--font-weight-extrabold:800;--tracking-wider:.05em;--leading-relaxed:1.625;--radius-md:.375rem;--radius-lg:.5rem;--default-transition-duration:.15s;--default-transition-timing-function:cubic-bezier(.4,0,.2,1);--default-font-family:var(--font-sans);--default-mono-font-family:var(--font-mono)}}@layer base{*,:after,:before,::backdrop{box-sizing:border-box;border:0 solid;margin:0;padding:0}::file-selector-button{box-sizing:border-box;border:0 solid;margin:0;padding:0}html,:host{-webkit-text-size-adjust:100%;tab-size:4;line-height:1.5;font-family:var(--default-font-family,ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji");font-feature-settings:var(--default-font-feature-settings,normal);font-variation-settings:var(--default-font-variation-settings,normal);-webkit-tap-highlight-color:transparent}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;-webkit-text-decoration:inherit;-webkit-text-decoration:inherit;-webkit-text-decoration:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:var(--default-mono-font-family,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace);font-feature-settings:var(--default-mono-font-feature-settings,normal);font-variation-settings:var(--default-mono-font-variation-settings,normal);font-size:1em}small{font-size:80%}sub,sup{vertical-align:baseline;font-size:75%;line-height:0;position:relative}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}:-moz-focusring{outline:auto}progress{vertical-align:baseline}summary{display:list-item}ol,ul,menu{list-style:none}img,svg,video,canvas,audio,iframe,embed,object{vertical-align:middle;display:block}img,video{max-width:100%;height:auto}button,input,select,optgroup,textarea{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}::file-selector-button{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}:where(select:is([multiple],[size])) optgroup{font-weight:bolder}:where(select:is([multiple],[size])) optgroup option{padding-inline-start:20px}::file-selector-button{margin-inline-end:4px}::placeholder{opacity:1}@supports (not ((-webkit-appearance:-apple-pay-button))) or (contain-intrinsic-size:1px){::placeholder{color:currentColor}@supports (color:color-mix(in lab, red, red)){::placeholder{color:color-mix(in oklab,currentcolor 50%,transparent)}}}textarea{resize:vertical}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-date-and-time-value{min-height:1lh;text-align:inherit}::-webkit-datetime-edit{display:inline-flex}::-webkit-datetime-edit-fields-wrapper{padding:0}::-webkit-datetime-edit{padding-block:0}::-webkit-datetime-edit-year-field{padding-block:0}::-webkit-datetime-edit-month-field{padding-block:0}::-webkit-datetime-edit-day-field{padding-block:0}::-webkit-datetime-edit-hour-field{padding-block:0}::-webkit-datetime-edit-minute-field{padding-block:0}::-webkit-datetime-edit-second-field{padding-block:0}::-webkit-datetime-edit-millisecond-field{padding-block:0}::-webkit-datetime-edit-meridiem-field{padding-block:0}::-webkit-calendar-picker-indicator{line-height:1}:-moz-ui-invalid{box-shadow:none}button,input:where([type=button],[type=reset],[type=submit]){appearance:button}::file-selector-button{appearance:button}::-webkit-inner-spin-button{height:auto}::-webkit-outer-spin-button{height:auto}[hidden]:where(:not([hidden=until-found])){display:none!important}}@layer components;@layer utilities{.pointer-events-none{pointer-events:none}.visible{visibility:visible}.sr-only{clip-path:inset(50%);white-space:nowrap;border-width:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.absolute{position:absolute}.fixed{position:fixed}.relative{position:relative}.static{position:static}.inset-0{inset:calc(var(--spacing)*0)}.top-0{top:calc(var(--spacing)*0)}.top-full{top:100%}.bottom-0{bottom:calc(var(--spacing)*0)}.left-1{left:calc(var(--spacing)*1)}.left-1\/2{left:50%}.z-50{z-index:50}.float-left{float:left}.float-right{float:right}.container{width:100%}@media (min-width:40rem){.container{max-width:40rem}}@media (min-width:48rem){.container{max-width:48rem}}@media (min-width:64rem){.container{max-width:64rem}}@media (min-width:80rem){.container{max-width:80rem}}@media (min-width:96rem){.container{max-width:96rem}}.m-4{margin:calc(var(--spacing)*4)}.mx-1{margin-inline:calc(var(--spacing)*1)}.mx-2{margin-inline:calc(var(--spacing)*2)}.mx-4{margin-inline:calc(var(--spacing)*4)}.mx-8{margin-inline:calc(var(--spacing)*8)}.mx-auto{margin-inline:auto}.my-4{margin-block:calc(var(--spacing)*4)}.my-8{margin-block:calc(var(--spacing)*8)}.my-16{margin-block:calc(var(--spacing)*16)}.mt-1{margin-top:calc(var(--spacing)*1)}.mt-2{margin-top:calc(var(--spacing)*2)}.mt-3{margin-top:calc(var(--spacing)*3)}.mt-4{margin-top:calc(var(--spacing)*4)}.mt-6{margin-top:calc(var(--spacing)*6)}.mt-8{margin-top:calc(var(--spacing)*8)}.mt-12{margin-top:calc(var(--spacing)*12)}.mt-auto{margin-top:auto}.mr-2{margin-right:calc(var(--spacing)*2)}.mr-3{margin-right:calc(var(--spacing)*3)}.mr-6{margin-right:calc(var(--spacing)*6)}.mb-1{margin-bottom:calc(var(--spacing)*1)}.mb-2{margin-bottom:calc(var(--spacing)*2)}.mb-3{margin-bottom:calc(var(--spacing)*3)}.mb-4{margin-bottom:calc(var(--spacing)*4)}.mb-6{margin-bottom:calc(var(--spacing)*6)}.mb-8{margin-bottom:calc(var(--spacing)*8)}.mb-12{margin-bottom:calc(var(--spacing)*12)}.ml-1{margin-left:calc(var(--spacing)*1)}.ml-2{margin-left:calc(var(--spacing)*2)}.ml-4{margin-left:calc(var(--spacing)*4)}.ml-6{margin-left:calc(var(--spacing)*6)}.ml-auto{margin-left:auto}.line-clamp-2{-webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden}.block{display:block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.inline{display:inline}.inline-block{display:inline-block}.inline-flex{display:inline-flex}.table{display:table}.h-4{height:calc(var(--spacing)*4)}.h-5{height:calc(var(--spacing)*5)}.h-6{height:calc(var(--spacing)*6)}.h-8{height:calc(var(--spacing)*8)}.h-12{height:calc(var(--spacing)*12)}.h-20{height:calc(var(--spacing)*20)}.h-24{height:calc(var(--spacing)*24)}.h-32{height:calc(var(--spacing)*32)}.h-48{height:calc(var(--spacing)*48)}.h-64{height:calc(var(--spacing)*64)}.h-full{height:100%}.h-screen{height:100vh}.min-h-screen{min-height:100vh}.w-1{width:calc(var(--spacing)*1)}.w-1\/2{width:50%}.w-4{width:calc(var(--spacing)*4)}.w-5{width:calc(var(--spacing)*5)}.w-6{width:calc(var(--spacing)*6)}.w-8{width:calc(var(--spacing)*8)}.w-12{width:calc(var(--spacing)*12)}.w-20{width:calc(var(--spacing)*20)}.w-24{width:calc(var(--spacing)*24)}.w-25{width:calc(var(--spacing)*25)}.w-30{width:calc(var(--spacing)*30)}.w-32{width:calc(var(--spacing)*32)}.w-64{width:calc(var(--spacing)*64)}.w-96{width:calc(var(--spacing)*96)}.w-\[1px\]{width:1px}.w-full{width:100%}.w-px{width:1px}.max-w-2xl{max-width:var(--container-2xl)}.max-w-3xl{max-width:var(--container-3xl)}.max-w-4xl{max-width:var(--container-4xl)}.max-w-5xl{max-width:var(--container-5xl)}.max-w-6xl{max-width:var(--container-6xl)}.max-w-md{max-width:var(--container-md)}.max-w-xs{max-width:var(--container-xs)}.flex-1{flex:1}.flex-shrink-0{flex-shrink:0}.flex-grow{flex-grow:1}.border-collapse{border-collapse:collapse}.-translate-x-1\/2{--tw-translate-x:calc(calc(1/2*100%)*-1);translate:var(--tw-translate-x)var(--tw-translate-y)}.transform{transform:var(--tw-rotate-x,)var(--tw-rotate-y,)var(--tw-rotate-z,)var(--tw-skew-x,)var(--tw-skew-y,)}.cursor-pointer{cursor:pointer}.list-disc{list-style-type:disc}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-baseline{align-items:baseline}.items-center{align-items:center}.items-end{align-items:flex-end}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}.justify-center{justify-content:center}.justify-end{justify-content:flex-end}.gap-1{gap:calc(var(--spacing)*1)}.gap-2{gap:calc(var(--spacing)*2)}.gap-3{gap:calc(var(--spacing)*3)}.gap-4{gap:calc(var(--spacing)*4)}.gap-5{gap:calc(var(--spacing)*5)}.gap-6{gap:calc(var(--spacing)*6)}:where(.space-y-1>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*1)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*1)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-2>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*2)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*2)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-3>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*3)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*3)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-4>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*4)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*4)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-6>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*6)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*6)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-8>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*8)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*8)*calc(1 - var(--tw-space-y-reverse)))}.gap-x-4{column-gap:calc(var(--spacing)*4)}.gap-x-6{column-gap:calc(var(--spacing)*6)}:where(.space-x-2>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing)*2)*var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing)*2)*calc(1 - var(--tw-space-x-reverse)))}.gap-y-2{row-gap:calc(var(--spacing)*2)}:where(.divide-y>:not(:last-child)){--tw-divide-y-reverse:0;border-bottom-style:var(--tw-border-style);border-top-style:var(--tw-border-style);border-top-width:calc(1px*var(--tw-divide-y-reverse));border-bottom-width:calc(1px*calc(1 - var(--tw-divide-y-reverse)))}:where(.divide-gray-200>:not(:last-child)){border-color:var(--color-gray-200)}.truncate{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.overflow-hidden{overflow:hidden}.rounded{border-radius:.25rem}.rounded-full{border-radius:3.40282e38px}.rounded-lg{border-radius:var(--radius-lg)}.rounded-md{border-radius:var(--radius-md)}.border{border-style:var(--tw-border-style);border-width:1px}.border-0{border-style:var(--tw-border-style);border-width:0}.border-2{border-style:var(--tw-border-style);border-width:2px}.border-t{border-top-style:var(--tw-border-style);border-top-width:1px}.border-b{border-bottom-style:var(--tw-border-style);border-bottom-width:1px}.border-l-4{border-left-style:var(--tw-border-style);border-left-width:4px}.border-blue-200{border-color:var(--color-blue-200)}.border-gray-100{border-color:var(--color-gray-100)}.border-gray-200{border-color:var(--color-gray-200)}.border-gray-300{border-color:var(--color-gray-300)}.border-gray-400{border-color:var(--color-gray-400)}.border-gray-400\/30{border-color:#99a1af4d}@supports (color:color-mix(in lab, red, red)){.border-gray-400\/30{border-color:color-mix(in oklab,var(--color-gray-400)30%,transparent)}}.border-gray-500{border-color:var(--color-gray-500)}.border-gray-500\/20{border-color:#6a728233}@supports (color:color-mix(in lab, red, red)){.border-gray-500\/20{border-color:color-mix(in oklab,var(--color-gray-500)20%,transparent)}}.border-gray-600{border-color:var(--color-gray-600)}.border-green-300{border-color:var(--color-green-300)}.border-green-400{border-color:var(--color-green-400)}.border-orange-300{border-color:var(--color-orange-300)}.border-red-200{border-color:var(--color-red-200)}.border-red-300{border-color:var(--color-red-300)}.border-red-500{border-color:var(--color-red-500)}.bg-black{background-color:var(--color-black)}.bg-blue-50{background-color:var(--color-blue-50)}.bg-blue-100{background-color:var(--color-blue-100)}.bg-blue-300{background-color:var(--color-blue-300)}.bg-blue-500{background-color:var(--color-blue-500)}.bg-blue-600{background-color:var(--color-blue-600)}.bg-emerald-900{background-color:var(--color-emerald-900)}.bg-gray-50{background-color:var(--color-gray-50)}.bg-gray-100{background-color:var(--color-gray-100)}.bg-gray-200{background-color:var(--color-gray-200)}.bg-gray-300{background-color:var(--color-gray-300)}.bg-gray-400{background-color:var(--color-gray-400)}.bg-gray-500{background-color:var(--color-gray-500)}.bg-gray-600{background-color:var(--color-gray-600)}.bg-gray-700{background-color:var(--color-gray-700)}.bg-gray-800{background-color:var(--color-gray-800)}.bg-gray-900{background-color:var(--color-gray-900)}.bg-green-100{background-color:var(--color-green-100)}.bg-green-500{background-color:var(--color-green-500)}.bg-indigo-900{background-color:var(--color-indigo-900)}.bg-purple-500{background-color:var(--color-purple-500)}.bg-red-50{background-color:var(--color-red-50)}.bg-red-100{background-color:var(--color-red-100)}.bg-red-500{background-color:var(--color-red-500)}.bg-stone-900{background-color:var(--color-stone-900)}.bg-white{background-color:var(--color-white)}.bg-yellow-100{background-color:var(--color-yellow-100)}.object-cover{object-fit:cover}.p-1{padding:calc(var(--spacing)*1)}.p-2{padding:calc(var(--spacing)*2)}.p-3{padding:calc(var(--spacing)*3)}.p-4{padding:calc(var(--spacing)*4)}.p-6{padding:calc(var(--spacing)*6)}.p-8{padding:calc(var(--spacing)*8)}.px-1{padding-inline:calc(var(--spacing)*1)}.px-2{padding-inline:calc(var(--spacing)*2)}.px-2\.5{padding-inline:calc(var(--spacing)*2.5)}.px-3{padding-inline:calc(var(--spacing)*3)}.px-4{padding-inline:calc(var(--spacing)*4)}.px-5{padding-inline:calc(var(--spacing)*5)}.px-6{padding-inline:calc(var(--spacing)*6)}.px-8{padding-inline:calc(var(--spacing)*8)}.\!py-1{padding-block:calc(var(--spacing)*1)!important}.py-0{padding-block:calc(var(--spacing)*0)}.py-0\.5{padding-block:calc(var(--spacing)*.5)}.py-1{padding-block:calc(var(--spacing)*1)}.py-2{padding-block:calc(var(--spacing)*2)}.py-3{padding-block:calc(var(--spacing)*3)}.py-4{padding-block:calc(var(--spacing)*4)}.py-6{padding-block:calc(var(--spacing)*6)}.py-8{padding-block:calc(var(--spacing)*8)}.py-10{padding-block:calc(var(--spacing)*10)}.py-16{padding-block:calc(var(--spacing)*16)}.pt-6{padding-top:calc(var(--spacing)*6)}.pt-8{padding-top:calc(var(--spacing)*8)}.pr-5{padding-right:calc(var(--spacing)*5)}.pb-2{padding-bottom:calc(var(--spacing)*2)}.pb-3{padding-bottom:calc(var(--spacing)*3)}.pb-4{padding-bottom:calc(var(--spacing)*4)}.pl-5{padding-left:calc(var(--spacing)*5)}.text-center{text-align:center}.text-left{text-align:left}.text-right{text-align:right}.text-2xl{font-size:var(--text-2xl);line-height:var(--tw-leading,var(--text-2xl--line-height))}.text-3xl{font-size:var(--text-3xl);line-height:var(--tw-leading,var(--text-3xl--line-height))}.text-4xl{font-size:var(--text-4xl);line-height:var(--tw-leading,var(--text-4xl--line-height))}.text-5xl{font-size:var(--text-5xl);line-height:var(--tw-leading,var(--text-5xl--line-height))}.text-base{font-size:var(--text-base);line-height:var(--tw-leading,var(--text-base--line-height))}.text-lg{font-size:var(--text-lg);line-height:var(--tw-leading,var(--text-lg--line-height))}.text-sm{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.text-xl{font-size:var(--text-xl);line-height:var(--tw-leading,var(--text-xl--line-height))}.text-xs{font-size:var(--text-xs);line-height:var(--tw-leading,var(--text-xs--line-height))}.leading-relaxed{--tw-leading:var(--leading-relaxed);line-height:var(--leading-relaxed)}.font-bold{--tw-font-weight:var(--font-weight-bold);font-weight:var(--font-weight-bold)}.font-extrabold{--tw-font-weight:var(--font-weight-extrabold);font-weight:var(--font-weight-extrabold)}.font-medium{--tw-font-weight:var(--font-weight-medium);font-weight:var(--font-weight-medium)}.font-semibold{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.tracking-wider{--tw-tracking:var(--tracking-wider);letter-spacing:var(--tracking-wider)}.whitespace-nowrap{white-space:nowrap}.\!text-white{color:var(--color-white)!important}.text-blue-400{color:var(--color-blue-400)}.text-blue-500{color:var(--color-blue-500)}.text-blue-600{color:var(--color-blue-600)}.text-blue-700{color:var(--color-blue-700)}.text-blue-800{color:var(--color-blue-800)}.text-blue-900{color:var(--color-blue-900)}.text-gray-200{color:var(--color-gray-200)}.text-gray-300{color:var(--color-gray-300)}.text-gray-400{color:var(--color-gray-400)}.text-gray-500{color:var(--color-gray-500)}.text-gray-600{color:var(--color-gray-600)}.text-gray-700{color:var(--color-gray-700)}.text-gray-800{color:var(--color-gray-800)}.text-gray-900{color:var(--color-gray-900)}.text-green-600{color:var(--color-green-600)}.text-green-700{color:var(--color-green-700)}.text-green-800{color:var(--color-green-800)}.text-orange-600{color:var(--color-orange-600)}.text-red-400{color:var(--color-red-400)}.text-red-500{color:var(--color-red-500)}.text-red-600{color:var(--color-red-600)}.text-red-700{color:var(--color-red-700)}.text-red-800{color:var(--color-red-800)}.text-red-900{color:var(--color-red-900)}.text-white{color:var(--color-white)}.text-yellow-400{color:var(--color-yellow-400)}.text-yellow-800{color:var(--color-yellow-800)}.lowercase{text-transform:lowercase}.uppercase{text-transform:uppercase}.italic{font-style:italic}.underline{text-decoration-line:underline}.placeholder-gray-400::placeholder{color:var(--color-gray-400)}.opacity-0{opacity:0}.opacity-70{opacity:.7}.opacity-80{opacity:.8}.shadow-md{--tw-shadow:0 4px 6px -1px var(--tw-shadow-color,#0000001a),0 2px 4px -2px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 3px 0 var(--tw-shadow-color,#0000001a),0 1px 2px -1px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.outline{outline-style:var(--tw-outline-style);outline-width:1px}.filter{filter:var(--tw-blur,)var(--tw-brightness,)var(--tw-contrast,)var(--tw-grayscale,)var(--tw-hue-rotate,)var(--tw-invert,)var(--tw-saturate,)var(--tw-sepia,)var(--tw-drop-shadow,)}.transition{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to,opacity,box-shadow,transform,translate,scale,rotate,filter,-webkit-backdrop-filter,backdrop-filter,display,content-visibility,overlay,pointer-events;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-all{transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-colors{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-opacity{transition-property:opacity;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}@media (hover:hover){.group-hover\:opacity-100:is(:where(.group):hover *){opacity:1}}.peer-checked\:ring-2:is(:where(.peer):checked~*){--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(2px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.peer-checked\:ring-blue-400:is(:where(.peer):checked~*){--tw-ring-color:var(--color-blue-400)}.file\:mr-4::file-selector-button{margin-right:calc(var(--spacing)*4)}.file\:rounded::file-selector-button{border-radius:.25rem}.file\:border-0::file-selector-button{border-style:var(--tw-border-style);border-width:0}.file\:bg-blue-50::file-selector-button{background-color:var(--color-blue-50)}.file\:px-4::file-selector-button{padding-inline:calc(var(--spacing)*4)}.file\:py-2::file-selector-button{padding-block:calc(var(--spacing)*2)}.file\:text-sm::file-selector-button{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.file\:font-semibold::file-selector-button{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.file\:text-blue-700::file-selector-button{color:var(--color-blue-700)}.last\:border-b-0:last-child{border-bottom-style:var(--tw-border-style);border-bottom-width:0}@media (hover:hover){.hover\:overflow-y-auto:hover{overflow-y:auto}.hover\:border-gray-400:hover{border-color:var(--color-gray-400)}.hover\:bg-blue-50:hover{background-color:var(--color-blue-50)}.hover\:bg-blue-100:hover{background-color:var(--color-blue-100)}.hover\:bg-blue-200:hover{background-color:var(--color-blue-200)}.hover\:bg-blue-500:hover{background-color:var(--color-blue-500)}.hover\:bg-blue-600:hover{background-color:var(--color-blue-600)}.hover\:bg-blue-700:hover{background-color:var(--color-blue-700)}.hover\:bg-gray-50:hover{background-color:var(--color-gray-50)}.hover\:bg-gray-100:hover{background-color:var(--color-gray-100)}.hover\:bg-gray-200:hover{background-color:var(--color-gray-200)}.hover\:bg-gray-600:hover{background-color:var(--color-gray-600)}.hover\:bg-gray-700\/30:hover{background-color:#3641534d}@supports (color:color-mix(in lab, red, red)){.hover\:bg-gray-700\/30:hover{background-color:color-mix(in oklab,var(--color-gray-700)30%,transparent)}}.hover\:bg-red-50:hover{background-color:var(--color-red-50)}.hover\:bg-red-600:hover{background-color:var(--color-red-600)}.hover\:\!text-gray-400:hover{color:var(--color-gray-400)!important}.hover\:text-blue-600:hover{color:var(--color-blue-600)}.hover\:text-blue-800:hover{color:var(--color-blue-800)}.hover\:text-gray-200:hover{color:var(--color-gray-200)}.hover\:text-gray-300:hover{color:var(--color-gray-300)}.hover\:text-gray-600:hover{color:var(--color-gray-600)}.hover\:text-gray-700:hover{color:var(--color-gray-700)}.hover\:text-gray-800:hover{color:var(--color-gray-800)}.hover\:text-green-800:hover{color:var(--color-green-800)}.hover\:text-orange-800:hover{color:var(--color-orange-800)}.hover\:text-red-300:hover{color:var(--color-red-300)}.hover\:text-red-500:hover{color:var(--color-red-500)}.hover\:text-red-800:hover{color:var(--color-red-800)}.hover\:text-white:hover{color:var(--color-white)}.hover\:text-yellow-200:hover{color:var(--color-yellow-200)}.hover\:opacity-100:hover{opacity:1}.hover\:file\:bg-blue-100:hover::file-selector-button{background-color:var(--color-blue-100)}}.focus\:border-\[1px\]:focus{border-style:var(--tw-border-style);border-width:1px}.focus\:border-blue-500:focus{border-color:var(--color-blue-500)}.focus\:border-gray-300:focus{border-color:var(--color-gray-300)}.focus\:border-gray-400:focus{border-color:var(--color-gray-400)}.focus\:ring-0:focus{--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(0px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.focus\:ring-1:focus{--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(1px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.focus\:ring-blue-500:focus{--tw-ring-color:var(--color-blue-500)}.focus\:ring-gray-400:focus{--tw-ring-color:var(--color-gray-400)}.focus\:ring-gray-500:focus{--tw-ring-color:var(--color-gray-500)}.focus\:outline-none:focus{--tw-outline-style:none;outline-style:none}@media (min-width:40rem){.sm\:flex{display:flex}.sm\:inline{display:inline}.sm\:flex-row{flex-direction:row}.sm\:justify-between{justify-content:space-between}.sm\:gap-6{gap:calc(var(--spacing)*6)}.sm\:gap-x-6{column-gap:calc(var(--spacing)*6)}.sm\:px-6{padding-inline:calc(var(--spacing)*6)}.sm\:py-10{padding-block:calc(var(--spacing)*10)}.sm\:text-3xl{font-size:var(--text-3xl);line-height:var(--tw-leading,var(--text-3xl--line-height))}.sm\:text-base{font-size:var(--text-base);line-height:var(--tw-leading,var(--text-base--line-height))}.sm\:text-lg{font-size:var(--text-lg);line-height:var(--tw-leading,var(--text-lg--line-height))}}@media (min-width:48rem){.md\:flex{display:flex}.md\:hidden{display:none}.md\:w-1\/2{width:50%}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.md\:justify-between{justify-content:space-between}.md\:text-4xl{font-size:var(--text-4xl);line-height:var(--tw-leading,var(--text-4xl--line-height))}}@media (min-width:64rem){.lg\:w-48{width:calc(var(--spacing)*48)}.lg\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.lg\:gap-6{gap:calc(var(--spacing)*6)}}}.layout-switcher.mode-split .text-area,.layout-switcher.mode-split .preview-area{flex:1;display:block}.layout-switcher.mode-split .original-preview-area{display:none}.layout-switcher.mode-text-only .text-area{flex:1;display:block}.layout-switcher.mode-text-only .preview-area,.layout-switcher.mode-text-only .original-preview-area,.layout-switcher.mode-text-only .layout-divider,.layout-switcher.mode-preview-only .text-area{display:none}.layout-switcher.mode-preview-only .preview-area{flex:1;display:block}.layout-switcher.mode-preview-only .original-preview-area,.layout-switcher.mode-preview-only .layout-divider{display:none}.layout-switcher.mode-original-preview .text-area{flex:1;display:block}.layout-switcher.mode-original-preview .preview-area{display:none}.layout-switcher.mode-original-preview .original-preview-area{flex:1;display:block}.layout-switcher.mode-original-preview .layout-divider{display:block}.layout-buttons button{cursor:pointer;background:#fff;border:1px solid #ccc;border-radius:4px;min-width:32px;height:32px;padding:4px 8px;font-size:16px}.layout-buttons button:hover{background:#f3f4f6}.layout-buttons button.active{background:#e5e7eb;border-color:#6b7280}.layout-switcher{width:100%;height:100%}.default-theme .theme-header{border-bottom:1px solid #e5e7eb;color:#374151!important;background-color:#f9fafb!important}.default-theme .theme-header a{color:#374151!important}.default-theme .theme-header a:hover{color:#1f2937!important}.default-theme .theme-header button{color:#374151!important}.default-theme .theme-header button:hover{color:#1f2937!important}.default-theme .theme-footer{color:#374151!important;background-color:#f9fafb!important;border-top:1px solid #e5e7eb!important}.default-theme .theme-footer a{color:#374151!important}.default-theme .theme-footer a:hover{color:#1f2937!important}.slate-theme .blog-title{color:#222b45!important}.slate-theme .theme-header,.slate-theme .theme-footer{color:#e5e7eb!important;background-color:#222b45!important}.forest-theme .blog-title{color:#1b4332!important}.forest-theme .theme-header,.forest-theme .theme-footer{color:#e5e7eb!important;background-color:#1b4332!important}.maroon-theme .blog-title{color:#3a0a0a!important}.maroon-theme .theme-header,.maroon-theme .theme-footer{color:#e5e7eb!important;background-color:#3a0a0a!important}.midnight-theme .blog-title{color:#0a1a2f!important}.midnight-theme .theme-header,.midnight-theme .theme-footer{color:#e5e7eb!important;background-color:#0a1a2f!important}[data-markdown-preview-target=preview] img{object-fit:contain;border-radius:4px;width:100%;height:auto;margin:10px 0}.article-content img{object-fit:contain;object-fit:contain;border-radius:4px;max-width:100%;height:auto;max-height:500px;margin:15px auto;display:block;box-shadow:0 2px 8px #0000001a}.tab-container{margin:20px 0}.tab-buttons{border-bottom:2px solid #ddd;margin-bottom:20px;display:flex}.tab-button{cursor:pointer;background:#f5f5f5;border:none;border-top:2px solid #0000;margin-right:2px;padding:10px 20px}.tab-button.active{background:#fff;border-top-color:#007bff;font-weight:700}.tab-content{display:none}.tab-content.active{display:block}@property --tw-translate-x{syntax:"*";inherits:false;initial-value:0}@property --tw-translate-y{syntax:"*";inherits:false;initial-value:0}@property --tw-translate-z{syntax:"*";inherits:false;initial-value:0}@property --tw-rotate-x{syntax:"*";inherits:false}@property --tw-rotate-y{syntax:"*";inherits:false}@property --tw-rotate-z{syntax:"*";inherits:false}@property --tw-skew-x{syntax:"*";inherits:false}@property --tw-skew-y{syntax:"*";inherits:false}@property --tw-space-y-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-space-x-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-divide-y-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}@property --tw-leading{syntax:"*";inherits:false}@property --tw-font-weight{syntax:"*";inherits:false}@property --tw-tracking{syntax:"*";inherits:false}@property --tw-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-shadow-color{syntax:"*";inherits:false}@property --tw-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-inset-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-inset-shadow-color{syntax:"*";inherits:false}@property --tw-inset-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-ring-color{syntax:"*";inherits:false}@property --tw-ring-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-inset-ring-color{syntax:"*";inherits:false}@property --tw-inset-ring-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-ring-inset{syntax:"*";inherits:false}@property --tw-ring-offset-width{syntax:"<length>";inherits:false;initial-value:0}@property --tw-ring-offset-color{syntax:"*";inherits:false;initial-value:#fff}@property --tw-ring-offset-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-outline-style{syntax:"*";inherits:false;initial-value:solid}@property --tw-blur{syntax:"*";inherits:false}@property --tw-brightness{syntax:"*";inherits:false}@property --tw-contrast{syntax:"*";inherits:false}@property --tw-grayscale{syntax:"*";inherits:false}@property --tw-hue-rotate{syntax:"*";inherits:false}@property --tw-invert{syntax:"*";inherits:false}@property --tw-opacity{syntax:"*";inherits:false}@property --tw-saturate{syntax:"*";inherits:false}@property --tw-sepia{syntax:"*";inherits:false}@property --tw-drop-shadow{syntax:"*";inherits:false}@property --tw-drop-shadow-color{syntax:"*";inherits:false}@property --tw-drop-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-drop-shadow-size{syntax:"*";inherits:false}```
 
 ## File: `app/assets/stylesheets/application.css`
 
@@ -4282,6 +4887,40 @@ puts "Total Users: #{User.count}"
 
 .list-article:hover {
   background-color: #f9fafb;
+}
+
+
+/* ダッシュボード: 画面サイズ警告 */
+#screen-size-warning {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  #screen-size-warning {
+    display: flex !important;
+  }
+  
+  #dashboard-content {
+    display: none !important;
+  }
+}
+
+/* いいねボタン */
+.like-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s;
+}
+
+.like-btn:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.like-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 ```
 
@@ -5321,95 +5960,284 @@ puts "Total Users: #{User.count}"
 ## File: `app/assets/stylesheets/medium-style.css`
 
 ```
-.medium-container {
-  all: revert;
-  font-family: Georgia, "Times New Roman", Times, serif;
-}
-.medium-container * {
-  all: revert;
-}
-.medium,
-.medium-wide {
+.article-content {
   font-family: Georgia, "Times New Roman", Times, serif;
   font-size: 21px;
   line-height: 1.58;
   letter-spacing: -0.003em;
   color: rgba(41, 41, 41, 1);
-  margin: 0 auto;
-  padding: 0 50px;
-}
-.medium {
-  max-width: 768px;
-}
-.medium-wide {
-  max-width: 1280px;
+  max-width: 100%;  /* ← 親の max-w-5xl に従う */
+  margin: 0;
 }
 
-.medium h1,
-.medium-wide h1 {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 42px;
-  font-weight: 700;
-  line-height: 1.04;
-  letter-spacing: -0.028em;
-  margin: 56px 0 -13px;
+
+/* Tailwindの影響を受けやすい要素だけリセット */
+.article-content ul,
+.article-content ol,
+.article-content li,
+.article-content p,
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  all: revert;
 }
-.medium h2,
-.medium-wide h2 {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1.15;
-  margin: 48px 0 -13px;
+
+/* ==================================================
+   見出し
+   ================================================== */
+
+.article-content h1,
+.article-content h2,
+.article-content h3,
+.article-content h4,
+.article-content h5,
+.article-content h6 {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #1a1a1a;
 }
-.medium p,
-.medium-wide p {
-  margin: 29px 0;
-  line-height: 1.58;
+
+.article-content h1 {
+  font-size: 1.8em;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3em;
+  margin-top: 0;
 }
-.medium blockquote,
-.medium-wide blockquote {
+
+.article-content h2 {
+  font-size: 1.6em;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3em;
+}
+
+.article-content h3 {
+  font-size: 1.45em;
+}
+
+.article-content h4 {
+  font-size: 1.30em;
+}
+
+.article-content h5 {
+  font-size: 1.15em;
+}
+
+.article-content h6 {
+  font-size: 1em;
+}
+
+/* ==================================================
+   段落・テキスト
+   ================================================== */
+
+.article-content p {
+  margin-bottom: 1em;
+  margin-top: 0;
+}
+
+.article-content strong {
+  font-weight: 600;
+}
+
+.article-content em {
   font-style: italic;
-  font-size: 24px;
-  line-height: 1.48;
-  border-left: 3px solid rgba(41, 41, 41, 1);
-  padding-left: 20px;
-  margin: 43px 0 43px -20px;
-}
-.medium ul,
-.medium ol,
-.medium-wide ul,
-.medium-wide ol {
-  margin: 29px 0;
-  padding-left: 30px;
-}
-.medium li,
-.medium-wide li {
-  margin: 14px 0;
-  line-height: 1.58;
 }
 
-.medium pre,
-.medium-wide pre {
-  background: #fdf6e3; /* 薄いクリーム色 */
-  border-radius: 3px;
-  padding: 20px;
-  margin: 29px 0;
+/* ==================================================
+   リンク
+   ================================================== */
+
+.article-content a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.article-content a:hover {
+  text-decoration: underline;
+}
+
+/* ==================================================
+   リスト（重要：Tailwindのリセットを上書き）
+   ================================================== */
+
+.article-content ul {
+  list-style-type: disc;
+  list-style-position: outside;
+  padding-left: 2em;
+  margin-bottom: 1em;
+  margin-top: 0;
+}
+
+.article-content ul li {
+  margin-bottom: 0.25em;
+  display: list-item;  /* Tailwindのリセットを上書き */
+}
+
+.article-content ul ul {
+  list-style-type: circle;
+  margin-top: 0.25em;
+  margin-bottom: 0;
+}
+
+.article-content ul ul ul {
+  list-style-type: square;
+}
+
+.article-content ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+  padding-left: 2em;
+  margin-bottom: 1em;
+  margin-top: 0;
+}
+
+.article-content ol li {
+  margin-bottom: 0.25em;
+  display: list-item;  /* Tailwindのリセットを上書き */
+}
+
+.article-content ol ol {
+  list-style-type: lower-alpha;
+  margin-top: 0.25em;
+  margin-bottom: 0;
+}
+
+.article-content ol ol ol {
+  list-style-type: lower-roman;
+}
+
+/* タスクリスト */
+.article-content .task-list-item {
+  list-style-type: none;
+}
+
+.article-content .task-list-item input[type="checkbox"] {
+  margin-right: 0.5em;
+  margin-left: -1.5em;
+}
+
+/* ==================================================
+   コードブロック
+   ================================================== */
+
+.article-content pre {
+  background-color: #f6f8fa;
+  border-radius: 6px;
+  padding: 1em;
   overflow-x: auto;
-  font-family: "SF Mono", Monaco, monospace;
-  font-size: 16px;
-  line-height: 1.45;
+  margin-bottom: 1em;
+  margin-top: 0;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
-.medium code,
-.medium-wide code {
-  background: #fdf6e3; /* 薄いクリーム色 */
-  border-radius: 2px;
-  padding: 3px 4px;
-  font-family: "SF Mono", Monaco, monospace;
-  font-size: 16px;
+.article-content code {
+  background-color: #f6f8fa;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+.article-content pre code {
+  background-color: transparent;
+  padding: 0;
+  font-size: 0.9em;
+}
+
+/* ==================================================
+   引用
+   ================================================== */
+
+.article-content blockquote {
+  border-left: 4px solid #d0d7de;
+  padding-left: 1em;
+  color: #57606a;
+  margin-bottom: 1em;
+  margin-top: 0;
+  font-style: italic;
+}
+
+.article-content blockquote p {
+  margin-bottom: 0.5em;
+}
+
+/* ==================================================
+   水平線
+   ================================================== */
+
+.article-content hr {
+  border: none;
+  border-top: 1px solid #d0d7de;
+  margin: 2em 0;
+}
+
+/* ==================================================
+   テーブル
+   ================================================== */
+
+.article-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1em;
+  margin-top: 0;
+  display: block;
+  overflow-x: auto;
+}
+
+.article-content table th,
+.article-content table td {
+  border: 1px solid #d0d7de;
+  padding: 0.5em 1em;
+  text-align: left;
+}
+
+.article-content table th {
+  background-color: #f6f8fa;
+  font-weight: 600;
+}
+
+.article-content table tr:nth-child(even) {
+  background-color: #f6f8fa;
+}
+
+/* ==================================================
+   画像
+   ================================================== */
+
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 1.5em 0;
+  border-radius: 4px;
+  display: block;
+}
+
+/* ==================================================
+   レスポンシブ対応
+   ================================================== */
+
+@media (max-width: 768px) {
+  .article-content {
+    font-size: 18px;
+  }
+  
+  .article-content h1 {
+    font-size: 2em;
+  }
+  
+  .article-content h2 {
+    font-size: 1.5em;
+  }
+  
+  .article-content pre {
+    padding: 0.75em;
+  }
 }
 ```
 
@@ -5782,31 +6610,21 @@ export { application }
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["modal", "signinForm", "signupForm", "title"];
+  static targets = ["modal"];
 
   connect() {
     console.log("✅ AuthModal controller connected!");
   }
 
-  showModal() {
+  showModal(e) {
+    if (e) e.preventDefault()
     this.modalTarget.classList.remove("hidden");
-    this.switchToSignin(); // デフォルトでサインインフォームを表示
   }
 
-  closeModal() {
+  closeModal(e) {
+    if (e) e.preventDefault()
     this.modalTarget.classList.add("hidden");
-  }
-
-  switchToSignin() {
-    this.signinFormTarget.classList.remove("hidden");
-    this.signupFormTarget.classList.add("hidden");
-    this.titleTarget.textContent = "Sign in to your account";
-  }
-
-  switchToSignup() {
-    this.signinFormTarget.classList.add("hidden");
-    this.signupFormTarget.classList.remove("hidden");
-    this.titleTarget.textContent = "Create your account";
+    // this.resetForm();
   }
 
   closeOnOutsideClick(event) {
@@ -5825,24 +6643,48 @@ export default class extends Controller {
       this.closeModal();
     }
   }
+
+  resetForm() {
+    setTimeout(() => {
+      const errorMessage = this.modalTarget.querySelector('[role="alert"]');
+      if (errorMessage) errorMessage.remove();
+
+      const form = this.modalTarget.querySelector("form");
+      if (form) form.reset();
+    }, 200);
+  }
 }
 ```
 
 ## File: `app/javascript/controllers/category_modal_controller.js`
 
 ```
+// MVP版での提供見送り
+// URLの設計改善・レイアウト崩れなどを優先
+
+
 import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
-  static targets = ["modal", "form", "select"];
+  static targets = ["modal", "form", "select", "localeInput"];
   static values = { url: String, locale: String };
 
   connect() {
     this.boundCloseOnEscape = this.closeOnEscape.bind(this);
     this.boundCloseOnOutsideClick = this.closeOnOutsideClick.bind(this);
+    
+    // モーダルを開いたときにlocaleをhiddenフィールドに設定
+    if (this.hasLocaleInputTarget) {
+      this.localeInputTarget.value = this.localeValue;
+    }
   }
 
   showModal() {
+    // モーダルを開く前にlocaleを設定
+    if (this.hasLocaleInputTarget) {
+      this.localeInputTarget.value = this.localeValue;
+    }
+    
     this.modalTarget.classList.remove("hidden");
     document.addEventListener("keydown", this.boundCloseOnEscape);
     document.addEventListener("click", this.boundCloseOnOutsideClick);
@@ -5871,14 +6713,25 @@ export default class extends Controller {
     event.preventDefault();
 
     const formData = new FormData(this.formTarget);
-    formData.append("locale", this.localeValue);
+    // localeはhiddenフィールドから自動的に送信される
+
+    // デバッグ：送信されるデータを確認
+    console.log("=== Category Modal Submit ===");
+    console.log("Locale Value:", this.localeValue);
+    console.log("Form Data:");
+    for (let [key, value] of formData.entries()) {
+      console.log(`  ${key}: ${value}`);
+    }
+    console.log("============================");
+
+
+    const url = `${this.urlValue}?locale=${this.localeValue}`;
 
     try {
-      const response = await fetch(this.urlValue, {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')
-            .content,
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content,
         },
         body: formData,
       });
@@ -5895,7 +6748,7 @@ export default class extends Controller {
       }
     } catch (error) {
       console.error("Error:", error);
-      alert("エラーが発生した");
+      alert("エラーが発生しました");
     }
   }
 }
@@ -6122,13 +6975,8 @@ export default class extends Controller {
   fetchPreview() {
     const content = this.inputTarget.value;
 
-    console.log("=== プレビューデバッグ ===");
-    console.log("URL:", this.urlValue);
-    console.log("Content:", content);
-    console.log("Content length:", content.length);
-
     if (content.trim() === "") {
-      this.previewTarget.innerHTML = "<p>プレビューがここに表示されます</p>";
+      this.previewTarget.innerHTML = "<p>Preview will appear here</p>";
       return;
     }
 
@@ -6160,6 +7008,20 @@ export default class extends Controller {
     element.style.height = "auto";
     const maxHeight = window.innerHeight * 0.8;
     element.style.height = Math.min(element.scrollHeight, maxHeight) + "px";
+  }
+}
+```
+
+## File: `app/javascript/controllers/mobile_menu_controller.js`
+
+```
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["menu"]
+
+  toggle() {
+    this.menuTarget.classList.toggle("hidden")
   }
 }
 ```

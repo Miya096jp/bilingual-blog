@@ -55,6 +55,7 @@ end
 
 get "/dashboard", to: redirect("/dashboard/articles")
 get "/", to: redirect("/ja")
+resources :attachments, only: [:destroy]
 
 namespace :admin do
   resources :users, only: [ :index, :show, :update ]

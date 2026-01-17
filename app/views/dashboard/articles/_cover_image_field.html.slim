@@ -1,0 +1,36 @@
+div#cover_image_section
+  = fields_for record do |f|
+    div class="flex items-center gap-1 ml-2"
+      
+      - if record.cover_image.attached? && record.cover_image.persisted?
+        
+        div data-controller="modal"
+        
+          button.relative.group.flex.items-center.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="button" data-action="click->modal#open"
+            = lucide_icon 'eye', class: "w-5 h-5 text-blue-500"
+            span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+              | Preview Cover Image
+
+          dialog.p-0.rounded-lg.shadow-2xl.backdrop:bg-black/80.bg-white.m-auto.fixed.inset-0 class="min-w-[300px]" data-modal-target="dialog" data-action="click->modal#clickOutside"
+            div.flex.flex-col
+              div.flex.justify-between.items-center.p-3
+                span.font-bold.text-gray-700 Cover Image
+                button.text-gray-500.hover:text-gray-800 type="button" data-action="click->modal#close"
+                  = lucide_icon 'x', class: "w-5 h-5"
+
+              div.p-4.flex.justify-center.bg-gray-50
+                = image_tag record.cover_image, class: "max-w-[80vw] max-h-[60vh] object-contain shadow-sm rounded"
+
+              div.p-3.flex.justify-end.bg-gray-50
+                = link_to attachment_path(record.cover_image.id), 
+                    data: { turbo_method: :delete, turbo_confirm: "カバー画像を削除しますか？" },
+                    class: "flex items-center gap-2 px-3 py-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors" do
+                  = lucide_icon 'trash-2', class: "w-4 h-4"
+                  span Delete Image
+
+      - else
+        label.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors for="cover_image_input"
+          = lucide_icon 'image', class: "w-5 h-5 text-gray-600"
+          = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
+          span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+            | Upload Cover Image
