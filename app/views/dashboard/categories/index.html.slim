@@ -1,7 +1,9 @@
+
+
 h1.text-2xl.font-bold.mb-6 Category
 
 .tab-container data-controller="category-tabs"
-  .tab-buttons.mb-6
+  .tab-buttons.mb-6.text.border-gray-600.text-sm
     button.tab-button.active data-action="click->category-tabs#switchTab" data-target="ja" data-category-tabs-target="button"
       | Japanese (#{category_count_for_locale("ja")})
     button.tab-button data-action="click->category-tabs#switchTab" data-target="en" data-category-tabs-target="button"
