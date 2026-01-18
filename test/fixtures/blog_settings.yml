@@ -1,0 +1,33 @@
+one:
+  user: one
+  blog_title_ja: testuser のブログ
+  blog_title_en: testuser's Blog
+  blog_subtitle_ja: テストブログです
+  blog_subtitle_en: This is a test blog
+  theme_color: default
+  layout_style: linear
+  show_hero_thumbnail: false
+
+two:
+  user: two
+  blog_title_ja: articlewriter のブログ
+  blog_title_en: articlewriter's Blog
+  theme_color: slate
+  layout_style: hero_tiles
+  show_hero_thumbnail: true
+
+admin_setting:
+  user: admin
+  blog_title_ja: 管理者のブログ
+  blog_title_en: Admin's Blog
+  theme_color: default
+  layout_style: linear
+  show_hero_thumbnail: false
+
+blogger_setting:
+  user: blogger
+  blog_title_ja: blogger のブログ
+  blog_title_en: blogger's Blog
+  theme_color: forest
+  layout_style: hero_list
+  show_hero_thumbnail: true

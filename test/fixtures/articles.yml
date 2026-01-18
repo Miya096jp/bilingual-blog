@@ -1,0 +1,51 @@
+published_ja:
+  title: 公開記事タイトル
+  content: |
+    # 公開記事
+    
+    これは公開されている記事です。
+  locale: ja
+  status: published
+  published_at: <%= 1.week.ago %>
+  user: blogger
+  category: programming_ja
+
+published_en:
+  title: Published Article Title
+  content: |
+    # Published Article
+    
+    This is a published article.
+  locale: en
+  status: published
+  published_at: <%= 1.week.ago %>
+  user: blogger
+  original_article: published_ja
+
+draft_ja:
+  title: 下書き記事タイトル
+  content: これは下書きです。
+  locale: ja
+  status: draft
+  published_at: <%= nil %>
+  user: blogger
+
+test_article:
+  title: テスト記事
+  content: |
+    # テスト見出し
+    
+    テスト本文です。
+  locale: ja
+  status: draft
+  user: one
+  category: technology_ja
+
+rails_article:
+  title: Rails ガイド
+  content: Rails についての記事です
+  locale: ja
+  status: published
+  published_at: <%= 2.days.ago %>
+  user: blogger
+  category: programming_ja
