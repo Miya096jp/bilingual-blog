@@ -32,10 +32,10 @@ class ArticleTest < ActiveSupport::TestCase
     article.locale = "fr"
     assert_not article.valid?
     assert article.errors[:locale].any?
-    
+
     article.locale = "ja"
     assert article.valid?
-    
+
     article.locale = "en"
     assert article.valid?
   end
@@ -48,7 +48,7 @@ class ArticleTest < ActiveSupport::TestCase
       user: users(:one)
     )
     article.save!
-    
+
     assert_equal "draft", article.status
   end
 
@@ -56,7 +56,7 @@ class ArticleTest < ActiveSupport::TestCase
     article = articles(:draft_ja)
     assert_nil article.published_at
     article.update!(status: :published)
-    
+
     assert_not_nil article.published_at
     assert article.published_at >= 1.minute.ago
     assert article.published_at <= Time.current
@@ -95,15 +95,15 @@ class ArticleTest < ActiveSupport::TestCase
   end
 
   test "should convert markdown content to html" do
-    article = Article.new(content: "# Hello World") 
-   
+    article = Article.new(content: "# Hello World")
+
     assert_match %r{<h1>Hello World</h1>}, article.content_html
   end
 
   test "should strip javascript from markdown" do
     bad_markdown = "Hello <script>alert('hack')</script>"
     article = Article.new(content: bad_markdown)
-    
+
     html = article.content_html
 
     assert_no_match /<script>/, html
@@ -189,7 +189,7 @@ class ArticleTest < ActiveSupport::TestCase
     assert ja_articles.all? { |a| a.locale == "ja" }
     assert_includes ja_articles, articles(:published_ja)
     assert_not_includes ja_articles, articles(:published_en)
-    
+
     en_articles = Article.by_locale("en")
     assert en_articles.all? { |a| a.locale == "en" }
     assert_includes en_articles, articles(:published_en)
@@ -199,7 +199,7 @@ class ArticleTest < ActiveSupport::TestCase
   test "by_category scope should filter by category" do
     category = categories(:programming_ja)
     filtered = Article.by_category(category.id)
-    
+
     assert filtered.all? { |a| a.category_id == category.id }
     assert_includes filtered, articles(:published_ja)
   end
@@ -230,21 +230,21 @@ test "for_listing scope should avoid N+1 queries" do
     # We create 3 articles to prove the loop doesn't trigger extra queries
     3.times do |i|
       article = Article.create!(
-        title: "Test Article #{i}", 
-        content: "Content", 
-        locale: "ja", 
+        title: "Test Article #{i}",
+        content: "Content",
+        locale: "ja",
         status: "published",
         published_at: Time.current,
-        user: users(:blogger),         
+        user: users(:blogger),
         category: categories(:programming_ja)
       )
     end
 
-    expected_queries = 5 
+    expected_queries = 5
 
     assert_queries_count(expected_queries) do
       articles = Article.for_listing("ja")
-      
+
       articles.each do |article|
         article.category&.name
         article.tags.to_a

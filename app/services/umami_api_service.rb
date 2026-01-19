@@ -86,11 +86,9 @@ class UmamiApiService
 
     response = http.request(request)
     response.code == "200" ? JSON.parse(response.body) : nil
-
   end
 
   def self.create_share_url(website_id, token)
-
     # エンドポイントから /share を削除した、サイトID直撃のURL
     uri = URI("#{UMAMI_BASE_URL}/api/websites/#{website_id}")
     http = configure_http(uri)

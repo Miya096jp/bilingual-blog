@@ -16,7 +16,7 @@ class Users::SessionsController < Devise::SessionsController
       set_flash_message!(:notice, :signed_in)
       sign_in(resource_name, resource)
       yield resource if block_given?
-      
+
       redirect_to after_sign_in_path_for(resource), status: :see_other
     else
       self.resource = resource_class.new(sign_in_params)

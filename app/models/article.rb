@@ -1,5 +1,4 @@
 class Article < ApplicationRecord
-
   include ActionView::Helpers::SanitizeHelper
 
   belongs_to :user

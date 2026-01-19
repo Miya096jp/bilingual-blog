@@ -38,7 +38,7 @@ class LikeTest < ActiveSupport::TestCase
 
   test "should allow different users to like same article" do
     like_from_different_user = Like.new(
-      user: users(:admin), 
+      user: users(:admin),
       article: articles(:published_ja)
     )
     assert like_from_different_user.valid?

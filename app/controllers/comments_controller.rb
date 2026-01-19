@@ -6,10 +6,10 @@ class CommentsController < ApplicationController
     @comment = @article.comments.build(comment_params)
 
     if @comment.save
-      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]), 
+      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]),
                   notice: "コメントを投稿しました"
     else
-      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]), 
+      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]),
                   alert: "コメントの投稿に失敗しました"
     end
   end

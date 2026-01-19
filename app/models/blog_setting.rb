@@ -3,9 +3,9 @@ class BlogSetting < ApplicationRecord
 
   belongs_to :user
 
-  validates :theme_color, inclusion: { 
+  validates :theme_color, inclusion: {
     in: THEME_COLORS,
-    message: "%{value} is not a valid theme color" 
+    message: "%{value} is not a valid theme color"
   }
 
   validates :layout_style, inclusion: { in: %w[linear hero_tiles hero_list] }

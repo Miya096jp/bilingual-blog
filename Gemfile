@@ -44,7 +44,7 @@ gem "kramdown-parser-gfm"
 gem "slim-rails"
 gem "html2slim", github: "slim-template/html2slim"
 # lucide icons
-gem 'lucide-rails'
+gem "lucide-rails"
 # For ActiveStorage
 gem "image_processing", "~> 1.2"
 
@@ -82,6 +82,7 @@ group :development do
   gem "solargraph"
   gem "ruby-lsp"
   gem "letter_opener"
+  gem "letter_opener_web"
 end
 
 group :test do

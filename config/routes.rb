@@ -2,10 +2,10 @@ Rails.application.routes.draw do
   get "contacts/new"
   get "contacts/create"
 
-  root to: redirect('/ja/u/admin/articles')
+  root to: redirect("/ja/u/admin/articles")
 
-  devise_for :users, 
-    controllers: { 
+  devise_for :users,
+    controllers: {
       omniauth_callbacks: "users/omniauth_callbacks",
       sessions: "users/sessions",
       registrations: "users/registrations",
@@ -55,7 +55,7 @@ end
 
 get "/dashboard", to: redirect("/dashboard/articles")
 get "/", to: redirect("/ja")
-resources :attachments, only: [:destroy]
+resources :attachments, only: [ :destroy ]
 
 namespace :admin do
   resources :users, only: [ :index, :show, :update ]
@@ -63,5 +63,9 @@ namespace :admin do
   resources :contacts, only: [ :index, :show, :update ]
 
   root "dashboard#index"
+end
+
+if Rails.env.development?
+  mount LetterOpenerWeb::Engine, at: "/letter_opener"
 end
 end
