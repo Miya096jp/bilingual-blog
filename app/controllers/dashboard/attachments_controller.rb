@@ -9,8 +9,8 @@ class AttachmentsController < ApplicationController
     respond_to do |format|
       format.turbo_stream do
         render turbo_stream: turbo_stream.replace(
-          "cover_image_section", 
-          partial: "dashboard/articles/cover_image_field", 
+          "cover_image_section",
+          partial: "dashboard/articles/cover_image_field",
           locals: { record: record }
         )
       end

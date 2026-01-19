@@ -1,5 +1,5 @@
 class Users::RegistrationsController < Devise::RegistrationsController
-  layout "dashboard", only: [:delete_confirmation]
+  layout "dashboard", only: [ :delete_confirmation ]
   respond_to :html, :turbo_stream
 
   def new

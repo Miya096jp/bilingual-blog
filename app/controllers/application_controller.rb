@@ -14,7 +14,7 @@ class ApplicationController < ActionController::Base
 
 
   def set_locale
-    if request.path.start_with?('/dashboard') || request.path.start_with?('/admin')
+    if request.path.start_with?("/dashboard") || request.path.start_with?("/admin")
       I18n.locale = I18n.default_locale
     else
       I18n.locale = params[:locale] || I18n.default_locale
@@ -30,9 +30,9 @@ class ApplicationController < ActionController::Base
   # end
 
   def default_url_options
-    if request.path.start_with?('/users') || 
-      request.path.start_with?('/dashboard') || 
-      request.path.start_with?('/admin')
+    if request.path.start_with?("/users") ||
+      request.path.start_with?("/dashboard") ||
+      request.path.start_with?("/admin")
       {}
     else
       { locale: params[:locale] || I18n.locale || "ja" }

@@ -10,7 +10,7 @@ class Users::ConfirmationsController < Devise::ConfirmationsController
       # 確認成功
       set_flash_message!(:notice, :confirmed)
       sign_in(resource_name, resource)
-      
+
       # ビューを表示せず、直接リダイレクト
       redirect_to after_confirmation_path_for(resource_name, resource)
     else

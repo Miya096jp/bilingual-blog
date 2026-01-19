@@ -15,7 +15,7 @@ admin = User.create!(
   password: "password",
   password_confirmation: "password",
   role: :admin,
-  confirmed_at: Time.current 
+  confirmed_at: Time.current
 )
 
 # 一般ユーザー1
@@ -25,7 +25,7 @@ alice = User.create!(
   password: "password",
   password_confirmation: "password",
   role: :user,
-  confirmed_at: Time.current 
+  confirmed_at: Time.current
 )
 
 # 一般ユーザー2
@@ -35,13 +35,13 @@ bob = User.create!(
   password: "password",
   password_confirmation: "password",
   role: :user,
-  confirmed_at: Time.current 
+  confirmed_at: Time.current
 )
 
 puts "ユーザー作成完了: #{User.count}名"
 
 # ブログ設定を作成
-[admin, alice, bob].each do |user|
+[ admin, alice, bob ].each do |user|
   BlogSetting.create!(
     user: user,
     blog_title_ja: "#{user.username}のブログ",
@@ -55,7 +55,7 @@ end
 puts "記事を作成中..."
 
 # 各ユーザーに3記事ずつ作成
-[admin, alice, bob].each do |user|
+[ admin, alice, bob ].each do |user|
   3.times do |i|
     # 日本語記事（オリジナル）
     article_ja = Article.create!(
@@ -66,7 +66,7 @@ puts "記事を作成中..."
       status: :published,
       published_at: Time.current - (i + 1).days
     )
-    
+
     # 英語翻訳記事
     article_en = Article.create!(
       user: user,
@@ -77,7 +77,7 @@ puts "記事を作成中..."
       published_at: Time.current - (i + 1).days,
       original_article: article_ja
     )
-    
+
     # 各記事に1件コメントを追加
     Comment.create!(
       article: article_ja,
@@ -85,7 +85,7 @@ puts "記事を作成中..."
       content: "this is a test comment",
       website: nil
     )
-    
+
     Comment.create!(
       article: article_en,
       author_name: "test-commenter",

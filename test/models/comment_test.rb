@@ -23,8 +23,8 @@ class CommentTest < ActiveSupport::TestCase
 
   test "should reject invalid website url format" do
     comment = comments(:one)
-    invalid_urls = ["not-a-url", "ftp://example.com", "example.com", "www.example.com"]
-    
+    invalid_urls = [ "not-a-url", "ftp://example.com", "example.com", "www.example.com" ]
+
     invalid_urls.each do |invalid_url|
       comment.website = invalid_url
       assert_not comment.valid?, "#{invalid_url} should be invalid"
@@ -34,9 +34,9 @@ class CommentTest < ActiveSupport::TestCase
 
   test "should accept valid website url formats" do
     comment = comments(:one)
-    
-    valid_urls = ["https://example.com", "http://example.com", "https://sub.example.com/path"]
-    
+
+    valid_urls = [ "https://example.com", "http://example.com", "https://sub.example.com/path" ]
+
     valid_urls.each do |valid_url|
       comment.website = valid_url
       assert comment.valid?, "#{valid_url} should be valid"
@@ -59,7 +59,7 @@ class CommentTest < ActiveSupport::TestCase
 
   test "should be ordered by created_at by default" do
     article = articles(:published_ja)
-    comments = article.comments 
+    comments = article.comments
     timestamps = comments.pluck(:created_at)
     assert_equal timestamps.sort.reverse, timestamps
   end

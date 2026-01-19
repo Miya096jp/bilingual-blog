@@ -26,7 +26,7 @@ class CategoryTest < ActiveSupport::TestCase
   test "should allow same name for different locale" do
     ja_category = categories(:technology_ja)
     en_category = categories(:technology_en)
-    
+
     assert ja_category.valid?
     assert en_category.valid?
     assert_not_equal ja_category.locale, en_category.locale
@@ -38,20 +38,20 @@ class CategoryTest < ActiveSupport::TestCase
       locale: "ja",
       user: users(:two) # Different user
     )
-    
+
     assert category_for_different_user.valid?
   end
 
   test "should only accept valid locales" do
     category = categories(:technology_ja)
-    
+
     category.locale = "fr"
     assert_not category.valid?
     assert category.errors[:locale].any?
-    
+
     category.locale = "ja"
     assert category.valid?
-    
+
     category.locale = "en"
     assert category.valid?
   end
@@ -64,7 +64,7 @@ class CategoryTest < ActiveSupport::TestCase
 
   test "should have many articles" do
     category = categories(:programming_ja)
-    
+
     assert_respond_to category, :articles
     assert category.articles.count > 0
     assert category.articles.all? { |a| a.is_a?(Article) }
@@ -75,7 +75,7 @@ class CategoryTest < ActiveSupport::TestCase
     assert ja_categories.all? { |c| c.locale == "ja" }
     assert_includes ja_categories, categories(:technology_ja)
     assert_not_includes ja_categories, categories(:technology_en)
-    
+
     en_categories = Category.for_locale("en")
     assert en_categories.all? { |c| c.locale == "en" }
     assert_includes en_categories, categories(:technology_en)
