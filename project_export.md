@@ -1,5 +1,5 @@
 # Project Code Export (MVC + Routes + Schema)
-Exported at: 2026-01-17 09:21:47 +0900
+Exported at: 2026-01-26 13:59:24 +0900
 
 ---
 
@@ -15,7 +15,6 @@ end
 
 ```
 class Article < ApplicationRecord
-
   include ActionView::Helpers::SanitizeHelper
 
   belongs_to :user
@@ -144,9 +143,9 @@ class BlogSetting < ApplicationRecord
 
   belongs_to :user
 
-  validates :theme_color, inclusion: { 
+  validates :theme_color, inclusion: {
     in: THEME_COLORS,
-    message: "%{value} is not a valid theme color" 
+    message: "%{value} is not a valid theme color"
   }
 
   validates :layout_style, inclusion: { in: %w[linear hero_tiles hero_list] }
@@ -186,7 +185,7 @@ class Category < ApplicationRecord
   belongs_to :user
   has_many :articles, dependent: :nullify
 
-  validates :name, presence: true, uniqueness: { scope: [:locale, :user_id] }
+  validates :name, presence: true, uniqueness: { scope: [ :locale, :user_id ] }
   validates :locale, inclusion: { in: %w[ja en] }
 
   scope :for_locale, ->(locale) { where(locale: locale) }
@@ -545,7 +544,7 @@ class ApplicationController < ActionController::Base
 
 
   def set_locale
-    if request.path.start_with?('/dashboard') || request.path.start_with?('/admin')
+    if request.path.start_with?("/dashboard") || request.path.start_with?("/admin")
       I18n.locale = I18n.default_locale
     else
       I18n.locale = params[:locale] || I18n.default_locale
@@ -561,9 +560,9 @@ class ApplicationController < ActionController::Base
   # end
 
   def default_url_options
-    if request.path.start_with?('/users') || 
-      request.path.start_with?('/dashboard') || 
-      request.path.start_with?('/admin')
+    if request.path.start_with?("/users") ||
+      request.path.start_with?("/dashboard") ||
+      request.path.start_with?("/admin")
       {}
     else
       { locale: params[:locale] || I18n.locale || "ja" }
@@ -638,6 +637,32 @@ class ArticlesController < ApplicationController
 end
 ```
 
+## File: `app/controllers/attachments_controller.rb`
+
+```
+class AttachmentsController < ApplicationController
+  before_action :authenticate_user!
+
+  def destroy
+    attachment = ActiveStorage::Attachment.find(params[:id])
+    record = attachment.record
+    attachment.purge
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "cover_image_section",
+          partial: "dashboard/articles/cover_image_field",
+          locals: { record: record }
+        )
+      end
+
+      format.html { redirect_back fallback_location: root_path, notice: "画像を削除しました" }
+    end
+  end
+end
+```
+
 ## File: `app/controllers/comments_controller.rb`
 
 ```
@@ -649,10 +674,10 @@ class CommentsController < ApplicationController
     @comment = @article.comments.build(comment_params)
 
     if @comment.save
-      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]), 
+      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]),
                   notice: "コメントを投稿しました"
     else
-      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]), 
+      redirect_to user_article_path(username: @blog_owner.username, id: @article, locale: params[:locale]),
                   alert: "コメントの投稿に失敗しました"
     end
   end
@@ -813,6 +838,32 @@ class Dashboard::ArticlesController < ApplicationController
 end
 ```
 
+## File: `app/controllers/dashboard/attachments_controller.rb`
+
+```
+class AttachmentsController < ApplicationController
+  before_action :authenticate_user!
+
+  def destroy
+    attachment = ActiveStorage::Attachment.find(params[:id])
+    record = attachment.record
+    attachment.purge
+
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          "cover_image_section",
+          partial: "dashboard/articles/cover_image_field",
+          locals: { record: record }
+        )
+      end
+
+      format.html { redirect_back fallback_location: root_path, notice: "画像を削除しました" }
+    end
+  end
+end
+```
+
 ## File: `app/controllers/dashboard/blog_settings_controller.rb`
 
 ```
@@ -866,7 +917,7 @@ class Dashboard::CategoriesController < ApplicationController
   def create
     @category = current_user.categories.build(category_params)
     # @category.locale = params[:locale]
-    @category.locale = params.dig(:category, :locale) || "ja"
+    # @category.locale = params.dig(:category, :locale) || "ja"
 
     respond_to do |format|
       if @category.save
@@ -1004,7 +1055,6 @@ class Dashboard::ImagesController < ApplicationController
   layout "dashboard"
 
   def create
-    # 直接Active Storage::Blobとして保存
     blob = ActiveStorage::Blob.create_and_upload!(
       io: params[:image],
       filename: params[:image].original_filename,
@@ -1013,7 +1063,6 @@ class Dashboard::ImagesController < ApplicationController
 
     variant = blob.variant(resize_to_limit: [ 800, 600 ]).processed
     image_url = url_for(variant)
-    # image_url = url_for(blob)
     render json: { url: image_url }
   rescue => e
     render json: { error: "画像のアップロードに失敗しました: #{e.message}" }, status: 422
@@ -1179,11 +1228,11 @@ class LikesController < ApplicationController
 
   def create
     @like = @article.likes.build(user: current_user)
-    
+
     if @like.save
       respond_to do |format|
         format.html { redirect_back(fallback_location: user_article_path(@article.user.username, @article, locale: params[:locale])) }
-        format.turbo_stream { render turbo_stream: turbo_stream.replace("like_button_#{@article.id}", partial: 'shared/like_button', locals: { article: @article }) }
+        format.turbo_stream { render turbo_stream: turbo_stream.replace("like_button_#{@article.id}", partial: "shared/like_button", locals: { article: @article }) }
       end
     else
       redirect_back(fallback_location: user_article_path(@article.user.username, @article, locale: params[:locale]), alert: "いいねできませんでした")
@@ -1193,10 +1242,10 @@ class LikesController < ApplicationController
   def destroy
     @like = @article.likes.find_by(user: current_user)
     @like&.destroy
-    
+
     respond_to do |format|
       format.html { redirect_back(fallback_location: user_article_path(@article.user.username, @article, locale: params[:locale])) }
-      format.turbo_stream { render turbo_stream: turbo_stream.replace("like_button_#{@article.id}", partial: 'shared/like_button', locals: { article: @article }) }
+      format.turbo_stream { render turbo_stream: turbo_stream.replace("like_button_#{@article.id}", partial: "shared/like_button", locals: { article: @article }) }
     end
   end
 
@@ -1299,7 +1348,7 @@ class Users::ConfirmationsController < Devise::ConfirmationsController
       # 確認成功
       set_flash_message!(:notice, :confirmed)
       sign_in(resource_name, resource)
-      
+
       # ビューを表示せず、直接リダイレクト
       redirect_to after_confirmation_path_for(resource_name, resource)
     else
@@ -1400,7 +1449,7 @@ end
 
 ```
 class Users::RegistrationsController < Devise::RegistrationsController
-  layout "dashboard", only: [:delete_confirmation]
+  layout "dashboard", only: [ :delete_confirmation ]
   respond_to :html, :turbo_stream
 
   def new
@@ -1488,7 +1537,7 @@ class Users::SessionsController < Devise::SessionsController
       set_flash_message!(:notice, :signed_in)
       sign_in(resource_name, resource)
       yield resource if block_given?
-      
+
       redirect_to after_sign_in_path_for(resource), status: :see_other
     else
       self.resource = resource_class.new(sign_in_params)
@@ -1792,7 +1841,7 @@ h1.text-2xl.font-bold.mb-6 ユーザー詳細
 
 / ヒーロー記事
 - if hero_article
-  .hero-article.m-4.max-w-4xl.mx-auto
+  .hero-article.m-4.max-w-4xl.mx-auto.mb-16
     - if @blog_setting&.show_hero_thumbnail && has_cover_image?(hero_article)
       .hero-thumbnail.mb-6
         = image_tag thumbnail_for_article(hero_article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
@@ -1852,10 +1901,13 @@ h1.text-2xl.font-bold.mb-6 ユーザー詳細
                       = link_to tag.name, user_articles_path(params[:username], filter.filter_params.merge(tag_id: tag.id)), class: "inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs hover:bg-blue-200"
                 
                 span= "#{t('blog.published_at')}: #{l(article.published_at, format: :blog_date)}"
-            
+                = render 'shared/like_button', article: article
+
             - if has_cover_image?(article)
               = image_tag thumbnail_for_article(article, @blog_setting), 
                   class: "w-20 h-20 object-cover rounded ml-4 flex-shrink-0"
+
+
 ```
 
 ## File: `app/views/articles/_hero_tiles_layout.html.slim`
@@ -2303,6 +2355,47 @@ h1.text-2xl.font-bold.mb-6 Analytics
         | Export Markdown
 ```
 
+## File: `app/views/dashboard/articles/_cover_image_field.html.slim`
+
+```
+div#cover_image_section
+  = fields_for record do |f|
+    div class="flex items-center gap-1 ml-2"
+      
+      - if record.cover_image.attached? && record.cover_image.persisted?
+        
+        div data-controller="modal"
+        
+          button.relative.group.flex.items-center.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="button" data-action="click->modal#open"
+            = lucide_icon 'eye', class: "w-5 h-5 text-blue-500"
+            span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+              | Preview Cover Image
+
+          dialog.p-0.rounded-lg.shadow-2xl.backdrop:bg-black/80.bg-white.m-auto.fixed.inset-0 class="min-w-[300px]" data-modal-target="dialog" data-action="click->modal#clickOutside"
+            div.flex.flex-col
+              div.flex.justify-between.items-center.p-3
+                span.font-bold.text-gray-700 Cover Image
+                button.text-gray-500.hover:text-gray-800 type="button" data-action="click->modal#close"
+                  = lucide_icon 'x', class: "w-5 h-5"
+
+              div.p-4.flex.justify-center.bg-gray-50
+                = image_tag record.cover_image, class: "max-w-[80vw] max-h-[60vh] object-contain shadow-sm rounded"
+
+              div.p-3.flex.justify-end.bg-gray-50
+                = link_to attachment_path(record.cover_image.id), 
+                    data: { turbo_method: :delete, turbo_confirm: "カバー画像を削除しますか？" },
+                    class: "flex items-center gap-2 px-3 py-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors" do
+                  = lucide_icon 'trash-2', class: "w-4 h-4"
+                  span Delete Image
+
+      - else
+        label.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors for="cover_image_input"
+          = lucide_icon 'image', class: "w-5 h-5 text-gray-600"
+          = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
+          span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+            | Upload Cover Image
+```
+
 ## File: `app/views/dashboard/articles/_form.html.slim`
 
 ```
@@ -2324,7 +2417,7 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
   div class= "relative flex gap-5 h-screen"
     div data-layout-switcher-target="textArea" class="flex-1 pr-5 flex flex-col h-full text-area"
 
-      = form_with model: article, url: form_url, local: true do |f|
+      = form_with model: article, url: form_url, local: true, multipart: true do |f|
 
         div class="flex items-center mb-6 border-b border-gray-400 pb-2"
 
@@ -2332,52 +2425,47 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
             = f.select :locale, options_for_select([["Japanese", "ja"], ["English", "en"]], article.locale), {}, { disabled: locale_disabled, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500" }
             = f.select :status, options_for_select([["Draft", "draft"],["Publish", "published"]], article.status), {}, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500"
 
-          div class="flex items-center gap-1 mx-2"
-            label.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors for="cover_image_input"
-              = lucide_icon 'image', class: "w-5 h-5 text-gray-600"
-              = f.file_field :cover_image, accept: "image/*", class: "hidden", id: "cover_image_input"
+          = render "dashboard/articles/cover_image_field", record: f.object
+          
+          button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="button" data-action="click->image-upload#selectImage"
+            = lucide_icon 'camera', class: "w-5 h-5 text-gray-500"
+            span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+              | Insert Image
+
+          - case button_type
+          - when "new"
+            button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
+              = lucide_icon 'send', class: "w-5 h-5 text-gray-600"
               span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                | Cover Image
+                | Publish
 
-            button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="button" data-action="click->image-upload#selectImage"
-              = lucide_icon 'camera', class: "w-5 h-5 text-gray-500"
+          - when "edit"
+            button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
+              = lucide_icon 'refresh-cw', class: "w-5 h-5 text-gray-600"
               span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                | Insert Image
+                | Update
 
-            - case button_type
-            - when "new"
-              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
-                = lucide_icon 'send', class: "w-5 h-5 text-gray-600"
-                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                  | Publish
+            = link_to dashboard_articles_path, class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
+              = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
+              span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                | Cancel
 
-            - when "edit"
-              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
-                = lucide_icon 'refresh-cw', class: "w-5 h-5 text-gray-600"
-                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                  | Update
+            = link_to dashboard_article_path(article), class: "relative group cursor-pointer hover:bg-red-50 rounded p-1 transition-colors", data: { "turbo-method": "delete", "turbo-confirm": "Are you sure?" } do
+              = lucide_icon 'trash', class: "w-5 h-5 text-gray-500 hover:text-red-500"
+              span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                | Delete
 
-              = link_to dashboard_articles_path, class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
-                = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
-                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                  | Cancel
+          - when "translation"
+            / Create Translation Button
+            button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
+              = lucide_icon 'languages', class: "w-5 h-5 text-gray-500"
+              span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                | Create Translation
 
-              = link_to dashboard_article_path(article), class: "relative group cursor-pointer hover:bg-red-50 rounded p-1 transition-colors", data: { "turbo-method": "delete", "turbo-confirm": "Are you sure?" } do
-                = lucide_icon 'trash', class: "w-5 h-5 text-gray-500 hover:text-red-500"
-                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                  | Delete
-
-            - when "translation"
-              / Create Translation Button
-              button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
-                = lucide_icon 'languages', class: "w-5 h-5 text-gray-500"
-                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                  | Create Translation
-
-              = link_to dashboard_article_path(original_article), class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
-                = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
-                span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                  | Cancel
+            = link_to dashboard_article_path(original_article), class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
+              = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
+              span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
+                | Cancel
 
 
         div class="ml-auto flex gap-2 border-b border-gray-400"
@@ -2434,7 +2522,7 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
 ## File: `app/views/dashboard/articles/index.html.slim`
 
 ```
-= link_to new_dashboard_article_path(locale: params[:locale]), class: "flex items-center gap-2 text-blue-500 hover:text-blue-600 transition-colors p-3 font-medium"
+= link_to new_dashboard_article_path(locale: params[:locale]), class: "inline-flex items-center gap-2 text-blue-500 hover:text-blue-600 transition-colors p-3 font-medium"
   = lucide_icon 'pen-line', class: "w-5 h-5"
   span.hidden.sm:inline.text-sm
     | New Article
@@ -2637,10 +2725,12 @@ h1.text-2xl.font-bold.mb-6 カテゴリを編集
 ## File: `app/views/dashboard/categories/index.html.slim`
 
 ```
+
+
 h1.text-2xl.font-bold.mb-6 Category
 
 .tab-container data-controller="category-tabs"
-  .tab-buttons.mb-6
+  .tab-buttons.mb-6.text.border-gray-600.text-sm
     button.tab-button.active data-action="click->category-tabs#switchTab" data-target="ja" data-category-tabs-target="button"
       | Japanese (#{category_count_for_locale("ja")})
     button.tab-button data-action="click->category-tabs#switchTab" data-target="en" data-category-tabs-target="button"
@@ -2684,6 +2774,7 @@ h1.text-2xl.font-bold.mb-6 Create a new category
     div
       = f.label :locale, "Language", class: "block text-sm font-medium text-gray-700 mb-2"
       = f.select :locale, options_for_select([["Japanese", "ja"], ["English", "en"]], @category.locale), {}, { disabled: true, class: "w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 text-gray-500" }
+      = f.hidden_field :locale
       small.block.text-gray-500.text-sm.mt-1
         | Language cannot be changed later
 
@@ -2764,17 +2855,37 @@ h3 コメント内容
 ## File: `app/views/dashboard/profiles/edit.html.slim`
 
 ```
-.mb-4
-  = link_to "👁️ Preview", user_profile_path(current_user.username, locale: I18n.locale), target: "_blank", class: "text-blue-500 hover:text-blue-600 text-sm"
-
-h1.text-2xl.font-bold.mb-6 Profile
+.flex.justify-between.items-center.mb-6
+  h1.text-2xl.font-bold Profile
+  
+  = link_to user_profile_path(current_user.username, locale: I18n.locale), target: "_blank", class: "text-blue-500 hover:text-blue-600 text-sm flex items-center gap-1 group" do
+    = lucide_icon 'eye', class: "w-4 h-4 group-hover:scale-110 transition-transform"
+    | Preview Public Page
 
 = form_with model: [:dashboard, @user], url: dashboard_profile_path, local: true, multipart: true do |f|
   .space-y-6
-    div
-      = f.label :avatar, "Icon", class: "block text-sm font-medium text-gray-700 mb-2"
-      = f.file_field :avatar, accept: "image/*", class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
     
+    div data-controller="image-preview"
+      = f.label :avatar, "Icon", class: "block text-sm font-medium text-gray-700 mb-2"
+      
+      .flex.items-center.gap-6
+        div
+          - if @user.avatar.attached?
+            - avatar_url = url_for(@user.avatar)
+          - else
+            - avatar_url = "https://ui-avatars.com/api/?name=#{@user.username}&background=random&size=128"
+
+          / render ONE single <img> tag. JS simply swaps the 'src' of this tag.
+          = image_tag avatar_url, 
+              class: "w-24 h-24 rounded-full object-cover border border-gray-200 shadow-sm", 
+              data: { image_preview_target: "preview" }
+
+        div.flex-1
+          = f.file_field :avatar, accept: "image/*", 
+              class: "block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer",
+              data: { image_preview_target: "input", action: "change->image-preview#display" }
+          p.mt-1.text-xs.text-gray-500 JPG, PNG or GIF.
+
     div
       = f.label :nickname_ja, "Nickname", class: "block text-sm font-medium text-gray-700 mb-2"
       .grid.grid-cols-2.gap-4
@@ -2825,21 +2936,21 @@ h1.text-2xl.font-bold.mb-6 Profile
       div
         = f.label :github_handle, "GitHub", class: "block text-sm font-medium text-gray-700 mb-2"
         = f.text_field :github_handle, placeholder: "username", class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-     
+      
       div
         = f.label :qiita_handle, "Qiita", class: "block text-sm font-medium text-gray-700 mb-2"
         = f.text_field :qiita_handle, placeholder: "username", class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-     
+      
       div
         = f.label :zenn_handle, "Zenn", class: "block text-sm font-medium text-gray-700 mb-2"
         = f.text_field :zenn_handle, placeholder: "username", class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-     
+      
       div
         = f.label :hatena_handle, "はてなブログ", class: "block text-sm font-medium text-gray-700 mb-2"
         = f.text_field :hatena_handle, placeholder: "username", class: "w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
 
-    .flex.gap-3
-      = f.submit "Update", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
+    .flex.gap-3.pt-4.border-t.border-gray-200
+      = f.submit "Update", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors cursor-pointer"
       = link_to "Cancel", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
 ```
 
@@ -3263,7 +3374,9 @@ p Find me in app/views/admin/translations/show.html.slim
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="text-lg bg-white min-h-screen flex flex-col" data-controller="auth-modal mobile-menu" data-action="keydown->auth-modal#closeOnEscape">
+<body class="text-lg bg-white min-h-screen flex flex-col" 
+      data-controller="auth-modal mobile-menu" 
+      data-action="keydown->auth-modal#closeOnEscape">
     
     <!-- ナビゲーションヘッダー -->
     <header class="site-header">
@@ -4323,15 +4436,15 @@ h1= t('blog.search.results')
 ## File: `app/views/shared/_auth_modal.html.slim`
 
 ```
-.fixed.inset-0.bg-black.bg-opacity-50.flex.items-center.justify-center.z-50.hidden id="auth_modal_overlay" data-auth-modal-target="modal" data-action="click->auth-modal#closeOnOutsideClick"
-  .bg-white.rounded-lg.p-6.w-96.max-w-90vw
+.fixed.inset-0.z-50.flex.items-center.justify-center.hidden id="auth_modal_overlay" data-auth-modal-target="modal"
+  .absolute.inset-0.bg-black/80 data-action="click->auth-modal#closeModal"
+  .relative.bg-white.rounded-lg.p-6.w-96.max-w-90vw
     turbo-frame id="auth_form_frame"
       .flex.justify-between.items-center.mb-6
         h3.text-xl.font-semibold Sign in to your account
         button.text-gray-400.hover:text-gray-600 type="button" data-action="click->auth-modal#closeModal" ×
 
       = render "shared/social_buttons"
-
       = render "shared/login_form", resource: User.new, resource_name: :user
 ```
 
@@ -4426,10 +4539,10 @@ Rails.application.routes.draw do
   get "contacts/new"
   get "contacts/create"
 
-  root to: redirect('/ja/u/admin/articles')
+  root to: redirect("/ja/u/admin/articles")
 
-  devise_for :users, 
-    controllers: { 
+  devise_for :users,
+    controllers: {
       omniauth_callbacks: "users/omniauth_callbacks",
       sessions: "users/sessions",
       registrations: "users/registrations",
@@ -4479,6 +4592,7 @@ end
 
 get "/dashboard", to: redirect("/dashboard/articles")
 get "/", to: redirect("/ja")
+resources :attachments, only: [ :destroy ]
 
 namespace :admin do
   resources :users, only: [ :index, :show, :update ]
@@ -4486,6 +4600,10 @@ namespace :admin do
   resources :contacts, only: [ :index, :show, :update ]
 
   root "dashboard#index"
+end
+
+if Rails.env.development?
+  mount LetterOpenerWeb::Engine, at: "/letter_opener"
 end
 end
 ```
@@ -4708,7 +4826,7 @@ admin = User.create!(
   password: "password",
   password_confirmation: "password",
   role: :admin,
-  confirmed_at: Time.current 
+  confirmed_at: Time.current
 )
 
 # 一般ユーザー1
@@ -4718,7 +4836,7 @@ alice = User.create!(
   password: "password",
   password_confirmation: "password",
   role: :user,
-  confirmed_at: Time.current 
+  confirmed_at: Time.current
 )
 
 # 一般ユーザー2
@@ -4728,13 +4846,13 @@ bob = User.create!(
   password: "password",
   password_confirmation: "password",
   role: :user,
-  confirmed_at: Time.current 
+  confirmed_at: Time.current
 )
 
 puts "ユーザー作成完了: #{User.count}名"
 
 # ブログ設定を作成
-[admin, alice, bob].each do |user|
+[ admin, alice, bob ].each do |user|
   BlogSetting.create!(
     user: user,
     blog_title_ja: "#{user.username}のブログ",
@@ -4748,7 +4866,7 @@ end
 puts "記事を作成中..."
 
 # 各ユーザーに3記事ずつ作成
-[admin, alice, bob].each do |user|
+[ admin, alice, bob ].each do |user|
   3.times do |i|
     # 日本語記事（オリジナル）
     article_ja = Article.create!(
@@ -4759,7 +4877,7 @@ puts "記事を作成中..."
       status: :published,
       published_at: Time.current - (i + 1).days
     )
-    
+
     # 英語翻訳記事
     article_en = Article.create!(
       user: user,
@@ -4770,7 +4888,7 @@ puts "記事を作成中..."
       published_at: Time.current - (i + 1).days,
       original_article: article_ja
     )
-    
+
     # 各記事に1件コメントを追加
     Comment.create!(
       article: article_ja,
@@ -4778,7 +4896,7 @@ puts "記事を作成中..."
       content: "this is a test comment",
       website: nil
     )
-    
+
     Comment.create!(
       article: article_en,
       author_name: "test-commenter",
@@ -4809,7 +4927,7 @@ puts "="*50
 
 ```
 /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
-@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-translate-x:0;--tw-translate-y:0;--tw-translate-z:0;--tw-rotate-x:initial;--tw-rotate-y:initial;--tw-rotate-z:initial;--tw-skew-x:initial;--tw-skew-y:initial;--tw-space-y-reverse:0;--tw-space-x-reverse:0;--tw-divide-y-reverse:0;--tw-border-style:solid;--tw-leading:initial;--tw-font-weight:initial;--tw-tracking:initial;--tw-shadow:0 0 #0000;--tw-shadow-color:initial;--tw-shadow-alpha:100%;--tw-inset-shadow:0 0 #0000;--tw-inset-shadow-color:initial;--tw-inset-shadow-alpha:100%;--tw-ring-color:initial;--tw-ring-shadow:0 0 #0000;--tw-inset-ring-color:initial;--tw-inset-ring-shadow:0 0 #0000;--tw-ring-inset:initial;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-offset-shadow:0 0 #0000;--tw-outline-style:solid;--tw-blur:initial;--tw-brightness:initial;--tw-contrast:initial;--tw-grayscale:initial;--tw-hue-rotate:initial;--tw-invert:initial;--tw-opacity:initial;--tw-saturate:initial;--tw-sepia:initial;--tw-drop-shadow:initial;--tw-drop-shadow-color:initial;--tw-drop-shadow-alpha:100%;--tw-drop-shadow-size:initial}}}@layer theme{:root,:host{--font-sans:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";--font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;--color-red-50:oklch(97.1% .013 17.38);--color-red-100:oklch(93.6% .032 17.717);--color-red-200:oklch(88.5% .062 18.334);--color-red-300:oklch(80.8% .114 19.571);--color-red-400:oklch(70.4% .191 22.216);--color-red-500:oklch(63.7% .237 25.331);--color-red-600:oklch(57.7% .245 27.325);--color-red-700:oklch(50.5% .213 27.518);--color-red-800:oklch(44.4% .177 26.899);--color-red-900:oklch(39.6% .141 25.723);--color-orange-300:oklch(83.7% .128 66.29);--color-orange-600:oklch(64.6% .222 41.116);--color-orange-800:oklch(47% .157 37.304);--color-yellow-100:oklch(97.3% .071 103.193);--color-yellow-200:oklch(94.5% .129 101.54);--color-yellow-400:oklch(85.2% .199 91.936);--color-yellow-800:oklch(47.6% .114 61.907);--color-green-100:oklch(96.2% .044 156.743);--color-green-300:oklch(87.1% .15 154.449);--color-green-400:oklch(79.2% .209 151.711);--color-green-500:oklch(72.3% .219 149.579);--color-green-600:oklch(62.7% .194 149.214);--color-green-700:oklch(52.7% .154 150.069);--color-green-800:oklch(44.8% .119 151.328);--color-emerald-900:oklch(37.8% .077 168.94);--color-blue-50:oklch(97% .014 254.604);--color-blue-100:oklch(93.2% .032 255.585);--color-blue-200:oklch(88.2% .059 254.128);--color-blue-300:oklch(80.9% .105 251.813);--color-blue-400:oklch(70.7% .165 254.624);--color-blue-500:oklch(62.3% .214 259.815);--color-blue-600:oklch(54.6% .245 262.881);--color-blue-700:oklch(48.8% .243 264.376);--color-blue-800:oklch(42.4% .199 265.638);--color-blue-900:oklch(37.9% .146 265.522);--color-indigo-900:oklch(35.9% .144 278.697);--color-purple-500:oklch(62.7% .265 303.9);--color-purple-600:oklch(55.8% .288 302.321);--color-gray-50:oklch(98.5% .002 247.839);--color-gray-100:oklch(96.7% .003 264.542);--color-gray-200:oklch(92.8% .006 264.531);--color-gray-300:oklch(87.2% .01 258.338);--color-gray-400:oklch(70.7% .022 261.325);--color-gray-500:oklch(55.1% .027 264.364);--color-gray-600:oklch(44.6% .03 256.802);--color-gray-700:oklch(37.3% .034 259.733);--color-gray-800:oklch(27.8% .033 256.848);--color-gray-900:oklch(21% .034 264.665);--color-stone-900:oklch(21.6% .006 56.043);--color-black:#000;--color-white:#fff;--spacing:.25rem;--container-xs:20rem;--container-md:28rem;--container-2xl:42rem;--container-3xl:48rem;--container-4xl:56rem;--container-5xl:64rem;--container-6xl:72rem;--text-xs:.75rem;--text-xs--line-height:calc(1/.75);--text-sm:.875rem;--text-sm--line-height:calc(1.25/.875);--text-base:1rem;--text-base--line-height:calc(1.5/1);--text-lg:1.125rem;--text-lg--line-height:calc(1.75/1.125);--text-xl:1.25rem;--text-xl--line-height:calc(1.75/1.25);--text-2xl:1.5rem;--text-2xl--line-height:calc(2/1.5);--text-3xl:1.875rem;--text-3xl--line-height:calc(2.25/1.875);--text-4xl:2.25rem;--text-4xl--line-height:calc(2.5/2.25);--text-5xl:3rem;--text-5xl--line-height:1;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--font-weight-extrabold:800;--tracking-wider:.05em;--leading-relaxed:1.625;--radius-md:.375rem;--radius-lg:.5rem;--default-transition-duration:.15s;--default-transition-timing-function:cubic-bezier(.4,0,.2,1);--default-font-family:var(--font-sans);--default-mono-font-family:var(--font-mono)}}@layer base{*,:after,:before,::backdrop{box-sizing:border-box;border:0 solid;margin:0;padding:0}::file-selector-button{box-sizing:border-box;border:0 solid;margin:0;padding:0}html,:host{-webkit-text-size-adjust:100%;tab-size:4;line-height:1.5;font-family:var(--default-font-family,ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji");font-feature-settings:var(--default-font-feature-settings,normal);font-variation-settings:var(--default-font-variation-settings,normal);-webkit-tap-highlight-color:transparent}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;-webkit-text-decoration:inherit;-webkit-text-decoration:inherit;-webkit-text-decoration:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:var(--default-mono-font-family,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace);font-feature-settings:var(--default-mono-font-feature-settings,normal);font-variation-settings:var(--default-mono-font-variation-settings,normal);font-size:1em}small{font-size:80%}sub,sup{vertical-align:baseline;font-size:75%;line-height:0;position:relative}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}:-moz-focusring{outline:auto}progress{vertical-align:baseline}summary{display:list-item}ol,ul,menu{list-style:none}img,svg,video,canvas,audio,iframe,embed,object{vertical-align:middle;display:block}img,video{max-width:100%;height:auto}button,input,select,optgroup,textarea{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}::file-selector-button{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}:where(select:is([multiple],[size])) optgroup{font-weight:bolder}:where(select:is([multiple],[size])) optgroup option{padding-inline-start:20px}::file-selector-button{margin-inline-end:4px}::placeholder{opacity:1}@supports (not ((-webkit-appearance:-apple-pay-button))) or (contain-intrinsic-size:1px){::placeholder{color:currentColor}@supports (color:color-mix(in lab, red, red)){::placeholder{color:color-mix(in oklab,currentcolor 50%,transparent)}}}textarea{resize:vertical}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-date-and-time-value{min-height:1lh;text-align:inherit}::-webkit-datetime-edit{display:inline-flex}::-webkit-datetime-edit-fields-wrapper{padding:0}::-webkit-datetime-edit{padding-block:0}::-webkit-datetime-edit-year-field{padding-block:0}::-webkit-datetime-edit-month-field{padding-block:0}::-webkit-datetime-edit-day-field{padding-block:0}::-webkit-datetime-edit-hour-field{padding-block:0}::-webkit-datetime-edit-minute-field{padding-block:0}::-webkit-datetime-edit-second-field{padding-block:0}::-webkit-datetime-edit-millisecond-field{padding-block:0}::-webkit-datetime-edit-meridiem-field{padding-block:0}::-webkit-calendar-picker-indicator{line-height:1}:-moz-ui-invalid{box-shadow:none}button,input:where([type=button],[type=reset],[type=submit]){appearance:button}::file-selector-button{appearance:button}::-webkit-inner-spin-button{height:auto}::-webkit-outer-spin-button{height:auto}[hidden]:where(:not([hidden=until-found])){display:none!important}}@layer components;@layer utilities{.pointer-events-none{pointer-events:none}.visible{visibility:visible}.sr-only{clip-path:inset(50%);white-space:nowrap;border-width:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.absolute{position:absolute}.fixed{position:fixed}.relative{position:relative}.static{position:static}.inset-0{inset:calc(var(--spacing)*0)}.top-0{top:calc(var(--spacing)*0)}.top-full{top:100%}.bottom-0{bottom:calc(var(--spacing)*0)}.left-1{left:calc(var(--spacing)*1)}.left-1\/2{left:50%}.z-50{z-index:50}.float-left{float:left}.float-right{float:right}.container{width:100%}@media (min-width:40rem){.container{max-width:40rem}}@media (min-width:48rem){.container{max-width:48rem}}@media (min-width:64rem){.container{max-width:64rem}}@media (min-width:80rem){.container{max-width:80rem}}@media (min-width:96rem){.container{max-width:96rem}}.m-4{margin:calc(var(--spacing)*4)}.mx-1{margin-inline:calc(var(--spacing)*1)}.mx-2{margin-inline:calc(var(--spacing)*2)}.mx-4{margin-inline:calc(var(--spacing)*4)}.mx-8{margin-inline:calc(var(--spacing)*8)}.mx-auto{margin-inline:auto}.my-4{margin-block:calc(var(--spacing)*4)}.my-8{margin-block:calc(var(--spacing)*8)}.my-16{margin-block:calc(var(--spacing)*16)}.mt-1{margin-top:calc(var(--spacing)*1)}.mt-2{margin-top:calc(var(--spacing)*2)}.mt-3{margin-top:calc(var(--spacing)*3)}.mt-4{margin-top:calc(var(--spacing)*4)}.mt-6{margin-top:calc(var(--spacing)*6)}.mt-8{margin-top:calc(var(--spacing)*8)}.mt-12{margin-top:calc(var(--spacing)*12)}.mt-auto{margin-top:auto}.mr-2{margin-right:calc(var(--spacing)*2)}.mr-3{margin-right:calc(var(--spacing)*3)}.mr-6{margin-right:calc(var(--spacing)*6)}.mb-1{margin-bottom:calc(var(--spacing)*1)}.mb-2{margin-bottom:calc(var(--spacing)*2)}.mb-3{margin-bottom:calc(var(--spacing)*3)}.mb-4{margin-bottom:calc(var(--spacing)*4)}.mb-6{margin-bottom:calc(var(--spacing)*6)}.mb-8{margin-bottom:calc(var(--spacing)*8)}.mb-12{margin-bottom:calc(var(--spacing)*12)}.ml-1{margin-left:calc(var(--spacing)*1)}.ml-2{margin-left:calc(var(--spacing)*2)}.ml-4{margin-left:calc(var(--spacing)*4)}.ml-6{margin-left:calc(var(--spacing)*6)}.ml-auto{margin-left:auto}.line-clamp-2{-webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden}.block{display:block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.inline{display:inline}.inline-block{display:inline-block}.inline-flex{display:inline-flex}.table{display:table}.h-4{height:calc(var(--spacing)*4)}.h-5{height:calc(var(--spacing)*5)}.h-6{height:calc(var(--spacing)*6)}.h-8{height:calc(var(--spacing)*8)}.h-12{height:calc(var(--spacing)*12)}.h-20{height:calc(var(--spacing)*20)}.h-24{height:calc(var(--spacing)*24)}.h-32{height:calc(var(--spacing)*32)}.h-48{height:calc(var(--spacing)*48)}.h-64{height:calc(var(--spacing)*64)}.h-full{height:100%}.h-screen{height:100vh}.min-h-screen{min-height:100vh}.w-1{width:calc(var(--spacing)*1)}.w-1\/2{width:50%}.w-4{width:calc(var(--spacing)*4)}.w-5{width:calc(var(--spacing)*5)}.w-6{width:calc(var(--spacing)*6)}.w-8{width:calc(var(--spacing)*8)}.w-12{width:calc(var(--spacing)*12)}.w-20{width:calc(var(--spacing)*20)}.w-24{width:calc(var(--spacing)*24)}.w-25{width:calc(var(--spacing)*25)}.w-30{width:calc(var(--spacing)*30)}.w-32{width:calc(var(--spacing)*32)}.w-64{width:calc(var(--spacing)*64)}.w-96{width:calc(var(--spacing)*96)}.w-\[1px\]{width:1px}.w-full{width:100%}.w-px{width:1px}.max-w-2xl{max-width:var(--container-2xl)}.max-w-3xl{max-width:var(--container-3xl)}.max-w-4xl{max-width:var(--container-4xl)}.max-w-5xl{max-width:var(--container-5xl)}.max-w-6xl{max-width:var(--container-6xl)}.max-w-md{max-width:var(--container-md)}.max-w-xs{max-width:var(--container-xs)}.flex-1{flex:1}.flex-shrink-0{flex-shrink:0}.flex-grow{flex-grow:1}.border-collapse{border-collapse:collapse}.-translate-x-1\/2{--tw-translate-x:calc(calc(1/2*100%)*-1);translate:var(--tw-translate-x)var(--tw-translate-y)}.transform{transform:var(--tw-rotate-x,)var(--tw-rotate-y,)var(--tw-rotate-z,)var(--tw-skew-x,)var(--tw-skew-y,)}.cursor-pointer{cursor:pointer}.list-disc{list-style-type:disc}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-baseline{align-items:baseline}.items-center{align-items:center}.items-end{align-items:flex-end}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}.justify-center{justify-content:center}.justify-end{justify-content:flex-end}.gap-1{gap:calc(var(--spacing)*1)}.gap-2{gap:calc(var(--spacing)*2)}.gap-3{gap:calc(var(--spacing)*3)}.gap-4{gap:calc(var(--spacing)*4)}.gap-5{gap:calc(var(--spacing)*5)}.gap-6{gap:calc(var(--spacing)*6)}:where(.space-y-1>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*1)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*1)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-2>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*2)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*2)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-3>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*3)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*3)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-4>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*4)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*4)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-6>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*6)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*6)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-8>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*8)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*8)*calc(1 - var(--tw-space-y-reverse)))}.gap-x-4{column-gap:calc(var(--spacing)*4)}.gap-x-6{column-gap:calc(var(--spacing)*6)}:where(.space-x-2>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing)*2)*var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing)*2)*calc(1 - var(--tw-space-x-reverse)))}.gap-y-2{row-gap:calc(var(--spacing)*2)}:where(.divide-y>:not(:last-child)){--tw-divide-y-reverse:0;border-bottom-style:var(--tw-border-style);border-top-style:var(--tw-border-style);border-top-width:calc(1px*var(--tw-divide-y-reverse));border-bottom-width:calc(1px*calc(1 - var(--tw-divide-y-reverse)))}:where(.divide-gray-200>:not(:last-child)){border-color:var(--color-gray-200)}.truncate{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.overflow-hidden{overflow:hidden}.rounded{border-radius:.25rem}.rounded-full{border-radius:3.40282e38px}.rounded-lg{border-radius:var(--radius-lg)}.rounded-md{border-radius:var(--radius-md)}.border{border-style:var(--tw-border-style);border-width:1px}.border-0{border-style:var(--tw-border-style);border-width:0}.border-2{border-style:var(--tw-border-style);border-width:2px}.border-t{border-top-style:var(--tw-border-style);border-top-width:1px}.border-b{border-bottom-style:var(--tw-border-style);border-bottom-width:1px}.border-l-4{border-left-style:var(--tw-border-style);border-left-width:4px}.border-blue-200{border-color:var(--color-blue-200)}.border-gray-100{border-color:var(--color-gray-100)}.border-gray-200{border-color:var(--color-gray-200)}.border-gray-300{border-color:var(--color-gray-300)}.border-gray-400{border-color:var(--color-gray-400)}.border-gray-400\/30{border-color:#99a1af4d}@supports (color:color-mix(in lab, red, red)){.border-gray-400\/30{border-color:color-mix(in oklab,var(--color-gray-400)30%,transparent)}}.border-gray-500{border-color:var(--color-gray-500)}.border-gray-500\/20{border-color:#6a728233}@supports (color:color-mix(in lab, red, red)){.border-gray-500\/20{border-color:color-mix(in oklab,var(--color-gray-500)20%,transparent)}}.border-gray-600{border-color:var(--color-gray-600)}.border-green-300{border-color:var(--color-green-300)}.border-green-400{border-color:var(--color-green-400)}.border-orange-300{border-color:var(--color-orange-300)}.border-red-200{border-color:var(--color-red-200)}.border-red-300{border-color:var(--color-red-300)}.border-red-500{border-color:var(--color-red-500)}.bg-black{background-color:var(--color-black)}.bg-blue-50{background-color:var(--color-blue-50)}.bg-blue-100{background-color:var(--color-blue-100)}.bg-blue-300{background-color:var(--color-blue-300)}.bg-blue-500{background-color:var(--color-blue-500)}.bg-blue-600{background-color:var(--color-blue-600)}.bg-emerald-900{background-color:var(--color-emerald-900)}.bg-gray-50{background-color:var(--color-gray-50)}.bg-gray-100{background-color:var(--color-gray-100)}.bg-gray-200{background-color:var(--color-gray-200)}.bg-gray-300{background-color:var(--color-gray-300)}.bg-gray-400{background-color:var(--color-gray-400)}.bg-gray-500{background-color:var(--color-gray-500)}.bg-gray-600{background-color:var(--color-gray-600)}.bg-gray-700{background-color:var(--color-gray-700)}.bg-gray-800{background-color:var(--color-gray-800)}.bg-gray-900{background-color:var(--color-gray-900)}.bg-green-100{background-color:var(--color-green-100)}.bg-green-500{background-color:var(--color-green-500)}.bg-indigo-900{background-color:var(--color-indigo-900)}.bg-purple-500{background-color:var(--color-purple-500)}.bg-red-50{background-color:var(--color-red-50)}.bg-red-100{background-color:var(--color-red-100)}.bg-red-500{background-color:var(--color-red-500)}.bg-stone-900{background-color:var(--color-stone-900)}.bg-white{background-color:var(--color-white)}.bg-yellow-100{background-color:var(--color-yellow-100)}.object-cover{object-fit:cover}.p-1{padding:calc(var(--spacing)*1)}.p-2{padding:calc(var(--spacing)*2)}.p-3{padding:calc(var(--spacing)*3)}.p-4{padding:calc(var(--spacing)*4)}.p-6{padding:calc(var(--spacing)*6)}.p-8{padding:calc(var(--spacing)*8)}.px-1{padding-inline:calc(var(--spacing)*1)}.px-2{padding-inline:calc(var(--spacing)*2)}.px-2\.5{padding-inline:calc(var(--spacing)*2.5)}.px-3{padding-inline:calc(var(--spacing)*3)}.px-4{padding-inline:calc(var(--spacing)*4)}.px-5{padding-inline:calc(var(--spacing)*5)}.px-6{padding-inline:calc(var(--spacing)*6)}.px-8{padding-inline:calc(var(--spacing)*8)}.\!py-1{padding-block:calc(var(--spacing)*1)!important}.py-0{padding-block:calc(var(--spacing)*0)}.py-0\.5{padding-block:calc(var(--spacing)*.5)}.py-1{padding-block:calc(var(--spacing)*1)}.py-2{padding-block:calc(var(--spacing)*2)}.py-3{padding-block:calc(var(--spacing)*3)}.py-4{padding-block:calc(var(--spacing)*4)}.py-6{padding-block:calc(var(--spacing)*6)}.py-8{padding-block:calc(var(--spacing)*8)}.py-10{padding-block:calc(var(--spacing)*10)}.py-16{padding-block:calc(var(--spacing)*16)}.pt-6{padding-top:calc(var(--spacing)*6)}.pt-8{padding-top:calc(var(--spacing)*8)}.pr-5{padding-right:calc(var(--spacing)*5)}.pb-2{padding-bottom:calc(var(--spacing)*2)}.pb-3{padding-bottom:calc(var(--spacing)*3)}.pb-4{padding-bottom:calc(var(--spacing)*4)}.pl-5{padding-left:calc(var(--spacing)*5)}.text-center{text-align:center}.text-left{text-align:left}.text-right{text-align:right}.text-2xl{font-size:var(--text-2xl);line-height:var(--tw-leading,var(--text-2xl--line-height))}.text-3xl{font-size:var(--text-3xl);line-height:var(--tw-leading,var(--text-3xl--line-height))}.text-4xl{font-size:var(--text-4xl);line-height:var(--tw-leading,var(--text-4xl--line-height))}.text-5xl{font-size:var(--text-5xl);line-height:var(--tw-leading,var(--text-5xl--line-height))}.text-base{font-size:var(--text-base);line-height:var(--tw-leading,var(--text-base--line-height))}.text-lg{font-size:var(--text-lg);line-height:var(--tw-leading,var(--text-lg--line-height))}.text-sm{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.text-xl{font-size:var(--text-xl);line-height:var(--tw-leading,var(--text-xl--line-height))}.text-xs{font-size:var(--text-xs);line-height:var(--tw-leading,var(--text-xs--line-height))}.leading-relaxed{--tw-leading:var(--leading-relaxed);line-height:var(--leading-relaxed)}.font-bold{--tw-font-weight:var(--font-weight-bold);font-weight:var(--font-weight-bold)}.font-extrabold{--tw-font-weight:var(--font-weight-extrabold);font-weight:var(--font-weight-extrabold)}.font-medium{--tw-font-weight:var(--font-weight-medium);font-weight:var(--font-weight-medium)}.font-semibold{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.tracking-wider{--tw-tracking:var(--tracking-wider);letter-spacing:var(--tracking-wider)}.whitespace-nowrap{white-space:nowrap}.\!text-white{color:var(--color-white)!important}.text-blue-400{color:var(--color-blue-400)}.text-blue-500{color:var(--color-blue-500)}.text-blue-600{color:var(--color-blue-600)}.text-blue-700{color:var(--color-blue-700)}.text-blue-800{color:var(--color-blue-800)}.text-blue-900{color:var(--color-blue-900)}.text-gray-200{color:var(--color-gray-200)}.text-gray-300{color:var(--color-gray-300)}.text-gray-400{color:var(--color-gray-400)}.text-gray-500{color:var(--color-gray-500)}.text-gray-600{color:var(--color-gray-600)}.text-gray-700{color:var(--color-gray-700)}.text-gray-800{color:var(--color-gray-800)}.text-gray-900{color:var(--color-gray-900)}.text-green-600{color:var(--color-green-600)}.text-green-700{color:var(--color-green-700)}.text-green-800{color:var(--color-green-800)}.text-orange-600{color:var(--color-orange-600)}.text-red-400{color:var(--color-red-400)}.text-red-500{color:var(--color-red-500)}.text-red-600{color:var(--color-red-600)}.text-red-700{color:var(--color-red-700)}.text-red-800{color:var(--color-red-800)}.text-red-900{color:var(--color-red-900)}.text-white{color:var(--color-white)}.text-yellow-400{color:var(--color-yellow-400)}.text-yellow-800{color:var(--color-yellow-800)}.lowercase{text-transform:lowercase}.uppercase{text-transform:uppercase}.italic{font-style:italic}.underline{text-decoration-line:underline}.placeholder-gray-400::placeholder{color:var(--color-gray-400)}.opacity-0{opacity:0}.opacity-70{opacity:.7}.opacity-80{opacity:.8}.shadow-md{--tw-shadow:0 4px 6px -1px var(--tw-shadow-color,#0000001a),0 2px 4px -2px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 3px 0 var(--tw-shadow-color,#0000001a),0 1px 2px -1px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.outline{outline-style:var(--tw-outline-style);outline-width:1px}.filter{filter:var(--tw-blur,)var(--tw-brightness,)var(--tw-contrast,)var(--tw-grayscale,)var(--tw-hue-rotate,)var(--tw-invert,)var(--tw-saturate,)var(--tw-sepia,)var(--tw-drop-shadow,)}.transition{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to,opacity,box-shadow,transform,translate,scale,rotate,filter,-webkit-backdrop-filter,backdrop-filter,display,content-visibility,overlay,pointer-events;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-all{transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-colors{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-opacity{transition-property:opacity;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}@media (hover:hover){.group-hover\:opacity-100:is(:where(.group):hover *){opacity:1}}.peer-checked\:ring-2:is(:where(.peer):checked~*){--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(2px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.peer-checked\:ring-blue-400:is(:where(.peer):checked~*){--tw-ring-color:var(--color-blue-400)}.file\:mr-4::file-selector-button{margin-right:calc(var(--spacing)*4)}.file\:rounded::file-selector-button{border-radius:.25rem}.file\:border-0::file-selector-button{border-style:var(--tw-border-style);border-width:0}.file\:bg-blue-50::file-selector-button{background-color:var(--color-blue-50)}.file\:px-4::file-selector-button{padding-inline:calc(var(--spacing)*4)}.file\:py-2::file-selector-button{padding-block:calc(var(--spacing)*2)}.file\:text-sm::file-selector-button{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.file\:font-semibold::file-selector-button{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.file\:text-blue-700::file-selector-button{color:var(--color-blue-700)}.last\:border-b-0:last-child{border-bottom-style:var(--tw-border-style);border-bottom-width:0}@media (hover:hover){.hover\:overflow-y-auto:hover{overflow-y:auto}.hover\:border-gray-400:hover{border-color:var(--color-gray-400)}.hover\:bg-blue-50:hover{background-color:var(--color-blue-50)}.hover\:bg-blue-100:hover{background-color:var(--color-blue-100)}.hover\:bg-blue-200:hover{background-color:var(--color-blue-200)}.hover\:bg-blue-500:hover{background-color:var(--color-blue-500)}.hover\:bg-blue-600:hover{background-color:var(--color-blue-600)}.hover\:bg-blue-700:hover{background-color:var(--color-blue-700)}.hover\:bg-gray-50:hover{background-color:var(--color-gray-50)}.hover\:bg-gray-100:hover{background-color:var(--color-gray-100)}.hover\:bg-gray-200:hover{background-color:var(--color-gray-200)}.hover\:bg-gray-600:hover{background-color:var(--color-gray-600)}.hover\:bg-gray-700\/30:hover{background-color:#3641534d}@supports (color:color-mix(in lab, red, red)){.hover\:bg-gray-700\/30:hover{background-color:color-mix(in oklab,var(--color-gray-700)30%,transparent)}}.hover\:bg-red-50:hover{background-color:var(--color-red-50)}.hover\:bg-red-600:hover{background-color:var(--color-red-600)}.hover\:\!text-gray-400:hover{color:var(--color-gray-400)!important}.hover\:text-blue-600:hover{color:var(--color-blue-600)}.hover\:text-blue-800:hover{color:var(--color-blue-800)}.hover\:text-gray-200:hover{color:var(--color-gray-200)}.hover\:text-gray-300:hover{color:var(--color-gray-300)}.hover\:text-gray-600:hover{color:var(--color-gray-600)}.hover\:text-gray-700:hover{color:var(--color-gray-700)}.hover\:text-gray-800:hover{color:var(--color-gray-800)}.hover\:text-green-800:hover{color:var(--color-green-800)}.hover\:text-orange-800:hover{color:var(--color-orange-800)}.hover\:text-red-300:hover{color:var(--color-red-300)}.hover\:text-red-500:hover{color:var(--color-red-500)}.hover\:text-red-800:hover{color:var(--color-red-800)}.hover\:text-white:hover{color:var(--color-white)}.hover\:text-yellow-200:hover{color:var(--color-yellow-200)}.hover\:opacity-100:hover{opacity:1}.hover\:file\:bg-blue-100:hover::file-selector-button{background-color:var(--color-blue-100)}}.focus\:border-\[1px\]:focus{border-style:var(--tw-border-style);border-width:1px}.focus\:border-blue-500:focus{border-color:var(--color-blue-500)}.focus\:border-gray-300:focus{border-color:var(--color-gray-300)}.focus\:border-gray-400:focus{border-color:var(--color-gray-400)}.focus\:ring-0:focus{--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(0px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.focus\:ring-1:focus{--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(1px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.focus\:ring-blue-500:focus{--tw-ring-color:var(--color-blue-500)}.focus\:ring-gray-400:focus{--tw-ring-color:var(--color-gray-400)}.focus\:ring-gray-500:focus{--tw-ring-color:var(--color-gray-500)}.focus\:outline-none:focus{--tw-outline-style:none;outline-style:none}@media (min-width:40rem){.sm\:flex{display:flex}.sm\:inline{display:inline}.sm\:flex-row{flex-direction:row}.sm\:justify-between{justify-content:space-between}.sm\:gap-6{gap:calc(var(--spacing)*6)}.sm\:gap-x-6{column-gap:calc(var(--spacing)*6)}.sm\:px-6{padding-inline:calc(var(--spacing)*6)}.sm\:py-10{padding-block:calc(var(--spacing)*10)}.sm\:text-3xl{font-size:var(--text-3xl);line-height:var(--tw-leading,var(--text-3xl--line-height))}.sm\:text-base{font-size:var(--text-base);line-height:var(--tw-leading,var(--text-base--line-height))}.sm\:text-lg{font-size:var(--text-lg);line-height:var(--tw-leading,var(--text-lg--line-height))}}@media (min-width:48rem){.md\:flex{display:flex}.md\:hidden{display:none}.md\:w-1\/2{width:50%}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.md\:justify-between{justify-content:space-between}.md\:text-4xl{font-size:var(--text-4xl);line-height:var(--tw-leading,var(--text-4xl--line-height))}}@media (min-width:64rem){.lg\:w-48{width:calc(var(--spacing)*48)}.lg\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.lg\:gap-6{gap:calc(var(--spacing)*6)}}}.layout-switcher.mode-split .text-area,.layout-switcher.mode-split .preview-area{flex:1;display:block}.layout-switcher.mode-split .original-preview-area{display:none}.layout-switcher.mode-text-only .text-area{flex:1;display:block}.layout-switcher.mode-text-only .preview-area,.layout-switcher.mode-text-only .original-preview-area,.layout-switcher.mode-text-only .layout-divider,.layout-switcher.mode-preview-only .text-area{display:none}.layout-switcher.mode-preview-only .preview-area{flex:1;display:block}.layout-switcher.mode-preview-only .original-preview-area,.layout-switcher.mode-preview-only .layout-divider{display:none}.layout-switcher.mode-original-preview .text-area{flex:1;display:block}.layout-switcher.mode-original-preview .preview-area{display:none}.layout-switcher.mode-original-preview .original-preview-area{flex:1;display:block}.layout-switcher.mode-original-preview .layout-divider{display:block}.layout-buttons button{cursor:pointer;background:#fff;border:1px solid #ccc;border-radius:4px;min-width:32px;height:32px;padding:4px 8px;font-size:16px}.layout-buttons button:hover{background:#f3f4f6}.layout-buttons button.active{background:#e5e7eb;border-color:#6b7280}.layout-switcher{width:100%;height:100%}.default-theme .theme-header{border-bottom:1px solid #e5e7eb;color:#374151!important;background-color:#f9fafb!important}.default-theme .theme-header a{color:#374151!important}.default-theme .theme-header a:hover{color:#1f2937!important}.default-theme .theme-header button{color:#374151!important}.default-theme .theme-header button:hover{color:#1f2937!important}.default-theme .theme-footer{color:#374151!important;background-color:#f9fafb!important;border-top:1px solid #e5e7eb!important}.default-theme .theme-footer a{color:#374151!important}.default-theme .theme-footer a:hover{color:#1f2937!important}.slate-theme .blog-title{color:#222b45!important}.slate-theme .theme-header,.slate-theme .theme-footer{color:#e5e7eb!important;background-color:#222b45!important}.forest-theme .blog-title{color:#1b4332!important}.forest-theme .theme-header,.forest-theme .theme-footer{color:#e5e7eb!important;background-color:#1b4332!important}.maroon-theme .blog-title{color:#3a0a0a!important}.maroon-theme .theme-header,.maroon-theme .theme-footer{color:#e5e7eb!important;background-color:#3a0a0a!important}.midnight-theme .blog-title{color:#0a1a2f!important}.midnight-theme .theme-header,.midnight-theme .theme-footer{color:#e5e7eb!important;background-color:#0a1a2f!important}[data-markdown-preview-target=preview] img{object-fit:contain;border-radius:4px;width:100%;height:auto;margin:10px 0}.article-content img{object-fit:contain;object-fit:contain;border-radius:4px;max-width:100%;height:auto;max-height:500px;margin:15px auto;display:block;box-shadow:0 2px 8px #0000001a}.tab-container{margin:20px 0}.tab-buttons{border-bottom:2px solid #ddd;margin-bottom:20px;display:flex}.tab-button{cursor:pointer;background:#f5f5f5;border:none;border-top:2px solid #0000;margin-right:2px;padding:10px 20px}.tab-button.active{background:#fff;border-top-color:#007bff;font-weight:700}.tab-content{display:none}.tab-content.active{display:block}@property --tw-translate-x{syntax:"*";inherits:false;initial-value:0}@property --tw-translate-y{syntax:"*";inherits:false;initial-value:0}@property --tw-translate-z{syntax:"*";inherits:false;initial-value:0}@property --tw-rotate-x{syntax:"*";inherits:false}@property --tw-rotate-y{syntax:"*";inherits:false}@property --tw-rotate-z{syntax:"*";inherits:false}@property --tw-skew-x{syntax:"*";inherits:false}@property --tw-skew-y{syntax:"*";inherits:false}@property --tw-space-y-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-space-x-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-divide-y-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}@property --tw-leading{syntax:"*";inherits:false}@property --tw-font-weight{syntax:"*";inherits:false}@property --tw-tracking{syntax:"*";inherits:false}@property --tw-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-shadow-color{syntax:"*";inherits:false}@property --tw-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-inset-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-inset-shadow-color{syntax:"*";inherits:false}@property --tw-inset-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-ring-color{syntax:"*";inherits:false}@property --tw-ring-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-inset-ring-color{syntax:"*";inherits:false}@property --tw-inset-ring-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-ring-inset{syntax:"*";inherits:false}@property --tw-ring-offset-width{syntax:"<length>";inherits:false;initial-value:0}@property --tw-ring-offset-color{syntax:"*";inherits:false;initial-value:#fff}@property --tw-ring-offset-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-outline-style{syntax:"*";inherits:false;initial-value:solid}@property --tw-blur{syntax:"*";inherits:false}@property --tw-brightness{syntax:"*";inherits:false}@property --tw-contrast{syntax:"*";inherits:false}@property --tw-grayscale{syntax:"*";inherits:false}@property --tw-hue-rotate{syntax:"*";inherits:false}@property --tw-invert{syntax:"*";inherits:false}@property --tw-opacity{syntax:"*";inherits:false}@property --tw-saturate{syntax:"*";inherits:false}@property --tw-sepia{syntax:"*";inherits:false}@property --tw-drop-shadow{syntax:"*";inherits:false}@property --tw-drop-shadow-color{syntax:"*";inherits:false}@property --tw-drop-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-drop-shadow-size{syntax:"*";inherits:false}```
+@layer properties{@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b)))){*,:before,:after,::backdrop{--tw-translate-x:0;--tw-translate-y:0;--tw-translate-z:0;--tw-rotate-x:initial;--tw-rotate-y:initial;--tw-rotate-z:initial;--tw-skew-x:initial;--tw-skew-y:initial;--tw-space-y-reverse:0;--tw-space-x-reverse:0;--tw-divide-y-reverse:0;--tw-border-style:solid;--tw-leading:initial;--tw-font-weight:initial;--tw-tracking:initial;--tw-shadow:0 0 #0000;--tw-shadow-color:initial;--tw-shadow-alpha:100%;--tw-inset-shadow:0 0 #0000;--tw-inset-shadow-color:initial;--tw-inset-shadow-alpha:100%;--tw-ring-color:initial;--tw-ring-shadow:0 0 #0000;--tw-inset-ring-color:initial;--tw-inset-ring-shadow:0 0 #0000;--tw-ring-inset:initial;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-offset-shadow:0 0 #0000;--tw-outline-style:solid;--tw-blur:initial;--tw-brightness:initial;--tw-contrast:initial;--tw-grayscale:initial;--tw-hue-rotate:initial;--tw-invert:initial;--tw-opacity:initial;--tw-saturate:initial;--tw-sepia:initial;--tw-drop-shadow:initial;--tw-drop-shadow-color:initial;--tw-drop-shadow-alpha:100%;--tw-drop-shadow-size:initial;--tw-scale-x:1;--tw-scale-y:1;--tw-scale-z:1}}}@layer theme{:root,:host{--font-sans:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";--font-mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;--color-red-50:oklch(97.1% .013 17.38);--color-red-100:oklch(93.6% .032 17.717);--color-red-200:oklch(88.5% .062 18.334);--color-red-300:oklch(80.8% .114 19.571);--color-red-400:oklch(70.4% .191 22.216);--color-red-500:oklch(63.7% .237 25.331);--color-red-600:oklch(57.7% .245 27.325);--color-red-700:oklch(50.5% .213 27.518);--color-red-800:oklch(44.4% .177 26.899);--color-red-900:oklch(39.6% .141 25.723);--color-orange-300:oklch(83.7% .128 66.29);--color-orange-600:oklch(64.6% .222 41.116);--color-orange-800:oklch(47% .157 37.304);--color-yellow-100:oklch(97.3% .071 103.193);--color-yellow-200:oklch(94.5% .129 101.54);--color-yellow-400:oklch(85.2% .199 91.936);--color-yellow-800:oklch(47.6% .114 61.907);--color-green-100:oklch(96.2% .044 156.743);--color-green-300:oklch(87.1% .15 154.449);--color-green-400:oklch(79.2% .209 151.711);--color-green-500:oklch(72.3% .219 149.579);--color-green-600:oklch(62.7% .194 149.214);--color-green-700:oklch(52.7% .154 150.069);--color-green-800:oklch(44.8% .119 151.328);--color-emerald-900:oklch(37.8% .077 168.94);--color-blue-50:oklch(97% .014 254.604);--color-blue-100:oklch(93.2% .032 255.585);--color-blue-200:oklch(88.2% .059 254.128);--color-blue-300:oklch(80.9% .105 251.813);--color-blue-400:oklch(70.7% .165 254.624);--color-blue-500:oklch(62.3% .214 259.815);--color-blue-600:oklch(54.6% .245 262.881);--color-blue-700:oklch(48.8% .243 264.376);--color-blue-800:oklch(42.4% .199 265.638);--color-blue-900:oklch(37.9% .146 265.522);--color-indigo-900:oklch(35.9% .144 278.697);--color-purple-500:oklch(62.7% .265 303.9);--color-purple-600:oklch(55.8% .288 302.321);--color-gray-50:oklch(98.5% .002 247.839);--color-gray-100:oklch(96.7% .003 264.542);--color-gray-200:oklch(92.8% .006 264.531);--color-gray-300:oklch(87.2% .01 258.338);--color-gray-400:oklch(70.7% .022 261.325);--color-gray-500:oklch(55.1% .027 264.364);--color-gray-600:oklch(44.6% .03 256.802);--color-gray-700:oklch(37.3% .034 259.733);--color-gray-800:oklch(27.8% .033 256.848);--color-gray-900:oklch(21% .034 264.665);--color-stone-900:oklch(21.6% .006 56.043);--color-black:#000;--color-white:#fff;--spacing:.25rem;--container-xs:20rem;--container-md:28rem;--container-2xl:42rem;--container-3xl:48rem;--container-4xl:56rem;--container-5xl:64rem;--container-6xl:72rem;--text-xs:.75rem;--text-xs--line-height:calc(1/.75);--text-sm:.875rem;--text-sm--line-height:calc(1.25/.875);--text-base:1rem;--text-base--line-height:calc(1.5/1);--text-lg:1.125rem;--text-lg--line-height:calc(1.75/1.125);--text-xl:1.25rem;--text-xl--line-height:calc(1.75/1.25);--text-2xl:1.5rem;--text-2xl--line-height:calc(2/1.5);--text-3xl:1.875rem;--text-3xl--line-height:calc(2.25/1.875);--text-4xl:2.25rem;--text-4xl--line-height:calc(2.5/2.25);--text-5xl:3rem;--text-5xl--line-height:1;--font-weight-medium:500;--font-weight-semibold:600;--font-weight-bold:700;--font-weight-extrabold:800;--tracking-wider:.05em;--leading-relaxed:1.625;--radius-md:.375rem;--radius-lg:.5rem;--default-transition-duration:.15s;--default-transition-timing-function:cubic-bezier(.4,0,.2,1);--default-font-family:var(--font-sans);--default-mono-font-family:var(--font-mono)}}@layer base{*,:after,:before,::backdrop{box-sizing:border-box;border:0 solid;margin:0;padding:0}::file-selector-button{box-sizing:border-box;border:0 solid;margin:0;padding:0}html,:host{-webkit-text-size-adjust:100%;tab-size:4;line-height:1.5;font-family:var(--default-font-family,ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji");font-feature-settings:var(--default-font-feature-settings,normal);font-variation-settings:var(--default-font-variation-settings,normal);-webkit-tap-highlight-color:transparent}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;-webkit-text-decoration:inherit;-webkit-text-decoration:inherit;-webkit-text-decoration:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:var(--default-mono-font-family,ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace);font-feature-settings:var(--default-mono-font-feature-settings,normal);font-variation-settings:var(--default-mono-font-variation-settings,normal);font-size:1em}small{font-size:80%}sub,sup{vertical-align:baseline;font-size:75%;line-height:0;position:relative}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}:-moz-focusring{outline:auto}progress{vertical-align:baseline}summary{display:list-item}ol,ul,menu{list-style:none}img,svg,video,canvas,audio,iframe,embed,object{vertical-align:middle;display:block}img,video{max-width:100%;height:auto}button,input,select,optgroup,textarea{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}::file-selector-button{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}:where(select:is([multiple],[size])) optgroup{font-weight:bolder}:where(select:is([multiple],[size])) optgroup option{padding-inline-start:20px}::file-selector-button{margin-inline-end:4px}::placeholder{opacity:1}@supports (not ((-webkit-appearance:-apple-pay-button))) or (contain-intrinsic-size:1px){::placeholder{color:currentColor}@supports (color:color-mix(in lab, red, red)){::placeholder{color:color-mix(in oklab,currentcolor 50%,transparent)}}}textarea{resize:vertical}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-date-and-time-value{min-height:1lh;text-align:inherit}::-webkit-datetime-edit{display:inline-flex}::-webkit-datetime-edit-fields-wrapper{padding:0}::-webkit-datetime-edit{padding-block:0}::-webkit-datetime-edit-year-field{padding-block:0}::-webkit-datetime-edit-month-field{padding-block:0}::-webkit-datetime-edit-day-field{padding-block:0}::-webkit-datetime-edit-hour-field{padding-block:0}::-webkit-datetime-edit-minute-field{padding-block:0}::-webkit-datetime-edit-second-field{padding-block:0}::-webkit-datetime-edit-millisecond-field{padding-block:0}::-webkit-datetime-edit-meridiem-field{padding-block:0}::-webkit-calendar-picker-indicator{line-height:1}:-moz-ui-invalid{box-shadow:none}button,input:where([type=button],[type=reset],[type=submit]){appearance:button}::file-selector-button{appearance:button}::-webkit-inner-spin-button{height:auto}::-webkit-outer-spin-button{height:auto}[hidden]:where(:not([hidden=until-found])){display:none!important}}@layer components;@layer utilities{.pointer-events-none{pointer-events:none}.visible{visibility:visible}.sr-only{clip-path:inset(50%);white-space:nowrap;border-width:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}.absolute{position:absolute}.fixed{position:fixed}.relative{position:relative}.static{position:static}.inset-0{inset:calc(var(--spacing)*0)}.top-0{top:calc(var(--spacing)*0)}.top-full{top:100%}.bottom-0{bottom:calc(var(--spacing)*0)}.left-1{left:calc(var(--spacing)*1)}.left-1\/2{left:50%}.z-50{z-index:50}.float-left{float:left}.float-right{float:right}.container{width:100%}@media (min-width:40rem){.container{max-width:40rem}}@media (min-width:48rem){.container{max-width:48rem}}@media (min-width:64rem){.container{max-width:64rem}}@media (min-width:80rem){.container{max-width:80rem}}@media (min-width:96rem){.container{max-width:96rem}}.m-4{margin:calc(var(--spacing)*4)}.m-auto{margin:auto}.mx-1{margin-inline:calc(var(--spacing)*1)}.mx-2{margin-inline:calc(var(--spacing)*2)}.mx-4{margin-inline:calc(var(--spacing)*4)}.mx-8{margin-inline:calc(var(--spacing)*8)}.mx-auto{margin-inline:auto}.my-4{margin-block:calc(var(--spacing)*4)}.my-8{margin-block:calc(var(--spacing)*8)}.my-16{margin-block:calc(var(--spacing)*16)}.mt-1{margin-top:calc(var(--spacing)*1)}.mt-2{margin-top:calc(var(--spacing)*2)}.mt-3{margin-top:calc(var(--spacing)*3)}.mt-4{margin-top:calc(var(--spacing)*4)}.mt-6{margin-top:calc(var(--spacing)*6)}.mt-8{margin-top:calc(var(--spacing)*8)}.mt-12{margin-top:calc(var(--spacing)*12)}.mt-auto{margin-top:auto}.mr-2{margin-right:calc(var(--spacing)*2)}.mr-3{margin-right:calc(var(--spacing)*3)}.mr-6{margin-right:calc(var(--spacing)*6)}.mb-1{margin-bottom:calc(var(--spacing)*1)}.mb-2{margin-bottom:calc(var(--spacing)*2)}.mb-3{margin-bottom:calc(var(--spacing)*3)}.mb-4{margin-bottom:calc(var(--spacing)*4)}.mb-6{margin-bottom:calc(var(--spacing)*6)}.mb-8{margin-bottom:calc(var(--spacing)*8)}.mb-12{margin-bottom:calc(var(--spacing)*12)}.mb-16{margin-bottom:calc(var(--spacing)*16)}.ml-1{margin-left:calc(var(--spacing)*1)}.ml-2{margin-left:calc(var(--spacing)*2)}.ml-4{margin-left:calc(var(--spacing)*4)}.ml-6{margin-left:calc(var(--spacing)*6)}.ml-auto{margin-left:auto}.line-clamp-2{-webkit-line-clamp:2;-webkit-box-orient:vertical;display:-webkit-box;overflow:hidden}.block{display:block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.inline{display:inline}.inline-block{display:inline-block}.inline-flex{display:inline-flex}.table{display:table}.h-4{height:calc(var(--spacing)*4)}.h-5{height:calc(var(--spacing)*5)}.h-6{height:calc(var(--spacing)*6)}.h-8{height:calc(var(--spacing)*8)}.h-12{height:calc(var(--spacing)*12)}.h-20{height:calc(var(--spacing)*20)}.h-24{height:calc(var(--spacing)*24)}.h-32{height:calc(var(--spacing)*32)}.h-48{height:calc(var(--spacing)*48)}.h-64{height:calc(var(--spacing)*64)}.h-full{height:100%}.h-screen{height:100vh}.max-h-\[60vh\]{max-height:60vh}.min-h-screen{min-height:100vh}.w-1{width:calc(var(--spacing)*1)}.w-1\/2{width:50%}.w-4{width:calc(var(--spacing)*4)}.w-5{width:calc(var(--spacing)*5)}.w-6{width:calc(var(--spacing)*6)}.w-8{width:calc(var(--spacing)*8)}.w-12{width:calc(var(--spacing)*12)}.w-20{width:calc(var(--spacing)*20)}.w-24{width:calc(var(--spacing)*24)}.w-25{width:calc(var(--spacing)*25)}.w-30{width:calc(var(--spacing)*30)}.w-32{width:calc(var(--spacing)*32)}.w-64{width:calc(var(--spacing)*64)}.w-96{width:calc(var(--spacing)*96)}.w-\[1px\]{width:1px}.w-full{width:100%}.w-px{width:1px}.max-w-2xl{max-width:var(--container-2xl)}.max-w-3xl{max-width:var(--container-3xl)}.max-w-4xl{max-width:var(--container-4xl)}.max-w-5xl{max-width:var(--container-5xl)}.max-w-6xl{max-width:var(--container-6xl)}.max-w-\[80vw\]{max-width:80vw}.max-w-md{max-width:var(--container-md)}.max-w-xs{max-width:var(--container-xs)}.min-w-\[300px\]{min-width:300px}.flex-1{flex:1}.flex-shrink-0{flex-shrink:0}.flex-grow{flex-grow:1}.border-collapse{border-collapse:collapse}.-translate-x-1{--tw-translate-x:calc(var(--spacing)*-1);translate:var(--tw-translate-x)var(--tw-translate-y)}.-translate-x-1\/2{--tw-translate-x:calc(calc(1/2*100%)*-1);translate:var(--tw-translate-x)var(--tw-translate-y)}.transform{transform:var(--tw-rotate-x,)var(--tw-rotate-y,)var(--tw-rotate-z,)var(--tw-skew-x,)var(--tw-skew-y,)}.cursor-pointer{cursor:pointer}.list-disc{list-style-type:disc}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-baseline{align-items:baseline}.items-center{align-items:center}.items-end{align-items:flex-end}.items-start{align-items:flex-start}.justify-between{justify-content:space-between}.justify-center{justify-content:center}.justify-end{justify-content:flex-end}.gap-1{gap:calc(var(--spacing)*1)}.gap-2{gap:calc(var(--spacing)*2)}.gap-3{gap:calc(var(--spacing)*3)}.gap-4{gap:calc(var(--spacing)*4)}.gap-5{gap:calc(var(--spacing)*5)}.gap-6{gap:calc(var(--spacing)*6)}:where(.space-y-1>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*1)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*1)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-2>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*2)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*2)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-3>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*3)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*3)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-4>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*4)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*4)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-6>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*6)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*6)*calc(1 - var(--tw-space-y-reverse)))}:where(.space-y-8>:not(:last-child)){--tw-space-y-reverse:0;margin-block-start:calc(calc(var(--spacing)*8)*var(--tw-space-y-reverse));margin-block-end:calc(calc(var(--spacing)*8)*calc(1 - var(--tw-space-y-reverse)))}.gap-x-4{column-gap:calc(var(--spacing)*4)}.gap-x-6{column-gap:calc(var(--spacing)*6)}:where(.space-x-2>:not(:last-child)){--tw-space-x-reverse:0;margin-inline-start:calc(calc(var(--spacing)*2)*var(--tw-space-x-reverse));margin-inline-end:calc(calc(var(--spacing)*2)*calc(1 - var(--tw-space-x-reverse)))}.gap-y-2{row-gap:calc(var(--spacing)*2)}:where(.divide-y>:not(:last-child)){--tw-divide-y-reverse:0;border-bottom-style:var(--tw-border-style);border-top-style:var(--tw-border-style);border-top-width:calc(1px*var(--tw-divide-y-reverse));border-bottom-width:calc(1px*calc(1 - var(--tw-divide-y-reverse)))}:where(.divide-gray-200>:not(:last-child)){border-color:var(--color-gray-200)}.truncate{text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.overflow-hidden{overflow:hidden}.rounded{border-radius:.25rem}.rounded-full{border-radius:3.40282e38px}.rounded-lg{border-radius:var(--radius-lg)}.rounded-md{border-radius:var(--radius-md)}.border{border-style:var(--tw-border-style);border-width:1px}.border-0{border-style:var(--tw-border-style);border-width:0}.border-2{border-style:var(--tw-border-style);border-width:2px}.border-t{border-top-style:var(--tw-border-style);border-top-width:1px}.border-b{border-bottom-style:var(--tw-border-style);border-bottom-width:1px}.border-l-4{border-left-style:var(--tw-border-style);border-left-width:4px}.border-blue-200{border-color:var(--color-blue-200)}.border-gray-100{border-color:var(--color-gray-100)}.border-gray-200{border-color:var(--color-gray-200)}.border-gray-300{border-color:var(--color-gray-300)}.border-gray-400{border-color:var(--color-gray-400)}.border-gray-400\/30{border-color:#99a1af4d}@supports (color:color-mix(in lab, red, red)){.border-gray-400\/30{border-color:color-mix(in oklab,var(--color-gray-400)30%,transparent)}}.border-gray-500{border-color:var(--color-gray-500)}.border-gray-500\/20{border-color:#6a728233}@supports (color:color-mix(in lab, red, red)){.border-gray-500\/20{border-color:color-mix(in oklab,var(--color-gray-500)20%,transparent)}}.border-gray-600{border-color:var(--color-gray-600)}.border-green-300{border-color:var(--color-green-300)}.border-green-400{border-color:var(--color-green-400)}.border-orange-300{border-color:var(--color-orange-300)}.border-red-200{border-color:var(--color-red-200)}.border-red-300{border-color:var(--color-red-300)}.border-red-500{border-color:var(--color-red-500)}.bg-black{background-color:var(--color-black)}.bg-black\/80{background-color:#000c}@supports (color:color-mix(in lab, red, red)){.bg-black\/80{background-color:color-mix(in oklab,var(--color-black)80%,transparent)}}.bg-blue-50{background-color:var(--color-blue-50)}.bg-blue-100{background-color:var(--color-blue-100)}.bg-blue-300{background-color:var(--color-blue-300)}.bg-blue-500{background-color:var(--color-blue-500)}.bg-blue-600{background-color:var(--color-blue-600)}.bg-emerald-900{background-color:var(--color-emerald-900)}.bg-gray-50{background-color:var(--color-gray-50)}.bg-gray-100{background-color:var(--color-gray-100)}.bg-gray-200{background-color:var(--color-gray-200)}.bg-gray-300{background-color:var(--color-gray-300)}.bg-gray-400{background-color:var(--color-gray-400)}.bg-gray-500{background-color:var(--color-gray-500)}.bg-gray-600{background-color:var(--color-gray-600)}.bg-gray-700{background-color:var(--color-gray-700)}.bg-gray-800{background-color:var(--color-gray-800)}.bg-gray-900{background-color:var(--color-gray-900)}.bg-green-100{background-color:var(--color-green-100)}.bg-green-500{background-color:var(--color-green-500)}.bg-indigo-900{background-color:var(--color-indigo-900)}.bg-purple-500{background-color:var(--color-purple-500)}.bg-red-50{background-color:var(--color-red-50)}.bg-red-100{background-color:var(--color-red-100)}.bg-red-500{background-color:var(--color-red-500)}.bg-stone-900{background-color:var(--color-stone-900)}.bg-white{background-color:var(--color-white)}.bg-yellow-100{background-color:var(--color-yellow-100)}.object-contain{object-fit:contain}.object-cover{object-fit:cover}.p-0{padding:calc(var(--spacing)*0)}.p-1{padding:calc(var(--spacing)*1)}.p-2{padding:calc(var(--spacing)*2)}.p-3{padding:calc(var(--spacing)*3)}.p-4{padding:calc(var(--spacing)*4)}.p-6{padding:calc(var(--spacing)*6)}.p-8{padding:calc(var(--spacing)*8)}.px-1{padding-inline:calc(var(--spacing)*1)}.px-2{padding-inline:calc(var(--spacing)*2)}.px-2\.5{padding-inline:calc(var(--spacing)*2.5)}.px-3{padding-inline:calc(var(--spacing)*3)}.px-4{padding-inline:calc(var(--spacing)*4)}.px-5{padding-inline:calc(var(--spacing)*5)}.px-6{padding-inline:calc(var(--spacing)*6)}.px-8{padding-inline:calc(var(--spacing)*8)}.\!py-1{padding-block:calc(var(--spacing)*1)!important}.py-0{padding-block:calc(var(--spacing)*0)}.py-0\.5{padding-block:calc(var(--spacing)*.5)}.py-1{padding-block:calc(var(--spacing)*1)}.py-2{padding-block:calc(var(--spacing)*2)}.py-3{padding-block:calc(var(--spacing)*3)}.py-4{padding-block:calc(var(--spacing)*4)}.py-6{padding-block:calc(var(--spacing)*6)}.py-8{padding-block:calc(var(--spacing)*8)}.py-10{padding-block:calc(var(--spacing)*10)}.py-16{padding-block:calc(var(--spacing)*16)}.pt-4{padding-top:calc(var(--spacing)*4)}.pt-6{padding-top:calc(var(--spacing)*6)}.pt-8{padding-top:calc(var(--spacing)*8)}.pr-5{padding-right:calc(var(--spacing)*5)}.pb-2{padding-bottom:calc(var(--spacing)*2)}.pb-3{padding-bottom:calc(var(--spacing)*3)}.pb-4{padding-bottom:calc(var(--spacing)*4)}.pl-5{padding-left:calc(var(--spacing)*5)}.text-center{text-align:center}.text-left{text-align:left}.text-right{text-align:right}.text-2xl{font-size:var(--text-2xl);line-height:var(--tw-leading,var(--text-2xl--line-height))}.text-3xl{font-size:var(--text-3xl);line-height:var(--tw-leading,var(--text-3xl--line-height))}.text-4xl{font-size:var(--text-4xl);line-height:var(--tw-leading,var(--text-4xl--line-height))}.text-5xl{font-size:var(--text-5xl);line-height:var(--tw-leading,var(--text-5xl--line-height))}.text-base{font-size:var(--text-base);line-height:var(--tw-leading,var(--text-base--line-height))}.text-lg{font-size:var(--text-lg);line-height:var(--tw-leading,var(--text-lg--line-height))}.text-sm{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.text-xl{font-size:var(--text-xl);line-height:var(--tw-leading,var(--text-xl--line-height))}.text-xs{font-size:var(--text-xs);line-height:var(--tw-leading,var(--text-xs--line-height))}.leading-relaxed{--tw-leading:var(--leading-relaxed);line-height:var(--leading-relaxed)}.font-bold{--tw-font-weight:var(--font-weight-bold);font-weight:var(--font-weight-bold)}.font-extrabold{--tw-font-weight:var(--font-weight-extrabold);font-weight:var(--font-weight-extrabold)}.font-medium{--tw-font-weight:var(--font-weight-medium);font-weight:var(--font-weight-medium)}.font-semibold{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.tracking-wider{--tw-tracking:var(--tracking-wider);letter-spacing:var(--tracking-wider)}.whitespace-nowrap{white-space:nowrap}.\!text-white{color:var(--color-white)!important}.text-blue-400{color:var(--color-blue-400)}.text-blue-500{color:var(--color-blue-500)}.text-blue-600{color:var(--color-blue-600)}.text-blue-700{color:var(--color-blue-700)}.text-blue-800{color:var(--color-blue-800)}.text-blue-900{color:var(--color-blue-900)}.text-gray-200{color:var(--color-gray-200)}.text-gray-300{color:var(--color-gray-300)}.text-gray-400{color:var(--color-gray-400)}.text-gray-500{color:var(--color-gray-500)}.text-gray-600{color:var(--color-gray-600)}.text-gray-700{color:var(--color-gray-700)}.text-gray-800{color:var(--color-gray-800)}.text-gray-900{color:var(--color-gray-900)}.text-green-600{color:var(--color-green-600)}.text-green-700{color:var(--color-green-700)}.text-green-800{color:var(--color-green-800)}.text-orange-600{color:var(--color-orange-600)}.text-red-400{color:var(--color-red-400)}.text-red-500{color:var(--color-red-500)}.text-red-600{color:var(--color-red-600)}.text-red-700{color:var(--color-red-700)}.text-red-800{color:var(--color-red-800)}.text-red-900{color:var(--color-red-900)}.text-white{color:var(--color-white)}.text-yellow-400{color:var(--color-yellow-400)}.text-yellow-800{color:var(--color-yellow-800)}.lowercase{text-transform:lowercase}.uppercase{text-transform:uppercase}.italic{font-style:italic}.underline{text-decoration-line:underline}.placeholder-gray-400::placeholder{color:var(--color-gray-400)}.opacity-0{opacity:0}.opacity-70{opacity:.7}.opacity-80{opacity:.8}.shadow-2xl{--tw-shadow:0 25px 50px -12px var(--tw-shadow-color,#00000040);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px var(--tw-shadow-color,#0000001a),0 2px 4px -2px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 3px 0 var(--tw-shadow-color,#0000001a),0 1px 2px -1px var(--tw-shadow-color,#0000001a);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.outline{outline-style:var(--tw-outline-style);outline-width:1px}.filter{filter:var(--tw-blur,)var(--tw-brightness,)var(--tw-contrast,)var(--tw-grayscale,)var(--tw-hue-rotate,)var(--tw-invert,)var(--tw-saturate,)var(--tw-sepia,)var(--tw-drop-shadow,)}.transition{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to,opacity,box-shadow,transform,translate,scale,rotate,filter,-webkit-backdrop-filter,backdrop-filter,display,content-visibility,overlay,pointer-events;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-all{transition-property:all;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-colors{transition-property:color,background-color,border-color,outline-color,text-decoration-color,fill,stroke,--tw-gradient-from,--tw-gradient-via,--tw-gradient-to;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-opacity{transition-property:opacity;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}.transition-transform{transition-property:transform,translate,scale,rotate;transition-timing-function:var(--tw-ease,var(--default-transition-timing-function));transition-duration:var(--tw-duration,var(--default-transition-duration))}@media (hover:hover){.group-hover\:scale-110:is(:where(.group):hover *){--tw-scale-x:110%;--tw-scale-y:110%;--tw-scale-z:110%;scale:var(--tw-scale-x)var(--tw-scale-y)}.group-hover\:opacity-100:is(:where(.group):hover *){opacity:1}}.peer-checked\:ring-2:is(:where(.peer):checked~*){--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(2px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.peer-checked\:ring-blue-400:is(:where(.peer):checked~*){--tw-ring-color:var(--color-blue-400)}.file\:mr-4::file-selector-button{margin-right:calc(var(--spacing)*4)}.file\:rounded::file-selector-button{border-radius:.25rem}.file\:rounded-full::file-selector-button{border-radius:3.40282e38px}.file\:border-0::file-selector-button{border-style:var(--tw-border-style);border-width:0}.file\:bg-blue-50::file-selector-button{background-color:var(--color-blue-50)}.file\:px-4::file-selector-button{padding-inline:calc(var(--spacing)*4)}.file\:py-2::file-selector-button{padding-block:calc(var(--spacing)*2)}.file\:text-sm::file-selector-button{font-size:var(--text-sm);line-height:var(--tw-leading,var(--text-sm--line-height))}.file\:font-semibold::file-selector-button{--tw-font-weight:var(--font-weight-semibold);font-weight:var(--font-weight-semibold)}.file\:text-blue-700::file-selector-button{color:var(--color-blue-700)}.backdrop\:bg-black\/80::backdrop{background-color:#000c}@supports (color:color-mix(in lab, red, red)){.backdrop\:bg-black\/80::backdrop{background-color:color-mix(in oklab,var(--color-black)80%,transparent)}}.last\:border-b-0:last-child{border-bottom-style:var(--tw-border-style);border-bottom-width:0}@media (hover:hover){.hover\:overflow-y-auto:hover{overflow-y:auto}.hover\:border-gray-400:hover{border-color:var(--color-gray-400)}.hover\:bg-blue-50:hover{background-color:var(--color-blue-50)}.hover\:bg-blue-100:hover{background-color:var(--color-blue-100)}.hover\:bg-blue-200:hover{background-color:var(--color-blue-200)}.hover\:bg-blue-500:hover{background-color:var(--color-blue-500)}.hover\:bg-blue-600:hover{background-color:var(--color-blue-600)}.hover\:bg-blue-700:hover{background-color:var(--color-blue-700)}.hover\:bg-gray-50:hover{background-color:var(--color-gray-50)}.hover\:bg-gray-100:hover{background-color:var(--color-gray-100)}.hover\:bg-gray-200:hover{background-color:var(--color-gray-200)}.hover\:bg-gray-600:hover{background-color:var(--color-gray-600)}.hover\:bg-gray-700\/30:hover{background-color:#3641534d}@supports (color:color-mix(in lab, red, red)){.hover\:bg-gray-700\/30:hover{background-color:color-mix(in oklab,var(--color-gray-700)30%,transparent)}}.hover\:bg-red-50:hover{background-color:var(--color-red-50)}.hover\:bg-red-600:hover{background-color:var(--color-red-600)}.hover\:\!text-gray-400:hover{color:var(--color-gray-400)!important}.hover\:text-blue-600:hover{color:var(--color-blue-600)}.hover\:text-blue-800:hover{color:var(--color-blue-800)}.hover\:text-gray-200:hover{color:var(--color-gray-200)}.hover\:text-gray-300:hover{color:var(--color-gray-300)}.hover\:text-gray-600:hover{color:var(--color-gray-600)}.hover\:text-gray-700:hover{color:var(--color-gray-700)}.hover\:text-gray-800:hover{color:var(--color-gray-800)}.hover\:text-green-800:hover{color:var(--color-green-800)}.hover\:text-orange-800:hover{color:var(--color-orange-800)}.hover\:text-red-300:hover{color:var(--color-red-300)}.hover\:text-red-500:hover{color:var(--color-red-500)}.hover\:text-red-800:hover{color:var(--color-red-800)}.hover\:text-white:hover{color:var(--color-white)}.hover\:text-yellow-200:hover{color:var(--color-yellow-200)}.hover\:opacity-100:hover{opacity:1}.hover\:file\:bg-blue-100:hover::file-selector-button{background-color:var(--color-blue-100)}}.focus\:border-\[1px\]:focus{border-style:var(--tw-border-style);border-width:1px}.focus\:border-blue-500:focus{border-color:var(--color-blue-500)}.focus\:border-gray-300:focus{border-color:var(--color-gray-300)}.focus\:border-gray-400:focus{border-color:var(--color-gray-400)}.focus\:ring-0:focus{--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(0px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.focus\:ring-1:focus{--tw-ring-shadow:var(--tw-ring-inset,)0 0 0 calc(1px + var(--tw-ring-offset-width))var(--tw-ring-color,currentcolor);box-shadow:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)}.focus\:ring-blue-500:focus{--tw-ring-color:var(--color-blue-500)}.focus\:ring-gray-400:focus{--tw-ring-color:var(--color-gray-400)}.focus\:ring-gray-500:focus{--tw-ring-color:var(--color-gray-500)}.focus\:outline-none:focus{--tw-outline-style:none;outline-style:none}@media (min-width:40rem){.sm\:flex{display:flex}.sm\:inline{display:inline}.sm\:flex-row{flex-direction:row}.sm\:justify-between{justify-content:space-between}.sm\:gap-6{gap:calc(var(--spacing)*6)}.sm\:gap-x-6{column-gap:calc(var(--spacing)*6)}.sm\:px-6{padding-inline:calc(var(--spacing)*6)}.sm\:py-10{padding-block:calc(var(--spacing)*10)}.sm\:text-3xl{font-size:var(--text-3xl);line-height:var(--tw-leading,var(--text-3xl--line-height))}.sm\:text-base{font-size:var(--text-base);line-height:var(--tw-leading,var(--text-base--line-height))}.sm\:text-lg{font-size:var(--text-lg);line-height:var(--tw-leading,var(--text-lg--line-height))}}@media (min-width:48rem){.md\:flex{display:flex}.md\:hidden{display:none}.md\:w-1\/2{width:50%}.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.md\:justify-between{justify-content:space-between}.md\:text-4xl{font-size:var(--text-4xl);line-height:var(--tw-leading,var(--text-4xl--line-height))}}@media (min-width:64rem){.lg\:w-48{width:calc(var(--spacing)*48)}.lg\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.lg\:gap-6{gap:calc(var(--spacing)*6)}}}.layout-switcher.mode-split .text-area,.layout-switcher.mode-split .preview-area{flex:1;display:block}.layout-switcher.mode-split .original-preview-area{display:none}.layout-switcher.mode-text-only .text-area{flex:1;display:block}.layout-switcher.mode-text-only .preview-area,.layout-switcher.mode-text-only .original-preview-area,.layout-switcher.mode-text-only .layout-divider,.layout-switcher.mode-preview-only .text-area{display:none}.layout-switcher.mode-preview-only .preview-area{flex:1;display:block}.layout-switcher.mode-preview-only .original-preview-area,.layout-switcher.mode-preview-only .layout-divider{display:none}.layout-switcher.mode-original-preview .text-area{flex:1;display:block}.layout-switcher.mode-original-preview .preview-area{display:none}.layout-switcher.mode-original-preview .original-preview-area{flex:1;display:block}.layout-switcher.mode-original-preview .layout-divider{display:block}.layout-buttons button{cursor:pointer;background:#fff;border:1px solid #ccc;border-radius:4px;min-width:32px;height:32px;padding:4px 8px;font-size:16px}.layout-buttons button:hover{background:#f3f4f6}.layout-buttons button.active{background:#e5e7eb;border-color:#6b7280}.layout-switcher{width:100%;height:100%}.default-theme .theme-header{border-bottom:1px solid #e5e7eb;color:#374151!important;background-color:#f9fafb!important}.default-theme .theme-header a{color:#374151!important}.default-theme .theme-header a:hover{color:#1f2937!important}.default-theme .theme-header button{color:#374151!important}.default-theme .theme-header button:hover{color:#1f2937!important}.default-theme .theme-footer{color:#374151!important;background-color:#f9fafb!important;border-top:1px solid #e5e7eb!important}.default-theme .theme-footer a{color:#374151!important}.default-theme .theme-footer a:hover{color:#1f2937!important}.slate-theme .blog-title{color:#222b45!important}.slate-theme .theme-header,.slate-theme .theme-footer{color:#e5e7eb!important;background-color:#222b45!important}.forest-theme .blog-title{color:#1b4332!important}.forest-theme .theme-header,.forest-theme .theme-footer{color:#e5e7eb!important;background-color:#1b4332!important}.maroon-theme .blog-title{color:#3a0a0a!important}.maroon-theme .theme-header,.maroon-theme .theme-footer{color:#e5e7eb!important;background-color:#3a0a0a!important}.midnight-theme .blog-title{color:#0a1a2f!important}.midnight-theme .theme-header,.midnight-theme .theme-footer{color:#e5e7eb!important;background-color:#0a1a2f!important}[data-markdown-preview-target=preview] img{object-fit:contain;border-radius:4px;width:100%;height:auto;margin:10px 0}.article-content img{object-fit:contain;object-fit:contain;border-radius:4px;max-width:100%;height:auto;max-height:500px;margin:15px auto;display:block;box-shadow:0 2px 8px #0000001a}.tab-container{margin:20px 0}.tab-buttons{border-bottom:2px solid #ddd;margin-bottom:20px;display:flex}.tab-button{cursor:pointer;background:#f5f5f5;border:none;border-top:2px solid #0000;margin-right:2px;padding:10px 20px}.tab-button.active{background:#fff;border-top-color:#007bff;font-weight:700}.tab-content{display:none}.tab-content.active{display:block}@property --tw-translate-x{syntax:"*";inherits:false;initial-value:0}@property --tw-translate-y{syntax:"*";inherits:false;initial-value:0}@property --tw-translate-z{syntax:"*";inherits:false;initial-value:0}@property --tw-rotate-x{syntax:"*";inherits:false}@property --tw-rotate-y{syntax:"*";inherits:false}@property --tw-rotate-z{syntax:"*";inherits:false}@property --tw-skew-x{syntax:"*";inherits:false}@property --tw-skew-y{syntax:"*";inherits:false}@property --tw-space-y-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-space-x-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-divide-y-reverse{syntax:"*";inherits:false;initial-value:0}@property --tw-border-style{syntax:"*";inherits:false;initial-value:solid}@property --tw-leading{syntax:"*";inherits:false}@property --tw-font-weight{syntax:"*";inherits:false}@property --tw-tracking{syntax:"*";inherits:false}@property --tw-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-shadow-color{syntax:"*";inherits:false}@property --tw-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-inset-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-inset-shadow-color{syntax:"*";inherits:false}@property --tw-inset-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-ring-color{syntax:"*";inherits:false}@property --tw-ring-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-inset-ring-color{syntax:"*";inherits:false}@property --tw-inset-ring-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-ring-inset{syntax:"*";inherits:false}@property --tw-ring-offset-width{syntax:"<length>";inherits:false;initial-value:0}@property --tw-ring-offset-color{syntax:"*";inherits:false;initial-value:#fff}@property --tw-ring-offset-shadow{syntax:"*";inherits:false;initial-value:0 0 #0000}@property --tw-outline-style{syntax:"*";inherits:false;initial-value:solid}@property --tw-blur{syntax:"*";inherits:false}@property --tw-brightness{syntax:"*";inherits:false}@property --tw-contrast{syntax:"*";inherits:false}@property --tw-grayscale{syntax:"*";inherits:false}@property --tw-hue-rotate{syntax:"*";inherits:false}@property --tw-invert{syntax:"*";inherits:false}@property --tw-opacity{syntax:"*";inherits:false}@property --tw-saturate{syntax:"*";inherits:false}@property --tw-sepia{syntax:"*";inherits:false}@property --tw-drop-shadow{syntax:"*";inherits:false}@property --tw-drop-shadow-color{syntax:"*";inherits:false}@property --tw-drop-shadow-alpha{syntax:"<percentage>";inherits:false;initial-value:100%}@property --tw-drop-shadow-size{syntax:"*";inherits:false}@property --tw-scale-x{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-y{syntax:"*";inherits:false;initial-value:1}@property --tw-scale-z{syntax:"*";inherits:false;initial-value:1}```
 
 ## File: `app/assets/stylesheets/application.css`
 
@@ -6588,6 +6706,8 @@ puts "="*50
 import "@hotwired/turbo-rails";
 import "controllers";
 import "flash";
+
+
 ```
 
 ## File: `app/javascript/controllers/application.js`
@@ -6612,32 +6732,16 @@ import { Controller } from "@hotwired/stimulus";
 export default class extends Controller {
   static targets = ["modal"];
 
-  connect() {
-    console.log("✅ AuthModal controller connected!");
-  }
-
   showModal(e) {
-    if (e) e.preventDefault()
+    if (e) e.preventDefault();
     this.modalTarget.classList.remove("hidden");
   }
 
   closeModal(e) {
-    if (e) e.preventDefault()
+    if (e) e.preventDefault();
     this.modalTarget.classList.add("hidden");
-    // this.resetForm();
   }
 
-  closeOnOutsideClick(event) {
-    if (event.target === this.modalTarget) {
-      this.closeModal();
-    }
-  }
-
-  stopPropagation(event) {
-    event.stopPropagation();
-  }
-
-  // ESCキーでも閉じられるようにする
   closeOnEscape(event) {
     if (event.key === "Escape") {
       this.closeModal();
@@ -6645,13 +6749,11 @@ export default class extends Controller {
   }
 
   resetForm() {
-    setTimeout(() => {
-      const errorMessage = this.modalTarget.querySelector('[role="alert"]');
-      if (errorMessage) errorMessage.remove();
-
-      const form = this.modalTarget.querySelector("form");
-      if (form) form.reset();
-    }, 200);
+    const form = this.modalTarget.querySelector("form");
+    if (form) form.reset();
+    
+    const errorMessages = this.modalTarget.querySelectorAll('[role="alert"], .error-message');
+    errorMessages.forEach(el => el.remove());
   }
 }
 ```
@@ -6801,6 +6903,36 @@ import { Controller } from "@hotwired/stimulus"
 export default class extends Controller {
   connect() {
     this.element.textContent = "Hello World!"
+  }
+}
+```
+
+## File: `app/javascript/controllers/image_preview_controller.js`
+
+```
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["input", "preview"]
+
+  connect() {
+  }
+
+  display() {
+    const input = this.inputTarget
+    const preview = this.previewTarget
+    const file = input.files[0]
+
+    if (file) {
+      const reader = new FileReader()
+
+      reader.onload = (e) => {
+        // This updates the <img src="..."> instantly
+        preview.src = e.target.result
+      }
+
+      reader.readAsDataURL(file)
+    }
   }
 }
 ```
@@ -7026,6 +7158,33 @@ export default class extends Controller {
 }
 ```
 
+## File: `app/javascript/controllers/modal_controller.js`
+
+```
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  static targets = ["dialog"]
+
+  // Action to open the modal
+  open() {
+    this.dialogTarget.showModal()
+  }
+
+  // Action to close the modal
+  close() {
+    this.dialogTarget.close()
+  }
+
+  // Optional: Close when clicking outside the modal content (backdrop)
+  clickOutside(event) {
+    if (event.target === this.dialogTarget) {
+      this.close()
+    }
+  }
+}
+```
+
 ## File: `app/javascript/controllers/theme_controller.js`
 
 ```
@@ -7057,5 +7216,1397 @@ function initFlashMessages() {
 
 document.addEventListener("DOMContentLoaded", initFlashMessages);
 document.addEventListener("turbo:load", initFlashMessages);
+```
+
+## File: `test/application_system_test_case.rb`
+
+```
+require "test_helper"
+
+class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
+  driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
+end
+```
+
+## File: `test/controllers/contacts_controller_test.rb`
+
+```
+# require "test_helper"
+#
+# class ContactsControllerTest < ActionDispatch::IntegrationTest
+#   test "should get new" do
+#     get contacts_new_url
+#     assert_response :success
+#   end
+#
+#   test "should get create" do
+#     get contacts_create_url
+#     assert_response :success
+#   end
+# end
+```
+
+## File: `test/fixtures/article_tags.yml`
+
+```
+one:
+  article: published_ja
+  tag: programming
+
+two:
+  article: published_ja
+  tag: web
+
+three:
+  article: rails_article
+  tag: programming
+```
+
+## File: `test/fixtures/articles.yml`
+
+```
+published_ja:
+  title: 公開記事タイトル
+  content: |
+    # 公開記事
+    
+    これは公開されている記事です。
+  locale: ja
+  status: published
+  published_at: <%= 1.week.ago %>
+  user: blogger
+  category: programming_ja
+
+published_en:
+  title: Published Article Title
+  content: |
+    # Published Article
+    
+    This is a published article.
+  locale: en
+  status: published
+  published_at: <%= 1.week.ago %>
+  user: blogger
+  original_article: published_ja
+
+draft_ja:
+  title: 下書き記事タイトル
+  content: これは下書きです。
+  locale: ja
+  status: draft
+  published_at: <%= nil %>
+  user: blogger
+
+test_article:
+  title: テスト記事
+  content: |
+    # テスト見出し
+    
+    テスト本文です。
+  locale: ja
+  status: draft
+  user: one
+  category: technology_ja
+
+rails_article:
+  title: Rails ガイド
+  content: Rails についての記事です
+  locale: ja
+  status: published
+  published_at: <%= 2.days.ago %>
+  user: blogger
+  category: programming_ja
+```
+
+## File: `test/fixtures/blog_settings.yml`
+
+```
+one:
+  user: one
+  blog_title_ja: testuser のブログ
+  blog_title_en: testuser's Blog
+  blog_subtitle_ja: テストブログです
+  blog_subtitle_en: This is a test blog
+  theme_color: default
+  layout_style: linear
+  show_hero_thumbnail: false
+
+two:
+  user: two
+  blog_title_ja: articlewriter のブログ
+  blog_title_en: articlewriter's Blog
+  theme_color: slate
+  layout_style: hero_tiles
+  show_hero_thumbnail: true
+
+admin_setting:
+  user: admin
+  blog_title_ja: 管理者のブログ
+  blog_title_en: Admin's Blog
+  theme_color: default
+  layout_style: linear
+  show_hero_thumbnail: false
+
+blogger_setting:
+  user: blogger
+  blog_title_ja: blogger のブログ
+  blog_title_en: blogger's Blog
+  theme_color: forest
+  layout_style: hero_list
+  show_hero_thumbnail: true
+```
+
+## File: `test/fixtures/categories.yml`
+
+```
+technology_ja:
+  name: 技術
+  description: 技術関連の記事
+  locale: ja
+  user: one
+
+technology_en:
+  name: Technology
+  description: Technology related articles
+  locale: en
+  user: one
+
+lifestyle_ja:
+  name: ライフスタイル
+  description: 日常生活の記事
+  locale: ja
+  user: two
+
+programming_ja:
+  name: プログラミング
+  description: プログラミング記事
+  locale: ja
+  user: blogger
+```
+
+## File: `test/fixtures/comments.yml`
+
+```
+one:
+  article: published_ja
+  author_name: テストコメンター
+  content: とても良い記事ですね！
+  website: https://example.com
+  created_at: <%= 1.day.ago %>
+
+two:
+  article: published_ja
+  author_name: 別のコメンター
+  content: 参考になりました。
+  website: <%= nil %>
+  created_at: <%= 2.days.ago %>
+
+three:
+  article: rails_article
+  author_name: Rails ファン
+  content: Rails についてもっと知りたいです。
+  website: <%= nil %>
+  created_at: <%= 1.day.ago %>
+```
+
+## File: `test/fixtures/contacts.yml`
+
+```
+one:
+  name: お問い合わせ太郎
+  email: inquiry@example.com
+  subject: サービスについて
+  message: このサービスについて質問があります。
+  resolved: false
+  created_at: <%= 1.day.ago %>
+
+two:
+  name: 田中花子
+  email: tanaka@example.com
+  subject: バグ報告
+  message: エラーが発生しました。
+  resolved: true
+  created_at: <%= 1.week.ago %>
+```
+
+## File: `test/fixtures/likes.yml`
+
+```
+one:
+  user: one
+  article: published_ja
+  created_at: <%= 1.day.ago %>
+
+two:
+  user: two
+  article: published_ja
+  created_at: <%= 2.days.ago %>
+```
+
+## File: `test/fixtures/tags.yml`
+
+```
+ruby:
+  name: ruby
+  user: one
+
+rails:
+  name: rails
+  user: one
+
+test:
+  name: test
+  user: one
+
+programming:
+  name: プログラミング
+  user: blogger
+
+web:
+  name: web
+  user: blogger
+```
+
+## File: `test/fixtures/users.yml`
+
+```
+one:
+  username: testuser
+  email: test@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  confirmed_at: <%= Time.current %>
+  role: user
+  status: active
+  created_at: <%= 1.month.ago %>
+  updated_at: <%= 1.month.ago %>
+
+two:
+  username: articlewriter
+  email: writer@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  confirmed_at: <%= Time.current %>
+  role: user
+  status: active
+  created_at: <%= 1.month.ago %>
+  updated_at: <%= 1.month.ago %>
+
+admin:
+  username: admin
+  email: admin@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  confirmed_at: <%= Time.current %>
+  role: admin
+  status: active
+  created_at: <%= 2.months.ago %>
+  updated_at: <%= 2.months.ago %>
+
+blogger:
+  username: blogger
+  email: blogger@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  confirmed_at: <%= Time.current %>
+  role: user
+  status: active
+  nickname_ja: テストブロガー
+  bio_ja: Ruby と Rails が好きです
+  location_ja: 東京
+  created_at: <%= 1.month.ago %>
+  updated_at: <%= 1.month.ago %>
+
+unconfirmed:
+  username: unconfirmed
+  email: unconfirmed@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  confirmed_at: <%= nil %>
+  role: user
+  status: pending
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>
+
+suspended:
+  username: suspended
+  email: suspended@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  confirmed_at: <%= Time.current %>
+  role: user
+  status: suspended
+  created_at: <%= 1.month.ago %>
+  updated_at: <%= 1.month.ago %>
+```
+
+## File: `test/mailers/contact_mailer_test.rb`
+
+```
+# require "test_helper"
+#
+# class ContactMailerTest < ActionMailer::TestCase
+#   test "new_contact" do
+#     mail = ContactMailer.new_contact
+#     assert_equal "New contact", mail.subject
+#     assert_equal [ "to@example.org" ], mail.to
+#     assert_equal [ "from@example.com" ], mail.from
+#     assert_match "Hi", mail.body.encoded
+#   end
+# end
+```
+
+## File: `test/mailers/previews/contact_mailer_preview.rb`
+
+```
+# Preview all emails at http://localhost:3000/rails/mailers/contact_mailer
+class ContactMailerPreview < ActionMailer::Preview
+  # Preview this email at http://localhost:3000/rails/mailers/contact_mailer/new_contact
+  def new_contact
+    ContactMailer.new_contact
+  end
+end
+```
+
+## File: `test/models/article_tag_test.rb`
+
+```
+require "test_helper"
+
+class ArticleTagTest < ActiveSupport::TestCase
+  # test "the truth" do
+  #   assert true
+  # end
+end
+```
+
+## File: `test/models/article_test.rb`
+
+```
+require "test_helper"
+
+class ArticleTest < ActiveSupport::TestCase
+  test "should be valid with valid attributes" do
+    article = articles(:published_ja)
+    assert article.valid?
+  end
+
+  test "should require title" do
+    article = articles(:test_article)
+    article.title = nil
+    assert_not article.valid?
+    assert article.errors[:title].any?
+  end
+
+  test "should require content" do
+    article = articles(:test_article)
+    article.content = nil
+    assert_not article.valid?
+    assert article.errors[:content].any?
+  end
+
+  test "should require locale" do
+    article = articles(:test_article)
+    article.locale = nil
+    assert_not article.valid?
+    assert article.errors[:locale].any?
+  end
+
+  test "should only accept valid locales" do
+    article = articles(:test_article)
+    article.locale = "fr"
+    assert_not article.valid?
+    assert article.errors[:locale].any?
+
+    article.locale = "ja"
+    assert article.valid?
+
+    article.locale = "en"
+    assert article.valid?
+  end
+
+  test "should have default draft status" do
+    article = Article.new(
+      title: "New Article",
+      content: "Content",
+      locale: "ja",
+      user: users(:one)
+    )
+    article.save!
+
+    assert_equal "draft", article.status
+  end
+
+  test "should set published_at when status changes to published" do
+    article = articles(:draft_ja)
+    assert_nil article.published_at
+    article.update!(status: :published)
+
+    assert_not_nil article.published_at
+    assert article.published_at >= 1.minute.ago
+    assert article.published_at <= Time.current
+  end
+
+  test "should not override existing published_at when republishing" do
+    article = articles(:published_ja)
+    original_published_at = article.published_at
+    article.update!(status: :draft)
+    article.update!(status: :published)
+    assert_equal original_published_at.to_i, article.published_at.to_i
+  end
+
+  test "original? should return true for articles without original_article id" do
+    article = articles(:published_ja)
+    assert article.original?
+    assert_not article.translated?
+  end
+
+  test "translated? should return true for articles with original_article" do
+    translation = articles(:published_en)
+    assert translation.translated?
+    assert_not translation.original?
+  end
+
+  test "has_translation? should return true when translation exists" do
+    original = articles(:published_ja)
+    assert original.has_translation?
+    assert_not_nil original.translation
+  end
+
+  test "has_translation? should return false when no translation" do
+    article = articles(:draft_ja)
+    assert_not article.has_translation?
+    assert_nil article.translation
+  end
+
+  test "should convert markdown content to html" do
+    article = Article.new(content: "# Hello World")
+
+    assert_match %r{<h1>Hello World</h1>}, article.content_html
+  end
+
+  test "should strip javascript from markdown" do
+    bad_markdown = "Hello <script>alert('hack')</script>"
+    article = Article.new(content: bad_markdown)
+
+    html = article.content_html
+
+    assert_no_match /<script>/, html
+    assert_includes html, "Hello"
+  end
+
+  test "content_html should be html_safe" do
+    article = articles(:published_ja)
+    html = article.content_html
+    assert html.html_safe?
+  end
+
+  test "should have working user association" do
+    article = articles(:published_ja)
+    assert_not_nil article.user
+    assert_equal users(:blogger), article.user
+    assert_instance_of User, article.user
+  end
+
+  test "should have working category association" do
+    article = articles(:published_ja)
+    assert_not_nil article.category
+    assert_equal categories(:programming_ja), article.category
+    assert_instance_of Category, article.category
+  end
+
+  test "should have working optional category association" do
+    article = articles(:test_article)
+    article.category = nil
+    article.save!
+    assert_nil article.category
+    assert article.valid?
+  end
+
+  test "should have working comments association" do
+    article = articles(:published_ja)
+    assert_not_nil article.comments
+    assert_includes article.comments, comments(:one)
+    assert_includes article.comments, comments(:two)
+    assert_equal 2, article.comments.count
+    assert article.comments.all? { |c| c.article_id == article.id }
+  end
+
+  test "should have working tags association through article_tags" do
+    article = articles(:published_ja)
+    assert_not_nil article.tags
+    assert_includes article.tags, tags(:programming)
+    assert_includes article.tags, tags(:web)
+    assert_equal 2, article.tags.count
+  end
+
+  test "should have working likes association" do
+    article = articles(:published_ja)
+    assert_not_nil article.likes
+    assert_includes article.likes, likes(:one)
+    assert_includes article.likes, likes(:two)
+    assert article.likes.all? { |l| l.article_id == article.id }
+  end
+
+  test "should have working translation association" do
+    original = articles(:published_ja)
+    assert_not_nil original.translation
+    assert_equal articles(:published_en), original.translation
+  end
+
+  test "should have working original_article association" do
+    translation = articles(:published_en)
+    assert_not_nil translation.original_article
+    assert_equal articles(:published_ja), translation.original_article
+  end
+
+  test "published scope should only return published articles" do
+    published_articles = Article.published
+    assert_includes published_articles, articles(:published_ja)
+    assert_includes published_articles, articles(:published_en)
+    assert_includes published_articles, articles(:rails_article)
+    assert_not_includes published_articles, articles(:draft_ja)
+    assert_not_includes published_articles, articles(:test_article)
+  end
+
+  test "by_locale scope should filter by locale correctly" do
+    ja_articles = Article.by_locale("ja")
+    assert ja_articles.all? { |a| a.locale == "ja" }
+    assert_includes ja_articles, articles(:published_ja)
+    assert_not_includes ja_articles, articles(:published_en)
+
+    en_articles = Article.by_locale("en")
+    assert en_articles.all? { |a| a.locale == "en" }
+    assert_includes en_articles, articles(:published_en)
+    assert_not_includes en_articles, articles(:published_ja)
+  end
+
+  test "by_category scope should filter by category" do
+    category = categories(:programming_ja)
+    filtered = Article.by_category(category.id)
+
+    assert filtered.all? { |a| a.category_id == category.id }
+    assert_includes filtered, articles(:published_ja)
+  end
+
+  test "by_category scope should return all when category_id is nil" do
+    all_articles = Article.by_category(nil)
+    assert_includes all_articles, articles(:published_ja)
+    assert_includes all_articles, articles(:test_article)
+  end
+
+  test "search scope should find articles by title" do
+    results = Article.search("Rails")
+    assert_includes results, articles(:rails_article)
+  end
+
+  test "search scope should find articles by content" do
+    results = Article.search("公開されている")
+    assert_includes results, articles(:published_ja)
+  end
+
+  test "search scope should return all when keyword is blank" do
+    results = Article.search("")
+    assert_equal Article.count, results.count
+  end
+
+test "for_listing scope should avoid N+1 queries" do
+    # 1. Setup Data manually (Fixes the 'undefined method create_list' error)
+    # We create 3 articles to prove the loop doesn't trigger extra queries
+    3.times do |i|
+      article = Article.create!(
+        title: "Test Article #{i}",
+        content: "Content",
+        locale: "ja",
+        status: "published",
+        published_at: Time.current,
+        user: users(:blogger),
+        category: categories(:programming_ja)
+      )
+    end
+
+    expected_queries = 5
+
+    assert_queries_count(expected_queries) do
+      articles = Article.for_listing("ja")
+
+      articles.each do |article|
+        article.category&.name
+        article.tags.to_a
+      end
+    end
+  end
+
+  test "tag_list= should create tags from comma-separated string" do
+    article = articles(:test_article)
+    article.tag_list = "ruby, rails, testing"
+    article.save!
+    assert_equal 3, article.tags.count
+    assert article.tags.pluck(:name).include?("ruby")
+    assert article.tags.pluck(:name).include?("rails")
+    assert article.tags.pluck(:name).include?("testing")
+  end
+
+  test "tag_list= should normalize tag names" do
+    article = articles(:test_article)
+    article.tag_list = "  Ruby , RAILS,  testing  "
+    article.save!
+    assert article.tags.pluck(:name).all? { |name| name == name.downcase.strip }
+  end
+
+  test "liked_by? should return true when user liked the article" do
+    article = articles(:published_ja)
+    user = users(:one)
+    assert article.liked_by?(user)
+  end
+
+  test "liked_by? should return false when user has not liked" do
+    article = articles(:rails_article)
+    user = users(:one)
+    assert_not article.liked_by?(user)
+  end
+
+  test "liked_by? should return false when user is nil" do
+    article = articles(:published_ja)
+    assert_not article.liked_by?(nil)
+  end
+
+  test "should destroy dependent comments when article is deleted" do
+    article = articles(:published_ja)
+    comment_ids = article.comments.pluck(:id)
+    assert comment_ids.any?
+    article.destroy!
+    comment_ids.each do |id|
+      assert_not Comment.exists?(id)
+    end
+  end
+
+  test "should destroy dependent tags associations when article is deleted" do
+    article = articles(:published_ja)
+    article_tag_ids = article.article_tags.pluck(:id)
+    assert article_tag_ids.any?
+    article.destroy!
+    article_tag_ids.each do |id|
+      assert_not ArticleTag.exists?(id)
+    end
+  end
+end
+```
+
+## File: `test/models/blog_setting_test.rb`
+
+```
+
+require "test_helper"
+
+class BlogSettingTest < ActiveSupport::TestCase
+  test "should be valid with valid attributes" do
+    setting = blog_settings(:one)
+    assert setting.valid?
+  end
+
+  test "should belong to user" do
+    setting = blog_settings(:one)
+    assert_equal users(:one), setting.user
+    assert_instance_of User, setting.user
+  end
+
+  test "should reject invalid theme_color" do
+    setting = blog_settings(:one)
+    setting.theme_color = "invalid_color"
+    assert_not setting.valid?
+    assert setting.errors[:theme_color].any?
+  end
+
+  test "should accept all valid theme colors" do
+    setting = blog_settings(:one)
+
+    BlogSetting::THEME_COLORS.each do |color|
+      setting.theme_color = color
+      assert setting.valid?, "#{color} should be valid"
+      assert setting.errors[:theme_color].empty?
+    end
+  end
+
+  test "should reject invalid layout_style" do
+    setting = blog_settings(:one)
+    setting.layout_style = "invalid_layout"
+
+    assert_not setting.valid?
+    assert setting.errors[:layout_style].any?
+  end
+
+  test "should accept all valid layout styles" do
+    setting = blog_settings(:one)
+
+    # Test all valid layout styles from model enum
+    valid_styles = %w[linear hero_tiles hero_list]
+
+    valid_styles.each do |style|
+      setting.layout_style = style
+      assert setting.valid?, "#{style} should be a valid layout style"
+      assert setting.errors[:layout_style].empty?
+    end
+  end
+
+  test "should require unique user_id" do
+    # Try to create second blog_setting for same user
+    duplicate = BlogSetting.new(
+      user: users(:one), # Same user as blog_settings(:one)
+      theme_color: "default"
+    )
+
+    assert_not duplicate.valid?
+    assert duplicate.errors[:user_id].any?
+  end
+
+  test "display_title should return appropriate localized title" do
+    setting = blog_settings(:one)
+
+    # Should return Japanese title for ja locale
+    ja_title = setting.display_title("ja")
+    assert_equal "testuser のブログ", ja_title
+
+    # Should return English title for en locale
+    en_title = setting.display_title("en")
+    assert_equal "testuser's Blog", en_title
+  end
+
+  test "display_title should fallback when primary locale is missing" do
+    setting = blog_settings(:one)
+
+    # Remove Japanese title
+    setting.update_column(:blog_title_ja, nil)
+
+    # Should fallback to English when Japanese is missing
+    ja_title = setting.display_title("ja")
+    assert_equal "testuser's Blog", ja_title
+  end
+
+  test "display_title should fallback to default when both are missing" do
+    setting = blog_settings(:one)
+
+    # Remove both titles
+    setting.update_columns(blog_title_ja: nil, blog_title_en: nil)
+
+    # Should return default "Dual Pascal"
+    title = setting.display_title("ja")
+    assert_equal "Dual Pascal", title
+  end
+
+  test "display_subtitle should return appropriate localized subtitle" do
+    setting = blog_settings(:one)
+
+    # Test both locales
+    ja_subtitle = setting.display_subtitle("ja")
+    assert_equal "テストブログです", ja_subtitle
+
+    en_subtitle = setting.display_subtitle("en")
+    assert_equal "This is a test blog", en_subtitle
+  end
+
+  test "display_subtitle should fallback when primary locale is missing" do
+    setting = blog_settings(:one)
+
+    # Remove Japanese subtitle
+    setting.update_column(:blog_subtitle_ja, nil)
+
+    # Should fallback to English
+    ja_subtitle = setting.display_subtitle("ja")
+    assert_equal "This is a test blog", ja_subtitle
+  end
+
+  test "display_subtitle should return empty string when both are missing" do
+    setting = blog_settings(:one)
+
+    # Remove both subtitles
+    setting.update_columns(blog_subtitle_ja: nil, blog_subtitle_en: nil)
+
+    # Should return empty string
+    subtitle = setting.display_subtitle("ja")
+    assert_equal "", subtitle
+  end
+
+  test "localized_title should respect given locale" do
+    setting = blog_settings(:one)
+
+    # Should return exactly the locale requested, no fallback
+    assert_equal "testuser のブログ", setting.localized_title("ja")
+    assert_equal "testuser's Blog", setting.localized_title("en")
+  end
+
+  test "localized_subtitle should respect given locale" do
+    setting = blog_settings(:one)
+
+    assert_equal "テストブログです", setting.localized_subtitle("ja")
+    assert_equal "This is a test blog", setting.localized_subtitle("en")
+  end
+
+  test "show_hero_thumbnail should default to false" do
+    # Create new setting without specifying show_hero_thumbnail
+    setting = BlogSetting.create!(
+      user: users(:suspended), # Use a user without blog_setting
+      theme_color: "default"
+    )
+
+    # Should default to false
+    assert_equal false, setting.show_hero_thumbnail
+  end
+
+  test "should have working user association" do
+    setting = blog_settings(:one)
+    assert_not_nil setting.user
+    assert_equal users(:one), setting.user
+    assert_instance_of User, setting.user
+  end
+end
+```
+
+## File: `test/models/category_test.rb`
+
+```
+require "test_helper"
+
+class CategoryTest < ActiveSupport::TestCase
+  test "should be valid with valid attributes" do
+    category = categories(:technology_ja)
+    assert category.valid?
+  end
+
+  test "should require name" do
+    category = categories(:technology_ja)
+    category.name = nil
+    assert_not category.valid?
+    assert category.errors[:name].any?
+  end
+
+  test "should require unique name per locale combination" do
+    duplicate = Category.new(
+      name: categories(:technology_ja).name,
+      locale: "ja",
+      user: users(:one)
+    )
+    assert_not duplicate.valid?
+    assert duplicate.errors[:name].any?
+  end
+
+  test "should allow same name for different locale" do
+    ja_category = categories(:technology_ja)
+    en_category = categories(:technology_en)
+
+    assert ja_category.valid?
+    assert en_category.valid?
+    assert_not_equal ja_category.locale, en_category.locale
+  end
+
+  test "should allow same name for different users" do
+    category_for_different_user = Category.new(
+      name: categories(:technology_ja).name,
+      locale: "ja",
+      user: users(:two) # Different user
+    )
+
+    assert category_for_different_user.valid?
+  end
+
+  test "should only accept valid locales" do
+    category = categories(:technology_ja)
+
+    category.locale = "fr"
+    assert_not category.valid?
+    assert category.errors[:locale].any?
+
+    category.locale = "ja"
+    assert category.valid?
+
+    category.locale = "en"
+    assert category.valid?
+  end
+
+  test "should belong to user" do
+    category = categories(:technology_ja)
+    assert_equal users(:one), category.user
+    assert_instance_of User, category.user
+  end
+
+  test "should have many articles" do
+    category = categories(:programming_ja)
+
+    assert_respond_to category, :articles
+    assert category.articles.count > 0
+    assert category.articles.all? { |a| a.is_a?(Article) }
+  end
+
+  test "for_locale scope should filter by locale" do
+    ja_categories = Category.for_locale("ja")
+    assert ja_categories.all? { |c| c.locale == "ja" }
+    assert_includes ja_categories, categories(:technology_ja)
+    assert_not_includes ja_categories, categories(:technology_en)
+
+    en_categories = Category.for_locale("en")
+    assert en_categories.all? { |c| c.locale == "en" }
+    assert_includes en_categories, categories(:technology_en)
+    assert_not_includes en_categories, categories(:technology_ja)
+  end
+
+  test "with_article_count scope should include article count" do
+    categories = Category.with_article_count
+    category = categories.find { |c| c.id == categories(:programming_ja).id }
+    assert_respond_to category, :articles_count
+    assert category.articles_count > 0
+  end
+
+  test "display_name should return name" do
+    category = categories(:technology_ja)
+    # display_name is just an alias for name
+    assert_equal category.name, category.display_name
+  end
+
+  test "should nullify article category_id when category is deleted" do
+    category = categories(:programming_ja)
+    article = articles(:published_ja)
+    assert_equal category, article.category
+    category.destroy!
+    article.reload
+    assert_nil article.category_id
+  end
+end
+```
+
+## File: `test/models/comment_test.rb`
+
+```
+require "test_helper"
+
+
+class CommentTest < ActiveSupport::TestCase
+  test "should be valid with valid attributes" do
+    comment = comments(:one)
+    assert comment.valid?
+  end
+
+  test "should require author_name" do
+    comment = comments(:one)
+    comment.author_name = nil
+    assert_not comment.valid?
+    assert comment.errors[:author_name].any?
+  end
+
+  test "should require content" do
+    comment = comments(:one)
+    comment.content = nil
+    assert_not comment.valid?
+    assert comment.errors[:content].any?
+  end
+
+  test "should reject invalid website url format" do
+    comment = comments(:one)
+    invalid_urls = [ "not-a-url", "ftp://example.com", "example.com", "www.example.com" ]
+
+    invalid_urls.each do |invalid_url|
+      comment.website = invalid_url
+      assert_not comment.valid?, "#{invalid_url} should be invalid"
+      assert comment.errors[:website].any?
+    end
+  end
+
+  test "should accept valid website url formats" do
+    comment = comments(:one)
+
+    valid_urls = [ "https://example.com", "http://example.com", "https://sub.example.com/path" ]
+
+    valid_urls.each do |valid_url|
+      comment.website = valid_url
+      assert comment.valid?, "#{valid_url} should be valid"
+      assert comment.errors[:website].empty?
+    end
+  end
+
+  test "should allow blank website" do
+    comment = comments(:two)
+    assert_nil comment.website
+    assert comment.valid?
+  end
+
+  test "should belong to article" do
+    comment = comments(:one)
+    assert_equal articles(:published_ja), comment.article
+    assert_instance_of Article, comment.article
+  end
+
+
+  test "should be ordered by created_at by default" do
+    article = articles(:published_ja)
+    comments = article.comments
+    timestamps = comments.pluck(:created_at)
+    assert_equal timestamps.sort.reverse, timestamps
+  end
+end
+```
+
+## File: `test/models/contact_test.rb`
+
+```
+require "test_helper"
+
+class ContactTest < ActiveSupport::TestCase
+  # test "the truth" do
+  #   assert true
+  # end
+end
+```
+
+## File: `test/models/like_test.rb`
+
+```
+require "test_helper"
+
+class LikeTest < ActiveSupport::TestCase
+  test "should be valid with valid attributes" do
+    like = likes(:one)
+    assert like.valid?
+  end
+
+  test "should belong to user" do
+    like = likes(:one)
+    assert_equal users(:one), like.user
+    assert_instance_of User, like.user
+  end
+
+  test "should belong to article" do
+    like = likes(:one)
+    assert_equal articles(:published_ja), like.article
+    assert_instance_of Article, like.article
+  end
+
+  test "should prevent duplicate likes from same user on same article" do
+    duplicate = Like.new(
+      user: users(:one),
+      article: articles(:published_ja)
+    )
+    assert_not duplicate.valid?
+    assert duplicate.errors[:user_id].any?
+  end
+
+  test "should allow same user to like different articles" do
+    new_like = Like.new(
+      user: users(:one),
+      article: articles(:rails_article)
+    )
+    assert new_like.valid?
+    assert new_like.save
+  end
+
+  test "should allow different users to like same article" do
+    like_from_different_user = Like.new(
+      user: users(:admin),
+      article: articles(:published_ja)
+    )
+    assert like_from_different_user.valid?
+    assert like_from_different_user.save
+  end
+
+  test "should increment article likes_count on creation" do
+    article = articles(:rails_article)
+    initial_count = article.likes_count || 0
+    Like.create!(user: users(:one), article: article)
+    article.reload
+    assert_equal initial_count + 1, article.likes_count
+  end
+
+  test "should decrement article likes_count on deletion" do
+    article = articles(:published_ja)
+    like = likes(:one)
+    initial_count = article.likes_count
+    like.destroy!
+    article.reload
+    assert_equal initial_count - 1, article.likes_count
+  end
+
+  test "should have working user association" do
+    like = likes(:one)
+    assert_not_nil like.user
+    assert_equal users(:one), like.user
+    assert_instance_of User, like.user
+  end
+
+  test "should have working article association" do
+    like = likes(:one)
+    assert_not_nil like.article
+    assert_equal articles(:published_ja), like.article
+    assert_instance_of Article, like.article
+  end
+end
+```
+
+## File: `test/models/tag_test.rb`
+
+```
+require "test_helper"
+
+class TagTest < ActiveSupport::TestCase
+  test "should be valid with valid attributes" do
+    tag = tags(:ruby)
+    assert tag.valid?
+  end
+
+  test "should require name" do
+    tag = tags(:ruby)
+    tag.name = nil
+    assert_not tag.valid?
+    assert tag.errors[:name].any?
+  end
+
+  test "should require unique name per user" do
+    duplicate = Tag.new(
+      name: tags(:ruby).name,
+      user: users(:one)
+    )
+    assert_not duplicate.valid?
+    assert duplicate.errors[:name].any?
+  end
+
+  test "should allow same name for different users" do
+    tag_for_different_user = Tag.new(
+      name: "ruby",
+      user: users(:two)
+    )
+    assert tag_for_different_user.valid?
+  end
+
+  test "should normalize name to lowercase on save" do
+    tag = Tag.create!(name: "Ruby On Rails", user: users(:one))
+    assert_equal "ruby on rails", tag.name
+  end
+
+  test "should strip whitespace from name on save" do
+    tag = Tag.create!(name: "  Python  ", user: users(:one))
+    assert_equal "python", tag.name
+  end
+
+  test "should normalize both case and whitespace" do
+    tag = Tag.create!(name: "  RUBY on RAILS  ", user: users(:one))
+    assert_equal "ruby on rails", tag.name
+  end
+
+  test "should belong to user" do
+    tag = tags(:ruby)
+    assert_equal users(:one), tag.user
+    assert_instance_of User, tag.user
+  end
+
+  test "should have many articles through article_tags" do
+    tag = tags(:programming)
+    assert_respond_to tag, :articles
+    assert tag.articles.count > 0
+    assert tag.articles.all? { |a| a.is_a?(Article) }
+  end
+
+  test "should have many article_tags" do
+    tag = tags(:programming)
+    assert_respond_to tag, :article_tags
+    assert tag.article_tags.count > 0
+  end
+
+  test "for_user scope should filter by user" do
+    user_tags = Tag.for_user(users(:one))
+    assert user_tags.all? { |t| t.user_id == users(:one).id }
+    assert_includes user_tags, tags(:ruby)
+    assert_includes user_tags, tags(:rails)
+  end
+
+  test "should destroy dependent article_tags when tag is deleted" do
+    tag = tags(:programming)
+    article_tag_ids = tag.article_tags.pluck(:id)
+    assert article_tag_ids.any?
+    tag.destroy!
+    article_tag_ids.each do |id|
+      assert_not ArticleTag.exists?(id)
+    end
+  end
+end
+```
+
+## File: `test/models/user_test.rb`
+
+```
+require "test_helper"
+
+class UserTest < ActiveSupport::TestCase
+  test "should be valid with valid attributes" do
+    user = users(:one)
+    assert user.valid?
+  end
+
+  test "should require username" do
+    user = users(:one)
+    user.username = nil
+    assert_not user.valid?
+    assert user.errors[:username].any?
+  end
+
+  test "should require email" do
+    user = users(:one)
+    user.email = nil
+    assert_not user.valid?
+    assert user.errors[:email].any?
+  end
+
+  test "should require unique username" do
+    duplicate_user = User.new(
+      username: users(:one).username,
+      email: "different@example.com",
+      password: "password123",
+      password_confirmation: "password123"
+    )
+    assert_not duplicate_user.valid?
+    assert duplicate_user.errors[:username].any?
+  end
+
+  test "should require unique email" do
+    duplicate_user = User.new(
+      username: "different",
+      email: users(:one).email,
+      password: "password123",
+      password_confirmation: "password123"
+    )
+    assert_not duplicate_user.valid?
+    assert duplicate_user.errors[:email].any?
+  end
+
+  test "should have default user role" do
+    user = users(:one)
+    assert_equal "user", user.role
+  end
+
+  test "should have default active status" do
+    user = users(:one)
+    assert_equal "active", user.status
+  end
+
+  test "should have blog_setting association" do
+    user = users(:one)
+    assert_not_nil user.blog_setting
+    assert_instance_of BlogSetting, user.blog_setting
+  end
+
+  test "should suspend user" do
+    user = users(:one)
+    user.suspend!
+    user.reload
+
+    assert user.suspended?
+    assert_equal "suspended", user.status
+  end
+
+  test "should restore suspended user" do
+    user = users(:suspended)
+    assert_equal "suspended", user.status
+    user.restore!
+    user.reload
+    assert_equal "active", user.status
+    assert_not user.suspended?
+  end
+
+  test "unconfirmed user should not be confirmed" do
+    user = users(:unconfirmed)
+    assert_nil user.confirmed_at
+    assert_equal "pending", user.status
+  end
+
+  test "admin user should have admin role" do
+    admin = users(:admin)
+    assert admin.admin?
+    assert_equal "admin", admin.role
+  end
+
+  test "should invalidate user with invalid website format" do
+    user = users(:one)
+    user.website = "not-a-url"
+    assert_not user.valid?
+    assert user.errors[:website].any?
+  end
+
+  test "should accept valid website url" do
+    user = users(:one)
+    user.website = "https://example.com"
+    assert user.valid?
+    assert user.errors[:website].empty?
+  end
+
+  test "should allow blank website" do
+    user = users(:one)
+    user.website = nil
+    assert user.valid?
+    assert user.errors[:website].empty?
+  end
+
+  test "should have working blog_setting association" do
+    user = users(:one)
+    assert_not_nil user.blog_setting
+    assert_equal blog_settings(:one), user.blog_setting
+    assert_instance_of BlogSetting, user.blog_setting
+  end
+
+  test "should have working articles association" do
+    user = users(:blogger)
+    assert_not_nil user.articles
+    assert_includes user.articles, articles(:published_ja)
+    assert_includes user.articles, articles(:published_en)
+    assert user.articles.all? { |a| a.user_id == user.id }
+  end
+
+  test "should have working categories association" do
+    user = users(:one)
+    assert_not_nil user.categories
+    assert_includes user.categories, categories(:technology_ja)
+    assert_includes user.categories, categories(:technology_en)
+    assert user.categories.all? { |c| c.user_id == user.id }
+  end
+
+  test "should have working tags association" do
+    user = users(:one)
+    assert_not_nil user.tags
+    assert_includes user.tags, tags(:ruby)
+    assert_includes user.tags, tags(:rails)
+    assert user.tags.all? { |t| t.user_id == user.id }
+  end
+
+  test "should have working likes association" do
+    user = users(:one)
+    assert_not_nil user.likes
+    assert_includes user.likes, likes(:one)
+    assert user.likes.all? { |l| l.user_id == user.id }
+  end
+end
+```
+
+## File: `test/test_helper.rb`
+
+```
+ENV["RAILS_ENV"] ||= "test"
+require_relative "../config/environment"
+require "rails/test_help"
+
+module ActiveSupport
+  class TestCase
+    # Run tests in parallel with specified workers
+    parallelize(workers: :number_of_processors)
+
+    # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
+    fixtures :all
+
+    def assert_queries_count(expected_count, &block)
+      count = 0
+      # 2. Subscribe to all SQL events sent by Active Record
+      # 'sql.active_record' is the internal channel Rails uses for DB logging
+      counter_f = ->(name, started, finished, unique_id, payload) {
+        # Filter out "noise" (schema changes, transactions, etc.)
+        # We only care about SELECT, INSERT, UPDATE, DELETE
+        unless payload[:name].to_s.include?("SCHEMA") || payload[:name].to_s.include?("TRANSACTION")
+          count += 1
+        end
+      }
+      # 3. Listen while the block runs
+      ActiveSupport::Notifications.subscribed(counter_f, "sql.active_record", &block)
+
+      assert_equal expected_count, count, "Expected #{expected_count} queries, but #{count} were executed."
+    end
+  end
+end
 ```
 

@@ -42,7 +42,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
       clean_up_passwords resource
       set_minimum_password_length
 
-      flash.now[:alert] = resource.errors.full_messages.join("\n")
+      # flash.now[:alert] = resource.errors.full_messages.join("\n")
 
       respond_to do |format|
         format.html { render :new, status: :unprocessable_entity }
@@ -52,7 +52,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
             "auth_form_frame",
             template: "devise/registrations/new",
             locals: { resource: resource, resource_name: resource_name }
-          )
+          ), status: :unprocessable_entity
         end
       end
     end

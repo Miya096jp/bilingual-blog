@@ -36,4 +36,4 @@
 /app/assets/builds/*
 !/app/assets/builds/.keep
 
-/export_code.md
+/bin/export_code.md

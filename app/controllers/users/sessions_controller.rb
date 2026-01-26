@@ -32,7 +32,7 @@ class Users::SessionsController < Devise::SessionsController
             "auth_form_frame",
             template: "devise/sessions/new",
             locals: { resource: resource, resource_name: resource_name }
-          )
+          ), status: :unprocessable_entity
         end
       end
     end
