@@ -71,15 +71,6 @@ h1.text-2xl.font-bold.mb-6 Blog settings
               .bg-gray-200 style="height: 3px; width: 90%;"
             span.text-sm Hero + list
 
-
-        div
-          = f.label :show_hero_thumbnail, "Thumbnail", class: "block text-sm font-medium text-gray-700 mb-2"
-          .flex.items-center
-            = f.check_box :show_hero_thumbnail, class: "mr-2"
-            = f.label :show_hero_thumbnail, "Show hero article Thumbnail", class: "text-sm text-gray-600"
-
-
-
     .flex.gap-3
       = f.submit "Save", class: "bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition-colors"
       = link_to "Cancel", dashboard_articles_path, class: "bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"

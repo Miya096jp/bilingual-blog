@@ -3,10 +3,10 @@
 
 / ヒーロー記事
 - if hero_article
-  .hero-article.mb-12.max-w-4xl.mx-auto
-    - if @blog_setting&.show_hero_thumbnail && has_cover_image?(hero_article)
+  .hero-article.mt-12.mb-12.max-w-4xl.mx-auto
+    - if has_cover_image?(hero_article)
       .hero-thumbnail.mb-6
-        = image_tag thumbnail_for_article(hero_article, @blog_setting), class: "w-full h-64 object-cover rounded-lg shadow-md"
+        = image_tag thumbnail_for_article(hero_article, @blog_setting), class: "w-full h-auto max-h-[500px] object-cover rounded-lg shadow-md"
     
     .article-header
       h1.text-4xl.font-extrabold.my-4.text-gray-900.border-b.border-gray-500.pb-2
@@ -19,10 +19,7 @@
             = link_to hero_article.category.name, user_articles_path(params[:username], filter.filter_params.merge(category_id: hero_article.category.id))
         = render 'shared/article_tags', article: hero_article, filter_params: filter.filter_params
       
-      .meta-content-divider.text-center.mx-8
-        span.text-gray-400.text-xl • • •
-    
-    article.article-content
+    article.article-content.mt-12
       = hero_article.content_html
     
     .article-meta.text-right.text-sm.text-gray-400.mt-6.flex.justify-between.items-end

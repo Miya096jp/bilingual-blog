@@ -10,11 +10,15 @@
             | #{t('blog.category')}:
             = link_to article.category.name, user_articles_path(params[:username], filter.filter_params.merge(category_id: article.category.id))
         = render 'shared/article_tags', article: article, filter_params: filter.filter_params
-      
-      .meta-content-divider.text-center.mx-8
-        span.text-gray-400.text-xl • • •
+
+      - if has_cover_image?(article)
+        .article-cover-image.mb-8
+          = image_tag thumbnail_for_article(article, @blog_setting), class: "w-full h-auto max-h-[500px] object-cover rounded-lg shadow-sm"
+
+      /.meta-content-divider.text-center.mx-8
+      /  span.text-gray-400.text-xl • • •
     
-    article.article-content
+    article.article-content.mt-12
       = article.content_html
     
     .article-meta.max-w-4xl.mx-auto.text-right.text-sm.text-gray-400.mt-6.flex.justify-between.items-end
