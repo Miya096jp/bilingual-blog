@@ -47,6 +47,8 @@ gem "html2slim", github: "slim-template/html2slim"
 gem "lucide-rails"
 # For ActiveStorage
 gem "image_processing", "~> 1.2"
+# priodically delete unattached blob on R2
+gem "whenever", require: false
 
 # Registration
 gem "devise"
