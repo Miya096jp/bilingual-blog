@@ -15,96 +15,118 @@
     <%= javascript_importmap_tags %>
   </head>
 
-<body class="text-lg bg-white min-h-screen flex flex-col" 
-      data-controller="auth-modal mobile-menu" 
-      data-action="keydown->auth-modal#closeOnEscape">
-    
+  <body
+    class="text-lg bg-white min-h-screen flex flex-col"
+    data-controller="auth-modal mobile-menu"
+    data-action="keydown->auth-modal#closeOnEscape"
+    data-auth-modal-sign-in-url-value="<%= new_user_session_path %>"
+  >
     <!-- ナビゲーションヘッダー -->
     <header class="site-header">
       <nav class="theme-header w-full">
         <div class="max-w-6xl mx-auto px-4 sm:px-6">
-          
           <!-- トップバー: ブログオーナー + メニューボタン -->
           <div class="flex items-center justify-between h-12">
-            
             <!-- 左側: ブログオーナー（常に表示） -->
             <div class="flex items-center gap-2">
               <% if @blog_owner.present? %>
                 <% if @blog_owner.avatar.attached? %>
                   <%= image_tag @blog_owner.avatar, class: "w-8 h-8 rounded-full" %>
                 <% else %>
-                  <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm font-semibold">
+                  <div
+                    class="
+                      w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm
+                      font-semibold
+                    "
+                  >
                     <%= @blog_owner.username&.first&.upcase || "?" %>
                   </div>
                 <% end %>
-                <%= link_to @blog_owner.username, user_profile_path(username: @blog_owner.username, locale: params[:locale]), class: "hover:!text-gray-400 font-medium text-sm sm:text-base" %>
+                <%= link_to @blog_owner.username,
+                user_profile_path(username: @blog_owner.username, locale: params[:locale]),
+                class: "hover:!text-gray-400 font-medium text-sm sm:text-base" %>
               <% end %>
             </div>
-
             <!-- 右側: デスクトップメニュー（768px以上で表示） -->
             <div class="hidden md:flex items-center gap-4 lg:gap-6">
-              
               <!-- 言語切り替え -->
-              <%= link_to locale_switch_label, locale_switch_url(locale_switch_target), class: "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded text-sm whitespace-nowrap" %>
-
+              <%= link_to locale_switch_label,
+              locale_switch_url(locale_switch_target),
+              class:
+                "text-gray-500 px-2 py-1 border border-gray-300 bg-white hover:bg-gray-100 font-medium rounded text-sm whitespace-nowrap" %>
               <!-- 検索フォーム -->
-              <% if params[:username].present? %>
-                <%= form_with url: user_search_path(params[:username], locale: params[:locale] || 'ja'), method: :get, local: true, class: "flex items-center gap-2" do |f| %>
-                  <%= f.text_field :q,
-                      placeholder: t('blog.search.placeholder'),
-                      class: "w-32 lg:w-48 border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-3 py-1 text-sm",
-                      value: params[:q] %>
-                  <%= f.submit t('blog.search.button'),
-                      class: "btn-unified text-sm whitespace-nowrap !py-1" %>
-                <% end %>
-              <% end %>
-
-              <!-- Dashboard / Sign in -->
-              <% if user_signed_in? %>
-                <%= link_to "Dashboard", dashboard_articles_path, class: "hover:!text-gray-400 font-medium text-sm whitespace-nowrap" %>
-              <% else %>
-                <button data-action="click->auth-modal#showModal" 
-                        class="bg-blue-600 !text-white rounded cursor-pointer text-sm font-medium hover:bg-blue-500 transition-colors whitespace-nowrap !py-1 px-5">
+              <% if params[:username].present? %><%= form_with url: user_search_path(params[:username], locale: params[:locale] || 'ja'), method: :get, local: true, class: "flex items-center gap-2" do |f| %><%= f.text_field :q,
+                               placeholder: t("blog.search.placeholder"),
+                               class:
+                                 "w-32 lg:w-48 border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-3 py-1 text-sm",
+                               value: params[:q] %><%= f.submit t("blog.search.button"),
+                           class: "btn-unified text-sm whitespace-nowrap !py-1" %><% end %><% end %><% if user_signed_in? %><%= link_to "Dashboard",
+                dashboard_articles_path,
+                class: "hover:!text-gray-400 font-medium text-sm whitespace-nowrap" %><% else %>
+                <button
+                  data-action="click->auth-modal#showModal"
+                  class="
+                    bg-blue-600 !text-white rounded cursor-pointer text-sm font-medium
+                    hover:bg-blue-500 transition-colors whitespace-nowrap !py-1 px-5
+                  "
+                >
                   Sign in
                 </button>
               <% end %>
             </div>
-
             <!-- モバイルメニューボタン（767px以下で表示） -->
-            <button class="md:hidden p-2 text-gray-200" data-action="click->mobile-menu#toggle" aria-label="メニュー">
+            <button
+              class="md:hidden p-2 text-gray-200"
+              data-action="click->mobile-menu#toggle"
+              aria-label="メニュー"
+            >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
           </div>
-
           <!-- モバイルメニュー（展開式、767px以下で表示） -->
-          <div class="hidden md:hidden border-t border-gray-400/30 py-3" data-mobile-menu-target="menu">
-            
+          <div
+            class="hidden md:hidden border-t border-gray-400/30 py-3"
+            data-mobile-menu-target="menu"
+          >
             <!-- 検索フォーム -->
             <% if params[:username].present? %>
               <div class="mb-3 px-3">
                 <%= form_with url: user_search_path(params[:username], locale: params[:locale] || 'ja'), method: :get, local: true, class: "flex flex-col gap-2" do |f| %>
                   <%= f.text_field :q,
-                      placeholder: t('blog.search.placeholder'),
-                      class: "w-full border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-3 py-2 text-sm",
-                      value: params[:q] %>
-                  <%= f.submit t('blog.search.button'),
-                      class: "btn-unified text-sm w-full" %>
+                               placeholder: t("blog.search.placeholder"),
+                               class:
+                                 "w-full border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-3 py-2 text-sm",
+                               value: params[:q] %>
+                  <%= f.submit t("blog.search.button"), class: "btn-unified text-sm w-full" %>
                 <% end %>
               </div>
             <% end %>
-
             <!-- 言語切り替え -->
             <div class="mb-3">
-              <%= link_to locale_switch_label, locale_switch_url(locale_switch_target), class: "block text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm" %>
+              <%= link_to locale_switch_label,
+              locale_switch_url(locale_switch_target),
+              class: "block text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm" %>
             </div>
-
             <!-- Dashboard / Sign in -->
             <% if user_signed_in? %>
-              <%= link_to "Dashboard", dashboard_articles_path, class: "block text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm" %>
+              <%= link_to "Dashboard",
+              dashboard_articles_path,
+              class: "block text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm" %>
             <% else %>
-              <button data-action="click->auth-modal#showModal" class="block w-full text-left text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm">
+              <button
+                data-action="click->auth-modal#showModal"
+                class="
+                  block w-full text-left text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded
+                  text-sm
+                "
+              >
                 Sign in
               </button>
             <% end %>
@@ -112,25 +134,25 @@
 
         </div>
       </nav>
-
       <!-- ブログタイトルエリア -->
       <div class="text-center py-6 sm:py-10">
         <% if @blog_setting&.user %>
-          <%= link_to (@blog_setting.display_title(I18n.locale) || "Dual Pascal"), 
-              user_articles_path(@blog_setting.user.username, locale: I18n.locale), 
-              class: "text-2xl sm:text-3xl md:text-4xl font-bold py-4 inline-block blog-title" %>
+          <%= link_to (@blog_setting.display_title(I18n.locale) || "Dual Pascal"),
+          user_articles_path(@blog_setting.user.username, locale: I18n.locale),
+          class: "text-2xl sm:text-3xl md:text-4xl font-bold py-4 inline-block blog-title" %>
         <% else %>
-          <%= link_to "Dual Pascal", root_path, class: "text-2xl sm:text-3xl md:text-4xl font-bold py-4 inline-block blog-title" %>
+          <%= link_to "Dual Pascal",
+          root_path,
+          class: "text-2xl sm:text-3xl md:text-4xl font-bold py-4 inline-block blog-title" %>
         <% end %>
 
         <% if @blog_setting&.display_subtitle(I18n.locale).present? %>
           <p class="text-base sm:text-lg text-gray-600 mt-2 px-4"><%= @blog_setting.display_subtitle(I18n.locale) %></p>
         <% end %>
       </div>
-      
+
       <div class="max-w-6xl mx-auto px-4 sm:px-6 border-b border-gray-500"></div>
     </header>
-
     <!-- フラッシュメッセージ -->
     <% flash.each do |type, message| %>
       <div class="flash-message text-red-700 p-4 mb-4 max-w-6xl mx-auto text-center">
@@ -138,47 +160,63 @@
       </div>
     <% end %>
 
-    <%= render 'shared/auth_modal' %>
-  
+    <%= render "shared/auth_modal" %>
     <!-- メインコンテンツ -->
     <main class="main-content flex-grow">
       <div class="content-container max-w-6xl mx-auto px-4 sm:px-6 mb-8">
         <%= yield %>
       </div>
     </main>
-
     <!-- フッター -->
     <footer class="site-footer">
       <div class="footer-container w-full theme-footer border-t border-gray-200">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-          
           <!-- 上段：リンクエリア -->
-          <div class="flex flex-col sm:flex-row flex-wrap justify-center sm:justify-between gap-4 sm:gap-6 mb-6 text-sm">
+          <div
+            class="
+              flex flex-col sm:flex-row flex-wrap justify-center sm:justify-between gap-4
+              sm:gap-6 mb-6 text-sm
+            "
+          >
             <nav class="flex flex-wrap justify-center gap-x-4 sm:gap-x-6 gap-y-2">
-              <%= link_to t('footer.terms'), terms_of_service_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
-              <%= link_to t('footer.privacy'), privacy_policy_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
-              <%= link_to t('footer.disclaimer'), disclaimer_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
-              <%= link_to t('footer.contact'), new_contact_path(locale: params[:locale] || I18n.locale), class: "hover:text-white transition-colors" %>
+              <%= link_to t("footer.terms"),
+              terms_of_service_path(locale: params[:locale] || I18n.locale),
+              class: "hover:text-white transition-colors" %>
+              <%= link_to t("footer.privacy"),
+              privacy_policy_path(locale: params[:locale] || I18n.locale),
+              class: "hover:text-white transition-colors" %>
+              <%= link_to t("footer.disclaimer"),
+              disclaimer_path(locale: params[:locale] || I18n.locale),
+              class: "hover:text-white transition-colors" %>
+              <%= link_to t("footer.contact"),
+              new_contact_path(locale: params[:locale] || I18n.locale),
+              class: "hover:text-white transition-colors" %>
             </nav>
-            
+
             <div class="flex items-center justify-center gap-2">
-              <%= link_to "Photos by Unsplash", "https://unsplash.com/", target: "_blank", rel: "noopener", class: "opacity-70 hover:opacity-100 hover:text-white transition-all text-sm" %>
+              <%= link_to "Photos by Unsplash",
+              "https://unsplash.com/",
+              target: "_blank",
+              rel: "noopener",
+              class: "opacity-70 hover:opacity-100 hover:text-white transition-all text-sm" %>
             </div>
           </div>
-
           <!-- 下段：コピーライトエリア -->
           <div class="pt-6 border-t border-gray-500/20 text-center text-sm opacity-80">
             <p>
               <% custom_title = @blog_setting&.localized_title(I18n.locale) %>
               <% if custom_title.present? %>
-                <strong><%= custom_title %></strong> <span class="text-xs">powered by</span> Dual Pascal.
+                <strong><%= custom_title %></strong>
+                <span class="text-xs">powered by</span>
+                Dual Pascal.
               <% else %>
                 Dual Pascal.
               <% end %>
-              All rights reserved. © <%= Time.current.year %>
+              All rights reserved. ©
+              <%= Time.current.year %>
             </p>
           </div>
-          
+
         </div>
       </div>
     </footer>

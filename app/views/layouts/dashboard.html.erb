@@ -1,5 +1,4 @@
-<!-- app/views/layouts/dashboard.html.erb -->
-<!DOCTYPE html>
+<!-- app/views/layouts/dashboard.html.erb --> <!DOCTYPE html>
 <html class="<%= ( @blog_setting&.theme_color || 'slate' ) %>-theme">
   <head>
     <title><%= @blog_setting&.display_title(I18n.locale) || "Dual Pascal" %></title>
@@ -32,10 +31,25 @@
   </head>
   <body class="text-lg bg-white">
 
-    <div id="screen-size-warning" class="fixed inset-0 bg-gray-900 text-white flex items-center justify-center p-6 z-50">
+    <div
+      id="screen-size-warning"
+      class="
+        fixed inset-0 bg-gray-900 text-white flex items-center justify-center p-6 z-50
+      "
+    >
       <div class="text-center max-w-md">
-        <svg class="w-24 h-24 mx-auto mb-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        <svg
+          class="w-24 h-24 mx-auto mb-6 text-yellow-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
         </svg>
 
         <h1 class="text-3xl font-bold mb-4">
@@ -43,8 +57,8 @@
         </h1>
 
         <p class="text-lg text-gray-300 mb-8">
-        ダッシュボードはPC・タブレット<br>
-        （横向き）での利用を推奨しています
+          ダッシュボードはPC・タブレット<br>
+          （横向き）での利用を推奨しています
         </p>
 
         <div class="bg-gray-800 rounded-lg p-4 mb-8">
@@ -55,57 +69,102 @@
           </ul>
         </div>
 
-        <%= link_to "ブログを見る", root_path, class: "inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition" %>
+        <%= link_to "ブログを見る",
+        root_path,
+        class:
+          "inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition" %>
       </div>
     </div>
 
     <div id="dashboard-content" class="min-h-screen flex flex-col">
-<header class="mb-4 w-full theme-header">
-        <div class="dashboard-nav flex max-w-6xl mx-auto items-center justify-between h-12 px-2">
+      <header class="mb-4 w-full theme-header">
+        <div
+          class="
+            dashboard-nav flex max-w-6xl mx-auto items-center justify-between h-12 px-2
+          "
+        >
           <div class="flex items-center">
             <h1 class="mr-6">
-              <%= link_to "Dashboard", dashboard_articles_path, class: "font-bold text-lg hover:text-white transition-colors" %>
+              <%= link_to "Dashboard",
+              dashboard_articles_path,
+              class: "font-bold text-lg hover:text-white transition-colors" %>
             </h1>
 
             <div class="nav-links flex items-center">
               <%= link_to dashboard_categories_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon 'square-library', class: "w-5 h-5" %>
-                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                <%= lucide_icon "square-library", class: "w-5 h-5" %>
+                <span
+                  class="
+                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
+                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
+                    whitespace-nowrap pointer-events-none z-50
+                  "
+                >
                   Categories
                 </span>
               <% end %>
 
               <%= link_to dashboard_comments_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon 'message-square', class: "w-5 h-5" %>
-                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                <%= lucide_icon "message-square", class: "w-5 h-5" %>
+                <span
+                  class="
+                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
+                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
+                    whitespace-nowrap pointer-events-none z-50
+                  "
+                >
                   Comments
                 </span>
               <% end %>
 
               <%= link_to edit_dashboard_profile_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon 'user', class: "w-5 h-5" %>
-                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                <%= lucide_icon "user", class: "w-5 h-5" %>
+                <span
+                  class="
+                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
+                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
+                    whitespace-nowrap pointer-events-none z-50
+                  "
+                >
                   Profile
                 </span>
               <% end %>
 
               <%= link_to edit_dashboard_blog_setting_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon 'settings', class: "w-5 h-5" %>
-                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                <%= lucide_icon "settings", class: "w-5 h-5" %>
+                <span
+                  class="
+                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
+                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
+                    whitespace-nowrap pointer-events-none z-50
+                  "
+                >
                   Settings
                 </span>
               <% end %>
 
               <%= link_to dashboard_analytics_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon 'bar-chart-3', class: "w-5 h-5" %>
-                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                <%= lucide_icon "bar-chart-3", class: "w-5 h-5" %>
+                <span
+                  class="
+                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
+                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
+                    whitespace-nowrap pointer-events-none z-50
+                  "
+                >
                   Analytics
                 </span>
               <% end %>
 
               <%= link_to user_articles_path(current_user.username, locale: I18n.locale), target: "_blank", class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon 'external-link', class: "w-5 h-5" %>
-                <span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                <%= lucide_icon "external-link", class: "w-5 h-5" %>
+                <span
+                  class="
+                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
+                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
+                    whitespace-nowrap pointer-events-none z-50
+                  "
+                >
                   View Site
                 </span>
               <% end %>
@@ -117,8 +176,7 @@
                 <% end %>
                 <%= link_to admin_articles_path, class: "mx-2 text-yellow-400 hover:text-yellow-200 font-bold text-sm flex items-center gap-1" do %>
                   全記事管理
-                <% end %>
-              <% end %>
+                <% end %><% end %>
             </div>
           </div>
 
@@ -128,12 +186,12 @@
                 <span class="mr-2">Signed in as</span>
                 <span class="font-semibold text-red-500"><%= current_user.username %></span>
               </div>
-              
+
               <%= link_to destroy_user_session_path, 
                   data: { "turbo-method": "delete" }, 
                   class: "text-gray-300 hover:text-white transition-colors flex items-center gap-1 ml-2" do %>
                 <span class="hidden sm:inline">Logout</span>
-                <%= lucide_icon 'log-out', class: "w-4 h-4" %>
+                <%= lucide_icon "log-out", class: "w-4 h-4" %>
               <% end %>
             <% else %>
               <%= link_to "Login", new_user_session_path, class: "text-white hover:text-gray-200" %>
@@ -152,42 +210,62 @@
         <%= yield %>
       </div>
 
-
       <footer class="site-footer mt-auto">
         <div class="footer-container w-full theme-footer border-t border-gray-200">
           <div class="max-w-6xl mx-auto px-6 py-8">
 
             <%# 上段：リンクエリア %>
-            <div class="flex flex-wrap justify-center md:justify-between gap-6 mb-6 text-sm">
+            <div
+              class="
+                flex flex-wrap justify-center md:justify-between gap-6 mb-6 text-sm
+              "
+            >
               <nav class="flex flex-wrap justify-center gap-x-6 gap-y-2">
-                <%= link_to "利用規約", terms_of_service_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
-                <%= link_to "プライバシーポリシー", privacy_policy_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
-                <%= link_to "免責事項", disclaimer_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
-                <%= link_to "運営への問い合わせ", new_contact_path(locale: I18n.locale), class: "hover:text-white transition-colors" %>
-                <%= link_to "退会", dashboard_delete_account_confirmation_path, class: "text-red-400 hover:text-red-300 transition-colors" %>
+                <%= link_to "利用規約",
+                terms_of_service_path(locale: I18n.locale),
+                class: "hover:text-white transition-colors" %>
+                <%= link_to "プライバシーポリシー",
+                privacy_policy_path(locale: I18n.locale),
+                class: "hover:text-white transition-colors" %>
+                <%= link_to "免責事項",
+                disclaimer_path(locale: I18n.locale),
+                class: "hover:text-white transition-colors" %>
+                <%= link_to "運営への問い合わせ",
+                new_contact_path(locale: I18n.locale),
+                class: "hover:text-white transition-colors" %>
+                <%= link_to "退会",
+                dashboard_delete_account_confirmation_path,
+                class: "text-red-400 hover:text-red-300 transition-colors" %>
               </nav>
 
               <div class="flex items-center gap-2">
-                <%= link_to "Photos by Unsplash", "https://unsplash.com/", target: "_blank", rel: "noopener", class: "opacity-70 hover:opacity-100 hover:text-white transition-all" %>
+                <%= link_to "Photos by Unsplash",
+                "https://unsplash.com/",
+                target: "_blank",
+                rel: "noopener",
+                class: "opacity-70 hover:opacity-100 hover:text-white transition-all" %>
               </div>
             </div>
 
             <%# 下段：コピーライトエリア %>
             <div class="pt-6 border-t border-gray-500/20 text-center text-sm opacity-80">
               <p>
-              <% custom_title = @blog_setting&.localized_title(I18n.locale) %>
-              <% if custom_title.present? %>
-                <strong><%= custom_title %></strong> <span class="text-xs">powered by</span> Dual Pascal.
-              <% else %>
-                Dual Pascal.
-              <% end %>
-              All rights reserved. © <%= Time.current.year %>
+                <% custom_title = @blog_setting&.localized_title(I18n.locale) %>
+                <% if custom_title.present? %>
+                  <strong><%= custom_title %></strong>
+                  <span class="text-xs">powered by</span>
+                  Dual Pascal.
+                <% else %>
+                  Dual Pascal.
+                <% end %>
+                All rights reserved. ©
+                <%= Time.current.year %>
               </p>
             </div>
 
           </div>
         </div>
       </footer>
-        </div>
+    </div>
   </body>
 </html>

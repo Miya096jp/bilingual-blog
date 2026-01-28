@@ -36,13 +36,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
       else
         set_flash_message! :notice, :"signed_up_but_#{resource.inactive_message}"
         expire_data_after_sign_in!
-        respond_with resource, location: after_inactive_sign_up_path_for(resource)
+        redirect_to after_inactive_sign_up_path_for(resource)
       end
     else
       clean_up_passwords resource
       set_minimum_password_length
 
-      # flash.now[:alert] = resource.errors.full_messages.join("\n")
+      flash.now[:alert] = resource.errors.full_messages.join("\n")
 
       respond_to do |format|
         format.html { render :new, status: :unprocessable_entity }
