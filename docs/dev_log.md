@@ -3,6 +3,30 @@ copy full path: space + c + P
 show today's doc: todaydoc
 
 
+
+# 2026-01-29
+
+## [DEPLOY] dual pascal初のデプロイ(d97bbbe2f0961132b249a8b965323887c5032390)
+
+### 概要
+- sakura vps 512 => 1Gにupscale
+- swapし仮想2G、合計3Gの運用
+- 807円/月
+- Ubunto 24.04
+- domain: dualpascal.com (claudflare)
+
+### 補足
+- deploy完了 (admin作成後ブラウザ動作確認予定)
+- domain未設定
+- claudflare R2本番用backet要取得
+- umami 本番ドメイン要登録
+
+### 技術詳細
+- ./Knowledge/Tech/Infra/upscale-sakura-install-ubunto-setup-ssl.md 
+
+
+---
+
 ## [FEATURE] rack-attackを追加 (049ea6fc8449c9fa4ab0071a2c247d127f040bba)
 
 ### 概要
@@ -20,7 +44,6 @@ show today's doc: todaydoc
 
 ---
 
-# 2026-01-29
 
 ## [FEATURE] Actieve storage varidationsを追加 (049ea6fc8449c9fa4ab0071a2c247d127f040bba)
 
