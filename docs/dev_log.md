@@ -2,11 +2,27 @@ open template: dlt
 copy full path: space + c + P
 show today's doc: todaydoc
 
+
+## [FEATURE] rack-attackを追加 (049ea6fc8449c9fa4ab0071a2c247d127f040bba)
+
+### 概要
+- 一度に大量のリクエストがあった場合に備えてrack-attack追加
+- 6回の連続リクエストに対し429エラー
+
+### 目的
+- セキュリティ強化
+
+### 補足
+- 前回コミットに関連する修正とgemのインストールを含む
+
+### 技術詳細
+./Knowledge/Tech/Ruby/implement-rack-attack-rack-middleware-overview.md
+
 ---
 
 # 2026-01-29
 
-## [FEATURE] title (#commit-hash)
+## [FEATURE] Actieve storage varidationsを追加 (049ea6fc8449c9fa4ab0071a2c247d127f040bba)
 
 ### 概要
 - images, cover_images, avatarにvaridation追加

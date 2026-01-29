@@ -29,6 +29,13 @@ gem "solid_cache"
 gem "solid_queue"
 gem "solid_cable"
 
+# Add HTTP request ristriction on rack middle ware
+gem "rack-attack"
+
+# Enable content_type validation on active storage
+gem "active_storage_validations"
+
+
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
