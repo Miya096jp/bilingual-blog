@@ -6,6 +6,12 @@ class Article < ApplicationRecord
   validates :title, presence: true
   validates :content, presence: true
   validates :locale, presence: true, inclusion: { in: %w[ja en] }
+  validates :images, content_type: [ "image/png", "image/jpg", "image/jpeg", "image/webp" ],
+                          size: { less_than: 5.megabytes }
+  validates :cover_image, content_type: [ "image/png", "image/jpg", "image/jpeg", "image/webp" ],
+                          size: { less_than: 5.megabytes }
+
+
 
   enum :status, %i[draft published]
 

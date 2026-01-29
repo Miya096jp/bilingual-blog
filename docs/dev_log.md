@@ -1,5 +1,80 @@
 open template: dlt
 copy full path: space + c + P
+show today's doc: todaydoc
+
+---
+
+# 2026-01-29
+
+## [FEATURE] title (#commit-hash)
+
+### 概要
+- images, cover_images, avatarにvaridation追加
+
+### 目的
+- 画像拡張子、容量制限のため
+
+### 技術詳細
+./Knowledge/Tech/Ruby/add-active-storage-image-varidation.md
+./Knowledge/Tech/Ruby/active-storage-101.md
+
+---
+# 2026-01-28
+
+## CHORE(2e3f09467f64652de7bc2e5dcfac57796c9f0be7)
+クライアントレイアウトによらず、カバーイメージを表示するように変更
+
+### 変更前
+- linearレイアウトにおいてカバーアイメージが表示されていなかった
+- カバーイメージのサイズが適切でなかった
+- ブログ設定でカバーイメージの表示・非表示の切り替えチェックボックスが存在
+- ブログタイトルと本文の間に不要なドット表示があった
+
+### 変更後
+- 全てのレイアウトでカバーアイメージを表示した
+- カバーイメージのサイズを適切に調整した
+- カバーアイメージを常に表示するように変更
+- ブログタイトルと本文の不要なドットを排除し、余白を設けた
+
+### 影響範囲
+- クライアントのインデックスページ
+- ダッシュボードのブログ設定ページ
+
+### 技術詳細
+./Knowledge/Tech/Frontend/CSS/modernize-dual-pascal-client-view.md
+
+---
+
+## BUGFIX モーダルオープン時に必ずLoginフォームを表示するように変更(e70c69a6a760c5becf60feb7d816bf9264f65f42)
+
+### 問題
+- Signupでバリデーションエラーが出た後、モーダルを閉じて再度開くと、Signupフォームが開き, フォームフィールドに値が残ったままになる
+
+### 期待動作
+- フォームフィールドの値が消える
+- もしくはログインフォームが開く
+
+### 原因
+- Stimulusで値のリセットをしていなかった
+- モーダルを開いた時にどのフォームを表示するか指定していなかった
+
+### 解決策
+- uxを検討し、ログインフォームを必ず表示するように変更。
+
+### 影響範囲
+- ログインモーダル
+
+### 補足
+- ユーザーモデルにユーザー名のバリデーションを追加
+
+### 技術詳細
+- ./Knowledge/Tech/Frontend/Stimulus/show-login-form-when-reopen-modal-after-signup-varidation-fails.md
+- ./Knowledge/Tech/Frontend/Stimulus/stimulus-101.md
+- ./Knowledge/Tech/Frontend/Hotwire/redirect-issue-devise-respond_with-vs-response_to.md
+
+
+
+---
 
 # 2026-01-27
 
@@ -34,7 +109,7 @@ copy full path: space + c + P
 
 ---
 
-## [FEATURE] 未使用blobs削除のためのrakeタスク実装 (#commit-hash)
+## [FEATURE] 未使用blobs削除のためのrakeタスク実装 (083170c6a1c90a08bab4b754ef7f3a75423b84c4)
 
 ### 概要
 - 毎晩定期的に未使用の画像を削除する

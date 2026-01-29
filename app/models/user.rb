@@ -9,6 +9,8 @@ class User < ApplicationRecord
   validates :username, presence: true, uniqueness: true, length: { maximum: 20 },
                        format: { with: /\A[a-zA-Z0-9_]+\z/, message: "は半角英数字とアンダースコアのみ使用できます" }
   validates :website, format: { with: /\A(http|https):\/\/.+\z/ }, allow_blank: true
+  validates :avatar, content_type: [ "image/png", "image/jpg", "image/jpeg", "image/webp" ],
+                        size: { less_than: 5.megabytes }
 
   enum :role, { user: 0, admin: 1 }
   enum :status, { active: 0, suspended: 1, pending: 2 }
