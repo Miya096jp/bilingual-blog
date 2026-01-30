@@ -21,8 +21,8 @@ div#cover_image_section
               div.p-4.flex.justify-center.bg-gray-50
                 = image_tag record.cover_image, class: "max-w-[80vw] max-h-[60vh] object-contain shadow-sm rounded"
 
-              div.p-3.flex.justify-end.bg-gray-50
-                = link_to attachment_path(record.cover_image.id), 
+              div.p-2.flex.justify-end.bg-gray-50
+                = link_to dashboard_attachment_path(record.cover_image.id), 
                     data: { turbo_method: :delete, turbo_confirm: "カバー画像を削除しますか？" },
                     class: "flex items-center gap-2 px-3 py-2 bg-white border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors" do
                   = lucide_icon 'trash-2', class: "w-4 h-4"

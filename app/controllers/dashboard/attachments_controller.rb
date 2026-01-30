@@ -1,4 +1,4 @@
-class AttachmentsController < ApplicationController
+class Dashboard::AttachmentsController < ApplicationController
   before_action :authenticate_user!
 
   def destroy

@@ -51,11 +51,11 @@ namespace :dashboard do
   resource :blog_setting, only: %i[edit update]
   resources :analytics, only: [ :index ]
   get "account/delete", to: "account#delete_confirmation", as: :delete_account_confirmation
+  resources :attachments, only: [ :destroy ]
 end
 
 get "/dashboard", to: redirect("/dashboard/articles")
 get "/", to: redirect("/ja")
-resources :attachments, only: [ :destroy ]
 
 namespace :admin do
   resources :users, only: [ :index, :show, :update ]
