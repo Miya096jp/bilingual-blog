@@ -78,7 +78,7 @@
       p= t('comments.none')
   
   .comment-form.max-w-5xl.mx-auto.py-8
-    = form_with model: Comment.new, url: user_article_comments_path(@article.user.username, @article.id), local: true do |f|
+    = form_with model: Comment.new, url: article_comments_path(@article.user.username, @article.id), local: true do |f|
       / .flex.flex-col.w-1/2.mb-2
       .flex.flex-col.w-full.md:w-1/2.mb-2
         = f.label :author_name, "#{t('comments.author_name')}:", class: "mb-2"

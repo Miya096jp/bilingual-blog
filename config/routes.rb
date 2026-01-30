@@ -23,7 +23,7 @@ scope "/:locale", constraints: { locale: /ja|en/ } do
     get "/:username/search", to: "search#index", as: :user_search
     get "/:username/articles", to: "articles#index", as: :user_articles
     get "/:username/articles/:id", to: "articles#show", as: :user_article
-    post "/:username/articles/:article_id/comments", to: "comments#create", as: :user_article_comments
+    post "/:username/articles/:article_id/comments", to: "comments#create", as: :article_comments
     get ":username/profile", to: "profiles#show", as: :user_profile
     post "/:username/articles/:article_id/likes", to: "likes#create", as: :user_article_likes
     delete "/:username/articles/:article_id/likes", to: "likes#destroy", as: :user_article_like
