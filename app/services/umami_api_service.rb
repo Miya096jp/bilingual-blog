@@ -3,7 +3,7 @@ require "json"
 require "openssl"
 
 class UmamiApiService
-  UMAMI_BASE_URL = "https://umami-miya096jps-projects.vercel.app"
+  UMAMI_BASE_URL = ENV["UMAMI_API_CLIENT_HOST"] || "https://umami-miya096jps-projects.vercel.app"
   def self.create_website_for_user(user)
     token = get_auth_token
     return unless token
@@ -124,10 +124,10 @@ class UmamiApiService
   end
 
   def self.umami_username
-    Rails.application.credentials.umami[:username] || "admin"
+    ENV["UMAMI_API_CLIENT_USERNAME"] || Rails.application.credentials.umami[:username]
   end
 
   def self.umami_password
-    Rails.application.credentials.umami[:password]
+   ENV["UMAMI_API_CLIENT_PASSWORD"] || Rails.application.credentials.umami[:password]
   end
 end
