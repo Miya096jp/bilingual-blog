@@ -11,22 +11,22 @@
 # Use this hook to configure devise mailer, warden hooks and so forth.
 # Many of these configuration options can be set straight in your model.
 Devise.setup do |config|
-  # The secret key used by Devise. Devise uses this key to generate
-  # random tokens. Changing this key will render invalid all existing
-  # confirmation, reset password and unlock tokens in the database.
-  # Devise will use the `secret_key_base` as its `secret_key`
-  # by default. You can change it below and use your own secret key.
-  # config.secret_key = 'ebdf37a79fd84c87ee57190b55f7b0a2b6b7328bc8173a14fefd8366a2b060bd0cdb0bf83634a04cce096db4bd1becfb865ec9be37ec8ec3572672795c385981'
+# The secret key used by Devise. Devise uses this key to generate
+# random tokens. Changing this key will render invalid all existing
+# confirmation, reset password and unlock tokens in the database.
+# Devise will use the `secret_key_base` as its `secret_key`
+# by default. You can change it below and use your own secret key.
+# config.secret_key = 'ebdf37a79fd84c87ee57190b55f7b0a2b6b7328bc8173a14fefd8366a2b060bd0cdb0bf83634a04cce096db4bd1becfb865ec9be37ec8ec3572672795c385981'
 
-  # ==> Controller configuration
-  # Configure the parent class to the devise controllers.
-  # config.parent_controller = 'DeviseController'
+# ==> Controller configuration
+# Configure the parent class to the devise controllers.
+# config.parent_controller = 'DeviseController'
 
-  # ==> Mailer Configuration
-  # Configure the e-mail address which will be shown in Devise::Mailer,
-  # note that it will be overwritten if you use your own mailer class
-  # with default "from" parameter.
-  config.mailer_sender = "please-change-me-at-config-initializers-devise@example.com"
+# ==> Mailer Configuration
+# Configure the e-mail address which will be shown in Devise::Mailer,
+# note that it will be overwritten if you use your own mailer class
+# with default "from" parameter.
+config.mailer_sender = "noreply@dualpascal.com"
 
   # Configure the class responsible to send e-mails.
   # config.mailer = 'Devise::Mailer'
