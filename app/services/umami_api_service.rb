@@ -3,7 +3,7 @@ require "json"
 require "openssl"
 
 class UmamiApiService
-  UMAMI_BASE_URL = ENV["UMAMI_API_CLIENT_HOST"] || "https://umami-miya096jps-projects.vercel.app"
+  UMAMI_BASE_URL = ENV["UMAMI_API_CLIENT_HOST"] || "https://umami-miya097jps-projects.vercel.app"
   def self.create_website_for_user(user)
     token = get_auth_token
     return unless token
@@ -81,7 +81,7 @@ class UmamiApiService
     request["Authorization"] = "Bearer #{token}"
     request.body = {
       name: "#{user.username} - Dual Pascal",
-      domain: Rails.env.production? ? "dualpascal.com" : "localhost:3000"
+      domain: Rails.env.production? ? "dualpascal.com" : "localhost:3001"
     }.to_json
 
     response = http.request(request)

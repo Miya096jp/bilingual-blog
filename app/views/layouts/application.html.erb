@@ -13,6 +13,13 @@
     <link rel="apple-touch-icon" href="/icon.png">
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+    <% if @blog_owner&.umami_website_id.present? %>
+      <script
+        async
+        src="<%= ENV['UMAMI_API_CLIENT_HOST'] %>/script.js"
+        data-website-id="<%= @blog_owner.umami_website_id %>"
+      ></script>
+    <% end %>
   </head>
 
   <body
