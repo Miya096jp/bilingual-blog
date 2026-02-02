@@ -215,9 +215,13 @@
               <% if custom_title.present? %>
                 <strong><%= custom_title %></strong>
                 <span class="text-xs">powered by</span>
-                Dual Pascal.
+                <%= link_to "Dual Pascal",
+                root_path,
+                style: "color: #3b82f6 !important; text-decoration: none;" %>
               <% else %>
-                Dual Pascal.
+                <%= link_to "Dual Pascal",
+                root_path,
+                style: "color: #3b82f6 !important; text-decoration: none;" %>
               <% end %>
               All rights reserved. ©
               <%= Time.current.year %>
