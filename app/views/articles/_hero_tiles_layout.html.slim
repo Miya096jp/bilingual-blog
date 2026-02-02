@@ -1,7 +1,6 @@
 - hero_article = articles.first
 - tile_articles = articles.offset(1).limit(6)
 
-/ ヒーロー記事
 - if hero_article
   .hero-article.mt-12.mb-12.max-w-4xl.mx-auto
     - if has_cover_image?(hero_article)
@@ -19,7 +18,7 @@
             = link_to hero_article.category.name, user_articles_path(params[:username], filter.filter_params.merge(category_id: hero_article.category.id))
         = render 'shared/article_tags', article: hero_article, filter_params: filter.filter_params
       
-    article.article-content.mt-12
+    article.article-content
       = hero_article.content_html
     
     .article-meta.text-right.text-sm.text-gray-400.mt-6.flex.justify-between.items-end
@@ -36,7 +35,22 @@
         - if hero_article.translation.present?
           p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
 
-/ タイル記事
+- if @blog_owner&.admin? && I18n.locale == :en
+  .max-w-4xl.mx-auto.mt-8.mb-12.px-4
+    .bg-slate-50.border.border-gray-600.rounded-lg.p-6.shadow-sm.text-gray-600
+      .flex.items-center.gap-3.mb-3.text-gray-800.font-medium
+        span Note for English-speaking visitors
+
+      .text-sm.leading-relaxed.space-y-3
+        p
+          | Dual Pascal is a platform specifically designed for Japanese-speaking engineers to bridge the gap between Japanese and English technical communities. 
+          | While the platform supports English-only blogging, the UI and features are optimized for bilingual (JP/EN) output.
+
+        p.text-xs.text-glay-400.mt-2
+          | Please note that this service is provided "as is" for the Japanese market. 
+          | We do not provide support for users outside of Japan, and all legal matters are subject to Japanese law. Use at your own risk.
+
+
 - if tile_articles.any?
   .tiles-section.max-w-6xl.mx-auto
     h2.text-xl.font-semibold.mb-6.text-center
