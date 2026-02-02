@@ -32,26 +32,34 @@
     <header class="site-header">
       <nav class="theme-header w-full">
         <div class="max-w-6xl mx-auto px-4 sm:px-6">
-          <!-- トップバー: ブログオーナー + メニューボタン -->
           <div class="flex items-center justify-between h-12">
-            <!-- 左側: ブログオーナー（常に表示） -->
             <div class="flex items-center gap-2">
               <% if @blog_owner.present? %>
-                <% if @blog_owner.avatar.attached? %>
-                  <%= image_tag @blog_owner.avatar, class: "w-8 h-8 rounded-full" %>
+
+                <% if @blog_owner.admin? %>
+                  <%= link_to "About",
+                  about_path(locale: params[:locale]),
+                  class: "hover:!text-gray-400 font-medium text-sm sm:text-base" %>
+
                 <% else %>
-                  <div
-                    class="
-                      w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm
-                      font-semibold
-                    "
-                  >
-                    <%= @blog_owner.username&.first&.upcase || "?" %>
-                  </div>
+                  <% if @blog_owner.avatar.attached? %>
+                    <%= image_tag @blog_owner.avatar, class: "w-8 h-8 rounded-full" %>
+                  <% else %>
+                    <div
+                      class="
+                        w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm
+                        font-semibold
+                      "
+                    >
+                      <%= @blog_owner.username&.first&.upcase || "?" %>
+                    </div>
+                  <% end %>
+
+                  <%= link_to @blog_owner.username,
+                  user_profile_path(username: @blog_owner.username, locale: params[:locale]),
+                  class: "hover:!text-gray-400 font-medium text-sm sm:text-base" %>
                 <% end %>
-                <%= link_to @blog_owner.username,
-                user_profile_path(username: @blog_owner.username, locale: params[:locale]),
-                class: "hover:!text-gray-400 font-medium text-sm sm:text-base" %>
+
               <% end %>
             </div>
             <!-- 右側: デスクトップメニュー（768px以上で表示） -->

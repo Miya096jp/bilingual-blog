@@ -56,6 +56,7 @@ end
 
 get "/dashboard", to: redirect("/dashboard/articles")
 get "/", to: redirect("/ja")
+get "about", to: "pages#about", as: :about
 
 namespace :admin do
   resources :users, only: [ :index, :show, :update ]
