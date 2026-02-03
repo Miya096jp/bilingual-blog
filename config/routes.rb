@@ -33,6 +33,7 @@ scope "/:locale", constraints: { locale: /ja|en/ } do
   get "/privacy-policy", to: "legal#privacy_policy", as: :privacy_policy
   get "/disclaimer", to: "legal#disclaimer", as: :disclaimer
 
+  get "about", to: "pages#about", as: :about
 
   resources :contacts, only: [ :new, :create ]
 end
@@ -56,7 +57,7 @@ end
 
 get "/dashboard", to: redirect("/dashboard/articles")
 get "/", to: redirect("/ja")
-get "about", to: "pages#about", as: :about
+# get "about", to: "pages#about", as: :about
 
 namespace :admin do
   resources :users, only: [ :index, :show, :update ]
