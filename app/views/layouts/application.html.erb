@@ -55,7 +55,7 @@
                     </div>
                   <% end %>
 
-                  <%= link_to @blog_owner.username,
+                  <%= link_to @blog_owner.display_name(params[:locale]),
                   user_profile_path(username: @blog_owner.username, locale: params[:locale]),
                   class: "hover:!text-gray-400 font-medium text-sm sm:text-base" %>
                 <% end %>
