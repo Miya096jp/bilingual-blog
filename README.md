@@ -4,7 +4,7 @@
 
 **A Japanese–English Bilingual Blogging Platform**
 
-[Live Demo](https://dual-pascal.com) 
+[Live Demo](https://dualpascal.com) 
 
 Dual Pascal is a blogging platform designed for creators who want to publish content in both Japanese and English.
 
