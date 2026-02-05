@@ -1,4 +1,5 @@
 # Dual Pascal
+> Note: This repository name "bilingual-blog" is a project code name.
 
 ![Tech Stack](https://skillicons.dev/icons?i=ruby,rails,postgres,docker,tailwind,cloudflare,vercel,supabase)
 
