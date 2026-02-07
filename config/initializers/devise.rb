@@ -315,17 +315,22 @@ config.mailer_sender = "noreply@dualpascal.com"
   # When set to false, does not sign a user in automatically after their password is
   # changed. Defaults to true, so a user is signed in automatically after changing a password.
   # config.sign_in_after_change_password = true
-  if Rails.application.credentials.github.present?
+
+  github_creds = Rails.application.credentials.dig(Rails.env.to_sym, :github)
+
+  if github_creds.present?
     config.omniauth :github,
-      Rails.application.credentials.github[:client_id],
-      Rails.application.credentials.github[:client_secret],
+      github_creds[:client_id],
+      github_creds[:client_secret],
       scope: "user:email"
   end
 
-  if Rails.application.credentials.github.present?
+  google_creds = Rails.application.credentials.dig(Rails.env.to_sym, :google)
+
+  if google_creds.present?
     config.omniauth :google_oauth2,
-      Rails.application.credentials.google[:client_id],
-      Rails.application.credentials.google[:client_secret],
+      google_creds[:client_id],
+      google_creds[:client_secret],
       scope: "email,profile"
   end
 end
