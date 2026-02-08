@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_01_15_054057) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_08_015808) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -64,6 +64,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_01_15_054057) do
     t.bigint "category_id"
     t.bigint "user_id", null: false
     t.integer "likes_count", default: 0
+    t.text "description", default: "", null: false
     t.index ["category_id"], name: "index_articles_on_category_id"
     t.index ["original_article_id"], name: "index_articles_on_original_article_id"
     t.index ["published_at"], name: "index_articles_on_published_at"

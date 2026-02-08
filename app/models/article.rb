@@ -10,7 +10,7 @@ class Article < ApplicationRecord
                           size: { less_than: 5.megabytes }
   validates :cover_image, content_type: [ "image/png", "image/jpeg", "image/webp" ],
                           size: { less_than: 5.megabytes }
-
+  validates :description, length: { maximum: 255 }
 
 
   enum :status, %i[draft published]
@@ -31,6 +31,7 @@ class Article < ApplicationRecord
   before_destroy :purge_attachments
   before_save :set_published_at
   after_create :assign_pending_tags
+  before_validation :set_default_description
 
   scope :by_locale, ->(locale) { where(locale: locale) }
   scope :by_category, ->(category_id) { where(category_id: category_id) if category_id.present? }
@@ -111,6 +112,12 @@ class Article < ApplicationRecord
     if @pending_tag_names.present?
       new_tags = @pending_tag_names.map { |name| user.tags.find_or_create_by(name: name.downcase) }
       self.tags = new_tags
+    end
+  end
+
+  def set_default_description
+    if description.blank? && content.present?
+      self.description = content_preview(120)
     end
   end
 end

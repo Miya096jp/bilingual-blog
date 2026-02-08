@@ -80,6 +80,16 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
             placeholder: "title",
             data: { field: "title", action: "input->markdown-preview#preview" }
             
+          div.mb-4 data-controller="toggle" data-action="click@window->toggle#hide"
+            button.text-gray-500.text-sm.hover:text-gray-800.underline.decoration-dashed.mb-2 type="button" data-action="click->toggle#toggle"
+              | + Add Description (for OGP)
+            
+            div.hidden data-toggle-target="content"
+              = f.text_area :description, 
+                  rows: 3, 
+                  placeholder: "Add a description here...", 
+                  class: "w-full text-sm p-2 border-0 focus:ring-0 focus:outline-none focus:border-[1px] focus:border-gray-300"
+
           = f.text_area :content, required: true, style: "width: 100%; padding-bottom: 36rem;", data: { markdown_preview_target: "input", action: "input->markdown-preview#preview", image_upload_target: "textarea" }, class: "px-3 py-2 border-0 focus:ring-0 focus:outline-none focus:border-[1px] focus:border-gray-300"
 
 

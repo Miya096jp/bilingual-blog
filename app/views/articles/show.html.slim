@@ -1,3 +1,7 @@
+- set_meta_tags title: @article.title,
+                description: @article.description.presence || @article.content_preview(120),
+                og: { image: @article.cover_image.attached? ? url_for(@article.cover_image) : image_url('dualpascal_official_image.png')}
+
 .article-items
   .article-title.max-w-5xl.mx-auto
     h1.text-4xl.font-extrabold.my-4.text-gray-900

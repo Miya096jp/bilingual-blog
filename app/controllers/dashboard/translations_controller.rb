@@ -27,6 +27,7 @@ class Dashboard::TranslationsController < ApplicationController
     if @translation.save
       redirect_to dashboard_articles_path, notice: "翻訳記事が作成されました"
     else
+      flash.now[:alert] = "descriptionは255文字以内で入力してください"
       render :new
     end
   end
@@ -38,6 +39,7 @@ class Dashboard::TranslationsController < ApplicationController
     if @translation.update(translation_params)
       redirect_to dashboard_articles_path, notice: "翻訳記事が更新されました"
     else
+      flash.now[:alert] = "descriptionは255文字以内で入力してください"
 　　　render :edit
     end
   end
@@ -67,6 +69,6 @@ class Dashboard::TranslationsController < ApplicationController
   end
 
   def translation_params
-    params.require(:article).permit(:title, :content, :status, :category_id, :tag_list, :cover_image)
+    params.require(:article).permit(:title, :content, :description, :status, :category_id, :tag_list, :cover_image)
   end
 end

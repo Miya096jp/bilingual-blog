@@ -26,6 +26,7 @@ class Dashboard::ArticlesController < ApplicationController
     if @article.save
       redirect_to dashboard_articles_path, notice: "記事が作成されました"
     else
+      flash.now[:alert] = "descriptionは255文字以内で入力してください"
       render :new
     end
   end
@@ -37,6 +38,7 @@ class Dashboard::ArticlesController < ApplicationController
     if @article.update(article_params)
       redirect_to dashboard_articles_path, notice: "記事が更新されました"
     else
+      flash.now[:alert] = "descriptionは255文字以内で入力してください"
       render :edit
     end
   end
@@ -61,6 +63,6 @@ class Dashboard::ArticlesController < ApplicationController
   end
 
   def article_params
-    params.require(:article).permit(:title, :content, :locale, :status, :category_id, :tag_list, :cover_image)
+    params.require(:article).permit(:title, :content, :description, :locale, :status, :category_id, :tag_list, :cover_image)
   end
 end
