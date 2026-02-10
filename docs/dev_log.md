@@ -2,7 +2,31 @@ open template: dlt
 copy full path: space + c + P
 show today's doc: todaydoc
 
+# 2026-02-10
+
+## [BUG] SMTPサーバーをAWS SESからResendに変更
+(614355f18eabfd73668d5627f01da0d8213718fe: Change SMTP server from AWS SES to Resend)
+
+### 概要
+- AWS SESの申請却下
+- resendに登録しclaudflareにDNS設定
+
+### 補足
+- 迷惑メールに届く。ルートドメインにSPFを追加。翌日の動作確認予定
+
+### 関連Doc
+resend-gem-dns-settings-rails-config.md
+
+---
+
 # 2026-02-08
+
+## [BUG] hero_listレイアウトのカテゴリー表示を修正
+(754c010d6db941400c6f36e45668f26f3c00a5d4: Fix category rendering in the hero list layout)
+
+### 概要
+typoによるレンダリング不良を修正
+
 
 ## [FEATURE] OGPを追加する
 (fb37eb432fef96d705e158cbf12f3176e0e0439f: Add OGP configuration and default images)
