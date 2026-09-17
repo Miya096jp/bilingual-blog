@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./config/master.key)",
+      "Read(./config/credentials.yml.enc)",
+      "Bash(cat .env*)",
+      "Bash(cat ./.env*)",
+      "Bash(bin/rails credentials:show*)",
+      "Bash(bin/rails credentials:edit*)",
+      "Bash(rails credentials:show*)",
+      "Bash(rails credentials:edit*)"
+    ]
+  }
+}
