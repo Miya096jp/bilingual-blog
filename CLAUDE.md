@@ -18,6 +18,7 @@ Dual Pascalは、読者の反応や記事の完成度を意識せず、日本語
 - 本番環境（VPS）へのコマンド実行、イメージのpush、デプロイの実行は行わない。手順は `docs/deploy.md` を参照して提案するだけに留める。
 - `.env`、`config/master.key`、`config/credentials.yml.enc` の中身を読まない・表示しない・コミットしない（`.claude/settings.json` でもReadツール等による読み取りを拒否している）。
 - 決定事項や作業の記録は GitHub の Issue と PR に残す。
+- PR の説明は敬語（です・ます調）を使わず、常体（だ・である調）で書く。
 
 ## コマンド
 
