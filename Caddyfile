@@ -1,0 +1,4 @@
+dualpascal.com, www.dualpascal.com {
+    reverse_proxy web:3000
+}
+
