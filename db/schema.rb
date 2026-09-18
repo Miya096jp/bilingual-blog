@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_08_015808) do
+ActiveRecord::Schema[8.0].define(version: 2026_09_18_221403) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -120,12 +120,14 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_08_015808) do
   end
 
   create_table "likes", force: :cascade do |t|
-    t.bigint "user_id", null: false
+    t.bigint "user_id"
     t.bigint "article_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "visitor_token"
+    t.index ["article_id", "user_id"], name: "index_likes_on_article_id_and_user_id", unique: true, where: "(user_id IS NOT NULL)"
+    t.index ["article_id", "visitor_token"], name: "index_likes_on_article_id_and_visitor_token", unique: true, where: "(visitor_token IS NOT NULL)"
     t.index ["article_id"], name: "index_likes_on_article_id"
-    t.index ["user_id", "article_id"], name: "index_likes_on_user_id_and_article_id", unique: true
     t.index ["user_id"], name: "index_likes_on_user_id"
   end
 

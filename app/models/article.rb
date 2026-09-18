@@ -90,9 +90,11 @@ class Article < ApplicationRecord
     end
   end
 
-  def liked_by?(user)
-    return false unless user
-    likes.exists?(user_id: user.id)
+  def liked_by?(user, visitor_token = nil)
+    return likes.exists?(user_id: user.id) if user
+    return false if visitor_token.blank?
+
+    likes.exists?(visitor_token: visitor_token)
   end
 
   private

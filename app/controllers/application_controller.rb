@@ -57,4 +57,23 @@ class ApplicationController < ActionController::Base
     devise_parameter_sanitizer.permit(:sign_up, keys: [ :username ])
     devise_parameter_sanitizer.permit(:account_update, keys: [ :username ])
   end
+
+  private
+
+  def visitor_token
+    cookies.signed[:visitor_token]
+  end
+  helper_method :visitor_token
+
+  def ensure_visitor_token
+    visitor_token || begin
+      token = SecureRandom.uuid
+      cookies.permanent.signed[:visitor_token] = {
+        value: token,
+        httponly: true,
+        same_site: :lax
+      }
+      token
+    end
+  end
 end
