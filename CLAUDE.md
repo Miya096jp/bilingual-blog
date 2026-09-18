@@ -65,5 +65,4 @@ Dual PascalはVPS1台上でDocker Compose（`compose.prod.yaml` + `Caddyfile`）
 ## 既知の課題
 
 - **Kamalの残骸**: `config/deploy.yml`、`.kamal/`、`bin/kamal` は `rails new`/`kamal init` 時点の未編集のひな形で、デプロイには使われていない。意図的に削除せず残している（実際のデプロイ手順は `docs/deploy.md` を参照）。
-- **マイグレーションの重複実行**: `compose.prod.yaml` の `web` と `worker` は同一イメージ・同一 `entrypoint.sh` を使っており、起動のたびに両方で `rails db:migrate` が実行される。実害は小さいが無駄がある。このIssueでは修正しない。
 - **いいねがログイン必須になっている**: `app/controllers/likes_controller.rb` に `before_action :authenticate_user!` があり、匿名の読者はいいねできない。プロダクトの方針（第三者のいいねを残す）と食い違っているが、このIssueでは修正しない。

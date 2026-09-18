@@ -2,6 +2,8 @@
 
 本番はVPS上でDocker Composeを使って稼働している。**Kamalは使用していない**（`config/deploy.yml`、`.kamal/` は未使用の残骸。詳細はCLAUDE.mdの「既知の課題」を参照）。
 
+**注意**: `-f compose.prod.yaml` を付けるコマンドはVPS上でのみ実行するものである。`compose.prod.yaml` はこのリポジトリにも存在するため、手元（Mac）の作業ディレクトリで誤って実行しないよう注意する。
+
 ## 構成
 
 - VPS上の配置先: `~/bilingual-blog`（gitリポジトリではなく、ファイルを直接配置している）
@@ -12,6 +14,8 @@
   - `worker`: Solid Queue（`bin/rails solid_queue:start`）
 - 本番DBはVPS上の `db` コンテナ自身（Supabase等の外部マネージドDBではない）
 - 画像はCloudflare R2に保存している
+- `web` と `worker` は同じイメージ・`entrypoint.sh` を使うが、`RUN_DB_MIGRATE` 環境変数で `web` のみが `db:create`/`db:migrate` を実行する（`worker` は `RUN_DB_MIGRATE=false` でDB接続待ちのみ行う）。`db:seed` は `RAILS_ENV=development` のときのみ実行され、本番では実行されない
+- 各サービスに `logging`（`json-file`、`max-size: 10m`、`max-file: 3`）を設定し、ログの無制限な増加を防いでいる
 
 ## イメージのビルド・push
 
@@ -53,7 +57,14 @@ VPSの `.env` に `IMAGE_TAG` を書いて固定することもできるが、�
   ```bash
   docker compose -f compose.prod.yaml restart caddy
   ```
-- `compose.prod.yaml` 自体を変更した場合は、上記の通常デプロイ手順（pull → up -d）を実行する。
+- `compose.prod.yaml` 自体を変更した場合は、上記の通常デプロイ手順（pull → up -d）を実行する。`up -d` は設定内容のハッシュを比較しており、`db`/`caddy` のようにイメージが変わらないサービスでも、`logging` など設定自体が変わっていればコンテナを再作成する。念のため反映を確認する場合は以下を実行する:
+  ```bash
+  docker inspect --format '{{.HostConfig.LogConfig}}' bilingual-blog-db-1 bilingual-blog-caddy-1
+  ```
+  反映されていなければ、対象サービスだけ強制的に再作成する:
+  ```bash
+  docker compose -f compose.prod.yaml up -d --force-recreate db caddy
+  ```
 
 ## 本番Railsコンソール
 

@@ -35,6 +35,7 @@ services:
       DATABASE_HOST: db
       RAILS_ENV: development
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      RUN_DB_MIGRATE: "true"
     stdin_open: true
     tty: true
 
