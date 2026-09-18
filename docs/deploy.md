@@ -25,7 +25,42 @@ mainブランチへのマージ時、GitHub Actions（`.github/workflows/ci.yml`
 docker buildx build --platform linux/amd64 -t docmiya/bilingual-blog:latest --push .
 ```
 
-## 通常のデプロイ手順
+## 自動デプロイ（GitHub Actions、承認付き）
+
+`build` ジョブの成功後、`ci.yml` の `deploy` ジョブがVPSへのデプロイを行う。`environment: production` を指定しており、GitHubのEnvironment保護ルールで承認者が承認するまでジョブは停止したまま実行されない。承認しなければVPSには何も起きない。
+
+### 流れ
+
+1. mainへのマージ → `test`/`lint` → `build`（イメージのビルド・push）が成功する
+2. `deploy` ジョブが承認待ちで停止する（GitHubのActions画面から承認する）
+3. 承認すると、`deploy` ジョブがデプロイ専用のSSH鍵でVPSに接続し、そのコミットの短縮SHAをコマンド文字列として渡す
+4. VPS側では `authorized_keys` の強制コマンド（`command=`）として登録された `script/vps_deploy.sh` が実行され、渡された短縮SHAを検証したうえで `.env` の `IMAGE_TAG` を書き換え、`docker compose -f compose.prod.yaml pull && up -d` を実行する。実行後、`docker compose ps` で各サービスが起動しているかを確認し、異常があれば非ゼロで終了する（`script/vps_deploy.sh` 参照）
+5. `deploy` ジョブはさらに `https://dualpascal.com/up`（Railsのヘルスチェックエンドポイント）にHTTPSでアクセスし、応答が無ければジョブを失敗させる。ただし `/up` は古いバージョンでも200を返すため、デプロイの成否そのものは主に手順4の `docker compose ps` チェックで判断しており、この手順5は疎通確認の位置づけ
+
+デプロイに失敗しても自動では切り戻さない。手動ロールバック手順は下記を参照する。
+
+### 必要なSecrets / Variables
+
+- Secrets（リポジトリレベルに登録済み。`environment: production` を指定したジョブからも参照できる）
+  - `VPS_SSH_KEY`: デプロイ専用のSSH秘密鍵（ed25519、普段使いの鍵とは別に新規作成したもの）
+  - `VPS_HOST`: VPSのホスト名/IP
+  - `VPS_USER`: SSH接続ユーザー名
+- Variables
+  - `VPS_KNOWN_HOSTS`: `ssh-keyscan -H <VPS_HOST>` の出力をそのまま保存したもの。ワークフロー内で `~/.ssh/known_hosts` に書き込み、`StrictHostKeyChecking=yes` のままホスト鍵を検証する（`StrictHostKeyChecking=no` は使わない）
+
+ホスト名・ユーザー名はこのリポジトリが公開でActionsのログも公開されるため、Variablesではなく非公開のSecretsとして扱っている。ホストの公開鍵情報（`VPS_KNOWN_HOSTS`）自体は機密ではないためVariablesで問題ない。
+
+### VPS側の設定（この手順はユーザーが実施する。エージェントはVPSへのコマンド実行を行わない）
+
+1. デプロイ専用のSSH鍵（ed25519）を新規に作成し、秘密鍵を `VPS_SSH_KEY` に登録する
+2. `script/vps_deploy.sh` をVPSの `/home/ubuntu/bilingual-blog/script/vps_deploy.sh` に配置し、実行権限を付与する
+3. VPSの `authorized_keys` に、この鍵専用のエントリを強制コマンド付きで追加する:
+   ```
+   command="/home/ubuntu/bilingual-blog/script/vps_deploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty,no-user-rc ssh-ed25519 AAAA...（デプロイ専用鍵の公開鍵）
+   ```
+   これにより、この鍵で接続してもポート転送やシェルの取得はできず、常に `script/vps_deploy.sh` だけが実行される（GitHub Actionsから渡したコマンド文字列は `$SSH_ORIGINAL_COMMAND` としてスクリプトに渡る）
+
+## 通常のデプロイ手順（自動デプロイが使えない場合の手動手順）
 
 1. mainへのマージ後、GitHub Actionsのビルドが成功したことを確認する
 2. VPSの `~/bilingual-blog` ディレクトリで最新イメージを取得して再起動する:
@@ -41,13 +76,15 @@ docker buildx build --platform linux/amd64 -t docmiya/bilingual-blog:latest --pu
 
 ## ロールバック手順
 
-`compose.prod.yaml` の `web`/`worker` の `image` は `docmiya/bilingual-blog:${IMAGE_TAG:-latest}` で、`IMAGE_TAG` 未設定時は `latest` が使われる。以前のバージョンに戻す場合は、戻したいコミットの短縮SHAタグを指定して起動する:
+`compose.prod.yaml` の `web`/`worker` の `image` は `docmiya/bilingual-blog:${IMAGE_TAG:-latest}` で、`IMAGE_TAG` 未設定時は `latest` が使われる。自動デプロイ（`script/vps_deploy.sh`）はデプロイのたびにVPSの `.env` の `IMAGE_TAG` をそのコミットの短縮SHAに書き換えるため、通常運用では `.env` に常に直近デプロイのSHAが入っている状態になる（`latest` が使われるのは、自動デプロイを一度も行っていない初期状態など `.env` に `IMAGE_TAG` が無い場合のみ）。
+
+以前のバージョンに戻す場合は、VPSの `~/bilingual-blog` で戻したいコミットの短縮SHAタグを指定して起動する:
 
 ```bash
 IMAGE_TAG=<短縮SHA> docker compose -f compose.prod.yaml up -d
 ```
 
-VPSの `.env` に `IMAGE_TAG` を書いて固定することもできるが、その場合は次回の `latest` への追従が止まる（ロールバックしたままになる）。ロールバック後に `latest` へ戻すときは、VPSの `.env` から `IMAGE_TAG` を削除するか空にしてから、通常のデプロイ手順（pull → up -d）を実行する。通常運用では `.env` に `IMAGE_TAG` を書かず、コマンドラインでの一時指定にとどめることを推奨する。
+このコマンドはコマンドラインで一時的に指定するだけで、`.env` の `IMAGE_TAG` は書き換わらない。そのため、その後に自動デプロイやGitHub Actions経由でない `up -d` が実行されると、`.env` に書かれたSHA（＝ロールバック前のバージョン）に戻ってしまう点に注意する。`.env` 自体を書き換えて固定したい場合は、`script/vps_deploy.sh` と同様にバックアップを取ってから `IMAGE_TAG` 行を書き換える。
 
 ## `compose.prod.yaml` / `Caddyfile` を変更した場合
 
