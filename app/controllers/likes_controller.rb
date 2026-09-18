@@ -1,9 +1,8 @@
 class LikesController < ApplicationController
-  before_action :authenticate_user!
   before_action :set_article
 
   def create
-    @like = @article.likes.build(user: current_user)
+    @like = @article.likes.build(new_like_attributes)
 
     if @like.save
       respond_to do |format|
@@ -16,7 +15,7 @@ class LikesController < ApplicationController
   end
 
   def destroy
-    @like = @article.likes.find_by(user: current_user)
+    @like = find_current_like
     @like&.destroy
 
     respond_to do |format|
@@ -29,5 +28,17 @@ class LikesController < ApplicationController
 
   def set_article
     @article = Article.find(params[:article_id])
+  end
+
+  def new_like_attributes
+    user_signed_in? ? { user: current_user } : { visitor_token: ensure_visitor_token }
+  end
+
+  def find_current_like
+    if user_signed_in?
+      @article.likes.find_by(user: current_user)
+    elsif visitor_token.present?
+      @article.likes.find_by(visitor_token: visitor_token)
+    end
   end
 end

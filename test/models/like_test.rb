@@ -75,4 +75,39 @@ class LikeTest < ActiveSupport::TestCase
     assert_equal articles(:published_ja), like.article
     assert_instance_of Article, like.article
   end
+
+  test "should allow anonymous like via visitor_token" do
+    like = Like.new(visitor_token: SecureRandom.uuid, article: articles(:rails_article))
+    assert like.valid?
+    assert like.save
+  end
+
+  test "should prevent duplicate anonymous likes from same visitor_token on same article" do
+    token = SecureRandom.uuid
+    Like.create!(visitor_token: token, article: articles(:rails_article))
+    duplicate = Like.new(visitor_token: token, article: articles(:rails_article))
+    assert_not duplicate.valid?
+    assert duplicate.errors[:visitor_token].any?
+  end
+
+  test "should allow same visitor_token to like different articles" do
+    token = SecureRandom.uuid
+    Like.create!(visitor_token: token, article: articles(:rails_article))
+    other = Like.new(visitor_token: token, article: articles(:published_ja))
+    assert other.valid?
+  end
+
+  test "should be invalid without both user and visitor_token" do
+    like = Like.new(article: articles(:rails_article))
+    assert_not like.valid?
+    assert like.errors[:base].any?
+  end
+
+  test "should increment article likes_count for anonymous like" do
+    article = articles(:rails_article)
+    initial_count = article.likes_count || 0
+    Like.create!(visitor_token: SecureRandom.uuid, article: article)
+    article.reload
+    assert_equal initial_count + 1, article.likes_count
+  end
 end
