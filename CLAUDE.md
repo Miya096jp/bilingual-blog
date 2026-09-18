@@ -56,7 +56,7 @@ Dual PascalはVPS1台上でDocker Compose（`compose.prod.yaml` + `Caddyfile`）
 
 サービス構成: `db`（Postgres 15）、`web`（Rails、`127.0.0.1:3000` にバインド）、`caddy`（HTTPS終端、`web:3000` へリバースプロキシ）、`worker`（Solid Queue）。本番DBはVPS上の `db` コンテナ自身（Supabase等の外部マネージドDBではない）。画像はCloudflare R2に保存される。
 
-イメージのビルド・Docker Hub（`docmiya/bilingual-blog`）へのpushは、mainブランチへのマージ時にGitHub Actions（`.github/workflows/ci.yml` の `build` ジョブ）がCI（テスト・rubocop）成功後に自動実行し、`latest` とコミットの短縮SHAの2タグをpushする。VPSへの反映（pull → up -d）自体は手動のまま（自動デプロイは別Issue）。`compose.prod.yaml` の `web`/`worker` の `image` は `docmiya/bilingual-blog:${IMAGE_TAG:-latest}` で、`IMAGE_TAG` を指定すればロールバックできる（詳細は `docs/deploy.md`）。
+イメージのビルド・Docker Hub（`docmiya/bilingual-blog`）へのpushは、mainブランチへのマージ時にGitHub Actions（`.github/workflows/ci.yml` の `build` ジョブ）がCI（テスト・rubocop）成功後に自動実行し、`latest` とコミットの短縮SHAの2タグをpushする。VPSへの反映（pull → up -d）は、`build` に続く `deploy` ジョブが行う。`deploy` ジョブは `environment: production` を指定しており、GitHubのEnvironment保護ルールで承認するまで実行されない（承認しなければVPSには何も起きない）。承認後はデプロイ専用のSSH鍵でVPSに接続し、`authorized_keys` の強制コマンドとして登録された `script/vps_deploy.sh` が `.env` の `IMAGE_TAG` を書き換えたうえで `pull`/`up -d` を実行し、`docker compose ps` でサービスの起動を確認する（詳細は `docs/deploy.md`）。`compose.prod.yaml` の `web`/`worker` の `image` は `docmiya/bilingual-blog:${IMAGE_TAG:-latest}` で、`IMAGE_TAG` を指定すれば手動デプロイ時にロールバックもできる。
 
 シークレットの置き場所: 本番はVPS上の `.env`（キー一覧は `.env.production.example`）。GitHub/Google OAuth、Resend、Umamiのフォールバック設定は `config/credentials.yml.enc`（`RAILS_MASTER_KEY` で復号）。開発は自身の `.env`（`docker-compose.yml` の `env_file`）。これらのファイルの値をコミット・出力・エージェントに読ませることはしない。
 
