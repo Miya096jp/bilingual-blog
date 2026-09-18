@@ -15,6 +15,12 @@ class Rack::Attack
     end
   end
 
+  throttle("contacts/create", limit: 3, period: 5.minutes) do |req|
+    if req.path.match?(%r{\A/(ja|en)/contacts\z}) && req.post?
+      req.ip
+    end
+  end
+
   self.throttled_response = lambda do |env|
     now = Time.current
     match_data = env["rack.attack.match_data"]
