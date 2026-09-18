@@ -1,4 +1,7 @@
 class Contact < ApplicationRecord
+  # ハニーポット用の仮想属性。DBには保存しない。値が入っていたらボット送信とみなす。
+  attr_accessor :website
+
   validates :name, presence: true, length: { maximum: 100 }
   validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :subject, presence: true, length: { maximum: 200 }
