@@ -13,23 +13,37 @@
 - 本番DBはVPS上の `db` コンテナ自身（Supabase等の外部マネージドDBではない）
 - 画像はCloudflare R2に保存している
 
+## イメージのビルド・push
+
+mainブランチへのマージ時、GitHub Actions（`.github/workflows/ci.yml` の `build` ジョブ）がCI（テスト・rubocop）成功後に自動でイメージをビルドし、Docker Hub（`docmiya/bilingual-blog`）へ `latest` と コミットの短縮SHA（例 `a1b2c3d`）の2つのタグでpushする。手元（Mac）での手動ビルドは通常不要になったが、Actionsが使えない場合など必要になったときのために手順を残す:
+
+```bash
+docker buildx build --platform linux/amd64 -t docmiya/bilingual-blog:latest --push .
+```
+
 ## 通常のデプロイ手順
 
-1. ローカル（Mac）でmainブランチを最新にする
-2. イメージをビルドしてpushする:
-   ```bash
-   docker buildx build --platform linux/amd64 -t docmiya/bilingual-blog:latest --push .
-   ```
-3. VPSの `~/bilingual-blog` ディレクトリで最新イメージを取得して再起動する:
+1. mainへのマージ後、GitHub Actionsのビルドが成功したことを確認する
+2. VPSの `~/bilingual-blog` ディレクトリで最新イメージを取得して再起動する:
    ```bash
    docker compose -f compose.prod.yaml pull
    docker compose -f compose.prod.yaml up -d
    ```
-4. 起動確認:
+3. 起動確認:
    ```bash
    docker compose -f compose.prod.yaml ps
    docker compose -f compose.prod.yaml logs -f web
    ```
+
+## ロールバック手順
+
+`compose.prod.yaml` の `web`/`worker` の `image` は `docmiya/bilingual-blog:${IMAGE_TAG:-latest}` で、`IMAGE_TAG` 未設定時は `latest` が使われる。以前のバージョンに戻す場合は、戻したいコミットの短縮SHAタグを指定して起動する:
+
+```bash
+IMAGE_TAG=<短縮SHA> docker compose -f compose.prod.yaml up -d
+```
+
+VPSの `.env` に `IMAGE_TAG` を書いて固定することもできるが、その場合は次回の `latest` への追従が止まる（ロールバックしたままになる）。ロールバック後に `latest` へ戻すときは、VPSの `.env` から `IMAGE_TAG` を削除するか空にしてから、通常のデプロイ手順（pull → up -d）を実行する。通常運用では `.env` に `IMAGE_TAG` を書かず、コマンドラインでの一時指定にとどめることを推奨する。
 
 ## `compose.prod.yaml` / `Caddyfile` を変更した場合
 

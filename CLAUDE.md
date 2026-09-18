@@ -56,6 +56,8 @@ Dual PascalはVPS1台上でDocker Compose（`compose.prod.yaml` + `Caddyfile`）
 
 サービス構成: `db`（Postgres 15）、`web`（Rails、`127.0.0.1:3000` にバインド）、`caddy`（HTTPS終端、`web:3000` へリバースプロキシ）、`worker`（Solid Queue）。本番DBはVPS上の `db` コンテナ自身（Supabase等の外部マネージドDBではない）。画像はCloudflare R2に保存される。
 
+イメージのビルド・Docker Hub（`docmiya/bilingual-blog`）へのpushは、mainブランチへのマージ時にGitHub Actions（`.github/workflows/ci.yml` の `build` ジョブ）がCI（テスト・rubocop）成功後に自動実行し、`latest` とコミットの短縮SHAの2タグをpushする。VPSへの反映（pull → up -d）自体は手動のまま（自動デプロイは別Issue）。`compose.prod.yaml` の `web`/`worker` の `image` は `docmiya/bilingual-blog:${IMAGE_TAG:-latest}` で、`IMAGE_TAG` を指定すればロールバックできる（詳細は `docs/deploy.md`）。
+
 シークレットの置き場所: 本番はVPS上の `.env`（キー一覧は `.env.production.example`）。GitHub/Google OAuth、Resend、Umamiのフォールバック設定は `config/credentials.yml.enc`（`RAILS_MASTER_KEY` で復号）。開発は自身の `.env`（`docker-compose.yml` の `env_file`）。これらのファイルの値をコミット・出力・エージェントに読ませることはしない。
 
 デプロイ手順、本番コンソールの起動方法、`compose.prod.yaml`/`Caddyfile` の反映方法、DBバックアップ・リストア手順は `docs/deploy.md` を参照。本番へのコマンド実行やデプロイの実行はこのリポジトリで作業するエージェントの役割ではない — 手順を提案するに留める。

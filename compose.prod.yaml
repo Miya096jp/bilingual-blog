@@ -11,7 +11,7 @@ services:
 
   web:
     # 重要：Docker ID書換え
-    image: docmiya/bilingual-blog:latest
+    image: docmiya/bilingual-blog:${IMAGE_TAG:-latest}
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -b '0.0.0.0'"
     volumes:
       - ./tmp:/rails/tmp # 一時ファイル用
@@ -41,7 +41,7 @@ services:
       - web
  
   worker:
-    image: docmiya/bilingual-blog:latest
+    image: docmiya/bilingual-blog:${IMAGE_TAG:-latest}
     command: bin/rails solid_queue:start
     environment:
       RAILS_ENV: production
