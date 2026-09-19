@@ -13,6 +13,9 @@ ja:
       back_to_articles: "記事一覧に戻る"
       results_count: "の検索結果: %{count}件"
       no_keyword: "キーワードを入力してください"
+  profiles:
+    show:
+      view_articles: "記事一覧へ →"
   footer:
     terms: "利用規約"
     privacy: "プライバシーポリシー"

@@ -1,40 +1,15 @@
-.profile-header.my-8
-  .flex.items-center.gap-6
-    - if @blog_owner.avatar.attached?
-      = image_tag @blog_owner.avatar, class: "w-24 h-24 rounded-full"
-    - else
-      .w-24.h-24.bg-gray-300.rounded-full.flex.items-center.justify-center
-        span.text-3xl.text-gray-600 #{@blog_owner.display_name.first}
+- body_html = @blog_owner.profile_body_html(@current_locale)
 
-    div
-      h1.text-3xl.font-bold= @blog_owner.display_name(@current_locale)
-      - if @blog_owner.localized_location(@current_locale).present?
-        p.text-gray-600 #{@blog_owner.localized_location(@current_locale)}
+.profile-page.max-w-5xl.mx-auto.my-8
+  - if @blog_owner.portrait.attached?
+    .profile-portrait.mb-6
+      = image_tag url_for(@blog_owner.portrait), alt: @blog_owner.display_name(@current_locale), class: "w-50 aspect-[3/4] object-cover rounded-lg shadow-md mx-auto"
 
-      - if @blog_owner.localized_bio(@current_locale).present?
-        p.mt-2= simple_format(@blog_owner.localized_bio(@current_locale))
+  h1.text-3xl.font-bold.text-gray-900.text-center.pb-10= @blog_owner.display_name(@current_locale)
 
-      - if @blog_owner.website.present? || @blog_owner.twitter_handle.present? || @blog_owner.facebook_handle.present?
+  - if body_html.present?
+    article.article-content
+      = body_html
 
-        .flex.flex_wrap.gap-3.mt-4
-          - if @blog_owner.website.present?
-            = link_to @blog_owner.website, target: "_blank" do
-              | 🌐 Website
-          - if @blog_owner.twitter_handle.present?
-            = link_to "https://x.com/#{@blog_owner.twitter_handle.delete('@')}", target: "_blank" do
-              | X
-          - if @blog_owner.facebook_handle.present?
-            = link_to "https://facebook.com/#{@blog_owner.facebook_handle}", target: "_blank" do
-              | Facebook
-            - if @blog_owner.github_handle.present?
-              = link_to "https://github.com/#{@blog_owner.github_handle}", target: "_blank" do
-                | GitHub
-            - if @blog_owner.qiita_handle.present?
-              = link_to "https://qiita.com/#{@blog_owner.qiita_handle}", target: "_blank" do
-                | Qiita
-            - if @blog_owner.zenn_handle.present?
-              = link_to "https://zenn.dev/#{@blog_owner.zenn_handle}", target: "_blank" do
-                | Zenn
-            - if @blog_owner.hatena_handle.present?
-              = link_to "https://#{@blog_owner.hatena_handle}.hatenablog.com/", target: "_blank" do
-                | はてなブログ
+  .profile-articles-link.mt-12
+    = link_to t("profiles.show.view_articles"), user_articles_path(@blog_owner.username, locale: @current_locale), class: "inline-block border border-gray-500 rounded-md px-6 py-2 text-base font-semibold text-gray-900 hover:bg-gray-100 transition-colors"
