@@ -124,6 +124,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* 公開プロフィール: 表示名(30px)がページで最も大きい文字になるよう、本文の見出しを抑える */
+.profile-page .article-content h1 { font-size: 1.28em; }
+.profile-page .article-content h2 { font-size: 1.2em; }
+.profile-page .article-content h3 { font-size: 1.12em; }
+.profile-page .article-content h4 { font-size: 1.05em; }
+
 .tab-container {
   margin: 20px 0;
 }
