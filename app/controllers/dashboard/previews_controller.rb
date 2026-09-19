@@ -11,7 +11,7 @@ class Dashboard::PreviewsController < ApplicationController
 
     clean_html = view_context.sanitize(html)
 
-    render json: { html: html }
+    render json: { html: clean_html }
   rescue => e
     Rails.logger.error "Preview error: #{e.message}"
     render json: { error: "プレビュー生成でエラーが発生しました: #{e.message}" }, status: 422
