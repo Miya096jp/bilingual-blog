@@ -1,15 +1,15 @@
 - if cell_article
   div class="flex items-center gap-2 min-h-11"
-    = link_to cell_article.title, dashboard_article_edit_path_for(cell_article, article), class: "text-[15px] font-semibold text-[#1B1B19] hover:text-[#2563EB] transition-colors truncate min-w-0 flex-1"
+    = link_to cell_article.title, dashboard_article_edit_path_for(cell_article, article), title: cell_article.title, class: "text-[15px] font-semibold text-[#1B1B19] hover:text-[#2563EB] transition-colors line-clamp-2 break-words min-w-0 flex-1"
     div class="flex items-center gap-1 shrink-0"
       = dashboard_status_badge(cell_article)
       = link_to dashboard_article_export_path(cell_article), class: "relative group inline-flex items-center justify-center w-8 h-8 rounded text-[#55554F] hover:bg-[#F0F0ED] hover:text-[#1B1B19] transition-colors", "aria-label": "#{locale_label}記事をMarkdownで書き出し"
         = lucide_icon 'file-down', class: "w-4 h-4"
         span class="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50"
           | 記事を書き出す
-  div class="flex items-center gap-[10px] text-xs text-[#6B6B66] leading-[1.4] mt-[4px]"
-    span= cell_article.category&.name || "カテゴリなし"
-    span= cell_article.updated_at.strftime("%Y-%m-%d")
+  div class="flex items-center gap-[10px] min-w-0 text-xs text-[#6B6B66] leading-[1.4] mt-[4px]"
+    span class="truncate min-w-0" title=cell_article.category&.name = cell_article.category&.name || "カテゴリなし"
+    span class="shrink-0"= cell_article.updated_at.strftime("%Y-%m-%d")
 - else
   = link_to new_dashboard_article_translation_path(article), class: "inline-flex items-center gap-1 min-h-11 text-[#2563EB] hover:text-[#1B4FC4] text-sm transition-colors"
     = lucide_icon 'plus', class: "w-3.5 h-3.5"

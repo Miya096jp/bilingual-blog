@@ -23,11 +23,11 @@
 
 - if @original_articles.any?
   div class="bg-white border border-[#E4E4E1] rounded-xl"
-    table.w-full
+    table.w-full.table-fixed
       thead
         tr class="border-b border-[#E4E4E1]"
-          th class="px-4 py-3 text-left text-xs font-medium text-[#6B6B66]" 日本語
-          th class="px-4 py-3 text-left text-xs font-medium text-[#6B6B66]" English
+          th class="w-1/2 px-4 py-3 text-left text-xs font-medium text-[#6B6B66]" 日本語
+          th class="w-1/2 px-4 py-3 text-left text-xs font-medium text-[#6B6B66]" English
       tbody
         - @original_articles.each do |article|
           = render "dashboard/articles/article_row", article: article

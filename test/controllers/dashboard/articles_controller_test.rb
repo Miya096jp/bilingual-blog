@@ -45,6 +45,20 @@ class Dashboard::ArticlesControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[aria-label=?]", "英語記事をMarkdownで書き出し", count: 1
   end
 
+  test "タイトルのリンクに全文のtitle属性が付き、2行で省略される" do
+    sign_in @user
+    get dashboard_articles_path
+
+    assert_response :success
+    [ articles(:published_ja), articles(:published_en) ].each do |article|
+      assert_select "a[title=?]", article.title, text: article.title do |links|
+        classes = links.first["class"].split
+        assert_includes classes, "line-clamp-2"
+        assert_includes classes, "min-w-0"
+      end
+    end
+  end
+
   test "カテゴリ未設定の記事は補助テキストに「カテゴリなし」と表示される" do
     sign_in @user
     get dashboard_articles_path
