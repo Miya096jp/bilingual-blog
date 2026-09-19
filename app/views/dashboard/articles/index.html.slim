@@ -15,7 +15,7 @@
 
     - DashboardArticleListQuery::STATUS_OPTIONS.each do |value, label|
       - active = @query.status.to_s == value
-      = link_to label, dashboard_articles_path(dashboard_filter_link_params(status: value)), class: "h-10 px-3 rounded-full text-sm border transition-colors flex items-center #{active ? 'bg-[#2563EB] text-white border-[#2563EB]' : 'bg-white text-[#55554F] border-[#E4E4E1] hover:bg-[#F0F0ED]'}"
+      = link_to label, dashboard_articles_path(dashboard_filter_link_params(status: value)), class: "h-10 px-3 rounded-full text-sm border transition-colors flex items-center #{active ? 'bg-[#55554F] text-white border-[#55554F]' : 'bg-white text-[#55554F] border-[#E4E4E1] hover:bg-[#F0F0ED]'}"
 
   div class="flex items-center gap-2"
     label class="text-sm text-[#6B6B66]" for="sort" 並び替え
