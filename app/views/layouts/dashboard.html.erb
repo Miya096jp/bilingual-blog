@@ -80,17 +80,11 @@
       <header class="mb-4 w-full bg-white border-b border-[#E4E4E1]">
         <div
           class="
-            dashboard-nav flex max-w-6xl mx-auto items-center justify-between h-12 px-2
+            dashboard-nav flex max-w-6xl mx-auto items-center justify-between h-12 px-6
           "
         >
           <div class="flex items-center h-full">
-            <h1 class="mr-6">
-              <%= link_to "Dual Pascal",
-              dashboard_articles_path,
-              class: "font-bold text-lg text-[#1B1B19] hover:text-[#2563EB] transition-colors" %>
-            </h1>
-
-            <nav class="nav-links flex items-center h-full">
+            <nav class="nav-links flex items-center gap-5 h-full text-sm font-medium">
               <% {
                    "記事一覧" => [ dashboard_articles_path, %w[dashboard/articles dashboard/translations] ],
                    "カテゴリ" => [ dashboard_categories_path, %w[dashboard/categories] ],
@@ -103,15 +97,15 @@
                 <%= link_to label, path,
                     "aria-current": (active ? "page" : nil),
                     class: [
-                      "h-full flex items-center mx-2 border-b-2 transition-colors",
-                      active ? "font-bold text-[#1B1B19] border-[#2563EB]" : "text-[#55554F] hover:text-[#1B1B19] border-transparent"
+                      "h-full flex items-center border-b-2 transition-colors",
+                      active ? "font-semibold text-[#1B1B19] border-[#2563EB]" : "text-[#55554F] hover:text-[#1B1B19] border-transparent"
                     ].join(" ") %>
               <% end %>
 
               <% if current_user.admin? %>
-                <div class="h-6 w-px bg-[#E4E4E1] mx-2"></div>
-                <%= link_to "ユーザー管理", admin_users_path, class: "mx-2 text-[#55554F] hover:text-[#1B1B19] transition-colors" %>
-                <%= link_to "全記事管理", admin_articles_path, class: "mx-2 text-[#55554F] hover:text-[#1B1B19] transition-colors" %>
+                <div class="h-6 w-px bg-[#E4E4E1]"></div>
+                <%= link_to "ユーザー管理", admin_users_path, class: "text-[#55554F] hover:text-[#1B1B19] transition-colors" %>
+                <%= link_to "全記事管理", admin_articles_path, class: "text-[#55554F] hover:text-[#1B1B19] transition-colors" %>
               <% end %>
             </nav>
           </div>
