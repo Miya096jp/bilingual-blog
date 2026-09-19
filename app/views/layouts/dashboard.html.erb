@@ -77,124 +77,59 @@
     </div>
 
     <div id="dashboard-content" class="min-h-screen flex flex-col">
-      <header class="mb-4 w-full theme-header">
+      <header class="mb-4 w-full bg-white border-b border-[#E4E4E1]">
         <div
           class="
             dashboard-nav flex max-w-6xl mx-auto items-center justify-between h-12 px-2
           "
         >
-          <div class="flex items-center">
+          <div class="flex items-center h-full">
             <h1 class="mr-6">
-              <%= link_to "Dashboard",
+              <%= link_to "Dual Pascal",
               dashboard_articles_path,
-              class: "font-bold text-lg hover:text-white transition-colors" %>
+              class: "font-bold text-lg text-[#1B1B19] hover:text-[#2563EB] transition-colors" %>
             </h1>
 
-            <div class="nav-links flex items-center">
-              <%= link_to dashboard_categories_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon "square-library", class: "w-5 h-5" %>
-                <span
-                  class="
-                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
-                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
-                    whitespace-nowrap pointer-events-none z-50
-                  "
-                >
-                  Categories
-                </span>
-              <% end %>
-
-              <%= link_to dashboard_comments_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon "message-square", class: "w-5 h-5" %>
-                <span
-                  class="
-                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
-                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
-                    whitespace-nowrap pointer-events-none z-50
-                  "
-                >
-                  Comments
-                </span>
-              <% end %>
-
-              <%= link_to edit_dashboard_profile_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon "user", class: "w-5 h-5" %>
-                <span
-                  class="
-                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
-                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
-                    whitespace-nowrap pointer-events-none z-50
-                  "
-                >
-                  Profile
-                </span>
-              <% end %>
-
-              <%= link_to edit_dashboard_blog_setting_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon "settings", class: "w-5 h-5" %>
-                <span
-                  class="
-                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
-                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
-                    whitespace-nowrap pointer-events-none z-50
-                  "
-                >
-                  Settings
-                </span>
-              <% end %>
-
-              <%= link_to dashboard_analytics_path, class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon "bar-chart-3", class: "w-5 h-5" %>
-                <span
-                  class="
-                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
-                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
-                    whitespace-nowrap pointer-events-none z-50
-                  "
-                >
-                  Analytics
-                </span>
-              <% end %>
-
-              <%= link_to user_articles_path(current_user.username, locale: I18n.locale), target: "_blank", class: "relative group mx-2 text-gray-300 hover:text-white transition-colors" do %>
-                <%= lucide_icon "external-link", class: "w-5 h-5" %>
-                <span
-                  class="
-                    absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-gray-800
-                    text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity
-                    whitespace-nowrap pointer-events-none z-50
-                  "
-                >
-                  View Site
-                </span>
+            <nav class="nav-links flex items-center h-full">
+              <% {
+                   "記事一覧" => [ dashboard_articles_path, %w[dashboard/articles dashboard/translations] ],
+                   "カテゴリ" => [ dashboard_categories_path, %w[dashboard/categories] ],
+                   "コメント" => [ dashboard_comments_path, %w[dashboard/comments] ],
+                   "アナリティクス" => [ dashboard_analytics_path, %w[dashboard/analytics] ],
+                   "プロフィール" => [ edit_dashboard_profile_path, %w[dashboard/profiles] ],
+                   "ブログ設定" => [ edit_dashboard_blog_setting_path, %w[dashboard/blog_settings] ]
+                 }.each do |label, (path, controllers)| %>
+                <% active = dashboard_nav_active?(*controllers) %>
+                <%= link_to label, path,
+                    "aria-current": (active ? "page" : nil),
+                    class: [
+                      "h-full flex items-center mx-2 border-b-2 transition-colors",
+                      active ? "font-bold text-[#1B1B19] border-[#2563EB]" : "text-[#55554F] hover:text-[#1B1B19] border-transparent"
+                    ].join(" ") %>
               <% end %>
 
               <% if current_user.admin? %>
-                <div class="h-6 w-px bg-gray-600 mx-2"></div>
-                <%= link_to admin_users_path, class: "mx-2 text-yellow-400 hover:text-yellow-200 font-bold text-sm flex items-center gap-1" do %>
-                  ユーザー管理
-                <% end %>
-                <%= link_to admin_articles_path, class: "mx-2 text-yellow-400 hover:text-yellow-200 font-bold text-sm flex items-center gap-1" do %>
-                  全記事管理
-                <% end %><% end %>
-            </div>
+                <div class="h-6 w-px bg-[#E4E4E1] mx-2"></div>
+                <%= link_to "ユーザー管理", admin_users_path, class: "mx-2 text-[#55554F] hover:text-[#1B1B19] transition-colors" %>
+                <%= link_to "全記事管理", admin_articles_path, class: "mx-2 text-[#55554F] hover:text-[#1B1B19] transition-colors" %>
+              <% end %>
+            </nav>
           </div>
 
           <div class="user-info flex items-center gap-4 text-sm">
             <% if user_signed_in? %>
-              <div class="hidden sm:flex items-center text-gray-400">
-                <span class="mr-2">Signed in as</span>
-                <span class="font-semibold text-red-500"><%= current_user.username %></span>
-              </div>
-
-              <%= link_to destroy_user_session_path, 
-                  data: { "turbo-method": "delete" }, 
-                  class: "text-gray-300 hover:text-white transition-colors flex items-center gap-1 ml-2" do %>
-                <span class="hidden sm:inline">Logout</span>
-                <%= lucide_icon "log-out", class: "w-4 h-4" %>
+              <%= link_to user_articles_path(current_user.username, locale: I18n.locale), target: "_blank", class: "flex items-center gap-1 text-[#2563EB] hover:text-[#1B4FC4] transition-colors" do %>
+                ブログを見る
+                <%= lucide_icon "external-link", class: "w-4 h-4" %>
               <% end %>
+
+              <span class="hidden sm:inline text-[#55554F]"><%= current_user.username %></span>
+
+              <%= link_to "ログアウト", destroy_user_session_path,
+                  data: { "turbo-method": "delete" },
+                  class: "text-[#55554F] hover:text-[#1B1B19] transition-colors" %>
             <% else %>
-              <%= link_to "Login", new_user_session_path, class: "text-white hover:text-gray-200" %>
+              <%= link_to "Login", new_user_session_path, class: "text-[#1B1B19] hover:text-[#2563EB]" %>
             <% end %>
           </div>
         </div>
