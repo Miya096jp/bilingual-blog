@@ -21,50 +21,50 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
         div class="flex items-center mb-6 border-b border-gray-400 pb-2"
 
           div class="flex items-center gap-2"
-            = f.select :locale, options_for_select([["Japanese", "ja"], ["English", "en"]], article.locale), {}, { disabled: locale_disabled, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500" }
-            = f.select :status, options_for_select([["Draft", "draft"],["Publish", "published"]], article.status), {}, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500"
+            = f.select :locale, options_for_select([["日本語", "ja"], ["英語", "en"]], article.locale), {}, { disabled: locale_disabled, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500" }
+            = f.select :status, options_for_select([["下書き", "draft"],["公開", "published"]], article.status), {}, class: "text-gray-600 text-base border border-gray-400 rounded px-1 focus:ring-blue-500 focus:border-blue-500"
 
           = render "dashboard/articles/cover_image_field", record: f.object
           
           button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="button" data-action="click->image-upload#selectImage"
             = lucide_icon 'camera', class: "w-5 h-5 text-gray-500"
             span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-              | Insert Image
+              | 画像を挿入
 
           - case button_type
           - when "new"
             button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
               = lucide_icon 'send', class: "w-5 h-5 text-gray-600"
               span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                | Publish
+                | 公開
 
           - when "edit"
             button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
               = lucide_icon 'refresh-cw', class: "w-5 h-5 text-gray-600"
               span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                | Update
+                | 更新
 
             = link_to dashboard_articles_path, class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
               = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
               span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                | Cancel
+                | キャンセル
 
-            = link_to dashboard_article_path(article), class: "relative group cursor-pointer hover:bg-red-50 rounded p-1 transition-colors", data: { "turbo-method": "delete", "turbo-confirm": "Are you sure?" } do
+            = link_to dashboard_article_path(article), class: "relative group cursor-pointer hover:bg-red-50 rounded p-1 transition-colors", data: { "turbo-method": "delete", "turbo-confirm": "本当に削除しますか？" } do
               = lucide_icon 'trash', class: "w-5 h-5 text-gray-500 hover:text-red-500"
               span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                | Delete
+                | 削除
 
           - when "translation"
             / Create Translation Button
             button.relative.group.cursor-pointer.hover:bg-blue-50.rounded.p-1.transition-colors type="submit"
               = lucide_icon 'languages', class: "w-5 h-5 text-gray-500"
               span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                | Create Translation
+                | 翻訳を作成
 
             = link_to dashboard_article_path(original_article), class: "relative group cursor-pointer hover:bg-blue-50 rounded p-1 transition-colors" do
               = lucide_icon 'x', class: "w-5 h-5 text-gray-500"
               span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-                | Cancel
+                | キャンセル
 
 
         div class="ml-auto flex gap-2 border-b border-gray-400"
@@ -73,21 +73,21 @@ div data-controller="markdown-preview image-upload layout-switcher category-moda
             / = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "text-gray-400 focus:outline-none", required: false, data: { category_modal_target: "select" } }
             = f.select :category_id, options_from_collection_for_select(@categories, :id, :name, article.category_id), { prompt: "---" }, { class: "w-30 truncate text-gray-400 focus:outline-none", required: false }
           p
-            = f.text_field :tag_list, placeholder: "tags", class: "text-gray-600 focus:outline-none"
+            = f.text_field :tag_list, placeholder: "タグ", class: "text-gray-600 focus:outline-none"
         p
           = f.text_field :title, required: true,
             class: "w-full border-b border-gray-400 placeholder-gray-400 p-2 focus:border-gray-400 focus:outline-none mb-3",
-            placeholder: "title",
+            placeholder: "タイトル",
             data: { field: "title", action: "input->markdown-preview#preview" }
             
           div.mb-4 data-controller="toggle" data-action="click@window->toggle#hide"
             button.text-gray-500.text-sm.hover:text-gray-800.underline.decoration-dashed.mb-2 type="button" data-action="click->toggle#toggle"
-              | + Add Description (for OGP)
+              | + 説明を追加(OGP用)
             
             div.hidden data-toggle-target="content"
               = f.text_area :description, 
                   rows: 3, 
-                  placeholder: "Add a description here...", 
+                  placeholder: "説明を入力してください...", 
                   class: "w-full text-sm p-2 border-0 focus:ring-0 focus:outline-none focus:border-[1px] focus:border-gray-300"
 
           = f.text_area :content, required: true, style: "width: 100%; padding-bottom: 36rem;", data: { markdown_preview_target: "input", action: "input->markdown-preview#preview", image_upload_target: "textarea" }, class: "px-3 py-2 border-0 focus:ring-0 focus:outline-none focus:border-[1px] focus:border-gray-300"

@@ -41,4 +41,32 @@ class Dashboard::PageTitlesTest < ActionDispatch::IntegrationTest
 
     assert_select ".container h1.text-2xl.font-bold.text-red-600.mb-6", text: "アカウントの削除"
   end
+
+  test "一覧の表ヘッダーとフォームのラベルが日本語で表示される" do
+    get dashboard_categories_path
+    assert_select "th", text: "カテゴリ名"
+    assert_select "th", text: "操作"
+    assert_select "a", text: "カテゴリを作成"
+
+    get new_dashboard_category_path
+    assert_select "label", text: "カテゴリ名"
+    assert_select "input[type=submit][value=?]", "カテゴリを作成"
+
+    get dashboard_comments_path
+    assert_select "th", text: "投稿者"
+    assert_select "th", text: "コメント内容"
+
+    get edit_dashboard_blog_setting_path
+    assert_select "label", text: "ブログタイトル"
+    assert_select "input[type=submit][value=?]", "保存"
+  end
+
+  test "記事編集フォームのセレクトが日本語で表示される" do
+    get new_dashboard_article_path
+
+    assert_select "select[name=?] option", "article[status]", text: "下書き"
+    assert_select "select[name=?] option", "article[status]", text: "公開"
+    assert_select "select[name=?] option", "article[locale]", text: "日本語"
+    assert_select "select[name=?] option", "article[locale]", text: "英語"
+  end
 end
