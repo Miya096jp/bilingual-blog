@@ -22,6 +22,6 @@ class Dashboard::ProfilesController < ApplicationController
   private
 
   def profile_params
-    params.require(:user).permit(:nickname_ja, :nickname_en, :bio_ja, :bio_en, :website, :location_ja, :location_en, :twitter_handle, :facebook_handle, :linkedin_handle, :github_handle, :qiita_handle, :zenn_handle, :hatena_handle, :avatar)
+    params.require(:user).permit(:nickname_ja, :nickname_en, :profile_body_ja, :profile_body_en, :avatar, :portrait)
   end
 end

@@ -2,7 +2,10 @@ import { Controller } from "@hotwired/stimulus";
 
 export default class extends Controller {
   static targets = ["input", "preview", "titlePreview"];
-  static values = { url: String };
+  static values = {
+    url: String,
+    emptyMessage: { type: String, default: "Preview will appear here" },
+  };
 
   connect() {
     this.timeout = null;
@@ -22,6 +25,8 @@ export default class extends Controller {
   }
 
   updateTitlePreview() {
+    if (!this.hasTitlePreviewTarget) return;
+
     const title = document.querySelector('[data-field="title"]').value || "";
     this.titlePreviewTarget.innerHTML = `<h1>${title || "title"}</h1>`;
   }
@@ -30,7 +35,9 @@ export default class extends Controller {
     const content = this.inputTarget.value;
 
     if (content.trim() === "") {
-      this.previewTarget.innerHTML = "<p>Preview will appear here</p>";
+      const message = document.createElement("p");
+      message.textContent = this.emptyMessageValue;
+      this.previewTarget.replaceChildren(message);
       return;
     }
 
