@@ -27,4 +27,13 @@ module DashboardHelper
   def dashboard_filter_link_params(status:)
     params.permit(:q, :sort).to_h.symbolize_keys.merge(status: status).compact_blank
   end
+
+  # ダッシュボード各画面のh1。記事一覧の見出しを基準に、サイズ・太さ・色を揃える。
+  # 下余白はラッパーを持つ画面ではラッパー側が持つため、必要な画面だけ class: "mb-6" を渡す。
+  # danger: true は危険な操作の画面(アカウント削除など)向けに色を赤にする。
+  def dashboard_page_title(title, danger: false, **options)
+    color = danger ? "text-red-600" : "text-[#1B1B19]"
+    options[:class] = [ "text-2xl font-bold", color, options[:class] ].compact.join(" ")
+    content_tag :h1, title, **options
+  end
 end

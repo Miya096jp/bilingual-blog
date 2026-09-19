@@ -1,4 +1,4 @@
-h1 コメント詳細
+= dashboard_page_title "コメント詳細", class: "mb-6"
 
 h3 記事情報
 p
@@ -6,7 +6,7 @@ p
   = link_to @comment.article.title, user_article_path(@comment.article, locale: @comment.article.locale)
 p
   strong 言語: 
-  = @comment.article.locale == 'ja' ? '日本語' : 'English'
+  = @comment.article.locale == 'ja' ? '日本語' : '英語'
 
 h3 コメント情報
 p
