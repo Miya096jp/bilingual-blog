@@ -146,4 +146,83 @@ class UserTest < ActiveSupport::TestCase
     assert_includes user.likes, likes(:one)
     assert user.likes.all? { |l| l.user_id == user.id }
   end
+
+  test "should save and update profile bodies" do
+    user = users(:one)
+    user.update!(profile_body_ja: "# こんにちは", profile_body_en: "# Hello")
+    user.reload
+    assert_equal "# こんにちは", user.profile_body_ja
+    assert_equal "# Hello", user.profile_body_en
+
+    user.update!(profile_body_ja: "更新後")
+    assert_equal "更新後", user.reload.profile_body_ja
+  end
+
+  test "localized_profile_body returns the body of the given locale" do
+    user = User.new(profile_body_ja: "日本語", profile_body_en: "English")
+    assert_equal "日本語", user.localized_profile_body("ja")
+    assert_equal "English", user.localized_profile_body("en")
+  end
+
+  test "localized_profile_body falls back to en when ja is blank" do
+    user = User.new(profile_body_ja: "", profile_body_en: "English")
+    assert_equal "English", user.localized_profile_body("ja")
+  end
+
+  test "localized_profile_body falls back to ja when en is blank" do
+    user = User.new(profile_body_ja: "日本語", profile_body_en: nil)
+    assert_equal "日本語", user.localized_profile_body("en")
+  end
+
+  test "localized_profile_body is empty when both are blank" do
+    user = User.new(profile_body_ja: nil, profile_body_en: "")
+    assert_equal "", user.localized_profile_body("ja")
+    assert_equal "", user.localized_profile_body("en")
+  end
+
+  test "profile_body_html renders markdown" do
+    user = User.new(profile_body_ja: "# Hello")
+    assert_match %r{<h1>Hello</h1>}, user.profile_body_html("ja")
+  end
+
+  test "profile_body_html strips script tags" do
+    user = User.new(profile_body_ja: "Hi <script>alert('hack')</script>")
+    html = user.profile_body_html("ja")
+    assert_no_match(/<script>/, html)
+    assert_includes html, "Hi"
+    assert html.html_safe?
+  end
+
+  test "profile_body_html is empty when both bodies are blank" do
+    assert_equal "", User.new.profile_body_html("ja").strip
+  end
+
+  test "should attach a portrait" do
+    user = users(:one)
+    user.portrait.attach(io: StringIO.new("png-data"), filename: "portrait.png", content_type: "image/png")
+    assert user.valid?
+    assert user.portrait.attached?
+  end
+
+  test "should accept jpeg and webp portraits" do
+    user = users(:one)
+    %w[image/jpeg image/webp].each do |type|
+      user.portrait.attach(io: StringIO.new("data"), filename: "portrait", content_type: type)
+      assert user.valid?, "#{type} should be valid"
+    end
+  end
+
+  test "should reject a portrait with an invalid content type" do
+    user = users(:one)
+    user.portrait.attach(io: StringIO.new("gif-data"), filename: "portrait.gif", content_type: "image/gif")
+    assert_not user.valid?
+    assert user.errors[:portrait].any?
+  end
+
+  test "should reject a portrait of 5MB or more" do
+    user = users(:one)
+    user.portrait.attach(io: StringIO.new("a" * 5.megabytes), filename: "portrait.png", content_type: "image/png")
+    assert_not user.valid?
+    assert user.errors[:portrait].any?
+  end
 end

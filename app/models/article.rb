@@ -1,5 +1,5 @@
 class Article < ApplicationRecord
-  include ActionView::Helpers::SanitizeHelper
+  include MarkdownRenderable
 
   belongs_to :user
 
@@ -59,11 +59,7 @@ class Article < ApplicationRecord
   end
 
   def content_html
-    html = Kramdown::Document.new(content,
-      input: "GFM",
-      syntax_highlighter: "rouge"
-    ).to_html
-    sanitize(html).html_safe
+    render_markdown(content)
   end
 
   def content_preview(length = 100)
