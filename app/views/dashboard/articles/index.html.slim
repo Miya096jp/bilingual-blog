@@ -1,20 +1,28 @@
-= link_to new_dashboard_article_path(locale: params[:locale]), class: "inline-flex items-center gap-2 text-blue-500 hover:text-blue-600 transition-colors p-3 font-medium"
-  = lucide_icon 'pen-line', class: "w-5 h-5"
-  span.hidden.sm:inline.text-sm
-    | New Article
+.flex.items-start.justify-between.mb-6
+  div
+    h1 class="text-2xl font-bold text-[#1B1B19]" 記事
+    p class="text-sm text-[#55554F] mt-1"
+      = "日本語 #{dashboard_locale_summary(@locale_status_counts, "ja")} / 英語 #{dashboard_locale_summary(@locale_status_counts, "en")}"
+  = link_to new_dashboard_article_path, class: "inline-flex items-center gap-2 h-11 px-4 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1B4FC4] transition-colors"
+    = lucide_icon 'plus', class: "w-4 h-4"
+    | 新しい記事を書く
 
-.space-y-6
-  - @original_articles.each do |article|
-    .p-4.border.border-gray-200.rounded-lg.shadow-sm.bg-white
-      .space-y-4
-        .p-3
-          = render "dashboard/articles/article_row", article_data: article
-        .span.border-b.border-gray-300
-        - if article.translation.present?
-          .p-3
-            = render "dashboard/articles/article_row", article_data: article.translation
-        - else
-          .p-3.text-gray-500.text-sm
-            | No translation
+- if @original_articles.any?
+  div class="bg-white border border-[#E4E4E1] rounded-xl"
+    table.w-full
+      thead
+        tr class="border-b border-[#E4E4E1]"
+          th class="px-4 py-3 text-left text-xs font-medium text-[#6B6B66]" 日本語
+          th class="px-4 py-3 text-left text-xs font-medium text-[#6B6B66]" English
+      tbody
+        - @original_articles.each do |article|
+          = render "dashboard/articles/article_row", article: article
 
-= paginate @original_articles
+  .mt-6
+    = paginate @original_articles
+- else
+  div class="bg-white border border-[#E4E4E1] rounded-xl p-12 text-center"
+    p class="text-[#55554F] mb-4" まだ記事がありません
+    = link_to new_dashboard_article_path, class: "inline-flex items-center gap-2 h-11 px-4 rounded-lg bg-[#2563EB] text-white font-medium hover:bg-[#1B4FC4] transition-colors"
+      = lucide_icon 'plus', class: "w-4 h-4"
+      | 最初の記事を書く

@@ -6,10 +6,12 @@ class Dashboard::ArticlesController < ApplicationController
 
   def index
     # 元記事とその翻訳をペアでグループ化
-    @original_articles = current_user.articles.where(original_article_id: nil)
+    originals = current_user.articles.where(original_article_id: nil)
+    @original_articles = originals
                                 .includes(:translation, :category, :tags)
                                 .order(status: :desc, published_at: :desc, created_at: :desc)
                                 .page(params[:page]).per(20)
+    @locale_status_counts = current_user.articles.group(:locale, :status).count
   end
 
   def show

@@ -1,38 +1,8 @@
-.flex.justify-between.items-center
-  .flex-grow
-    .font-semibold= article_data.title
-    .text-sm.text-gray-500
-      = article_data.locale == "ja" ? "Japanese" : "English"
-      | ・
-      = article_data.category&.name || 'No category'
-      | ・
-      = article_data.published_at&.strftime("%Y-%m-%d")
-      | ・
-      = article_data.status == "draft" ? "Draft" : "Published"
-      - if article_data.original? && article_data.has_translation?
-        | ・Translated
-      - if article_data.translated?
-        | ・Original: #{article_data.original_article.title}
+- ja_article = article.locale == "ja" ? article : article.translation
+- en_article = article.locale == "en" ? article : article.translation
 
-  .flex.space-x-2.ml-4
-    - if article_data.translated?
-      = link_to edit_dashboard_article_translation_path(article_data.original_article), class: "relative group text-gray-600 hover:text-gray-800 transition-colors"
-        = lucide_icon 'pencil', class: "w-5 h-5"
-        span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-          | Edit Translation
-    - else
-      = link_to edit_dashboard_article_path(article_data), class: "relative group text-gray-600 hover:text-gray-800 transition-colors"
-        = lucide_icon 'pencil', class: "w-5 h-5"
-        span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-          | Edit
-
-    - if article_data.translation.blank? && article_data.original?
-      = link_to new_dashboard_article_translation_path(article_data), class: "relative group text-gray-600 hover:text-gray-800 transition-colors"
-        = lucide_icon 'languages', class: "w-5 h-5"
-        span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-          | Add Translation
-
-    = link_to dashboard_article_export_path(article_data), class: "relative group text-gray-500 hover:text-gray-800 hover:bg-blue-100 rounded transition-colors flex items-center"
-      = lucide_icon 'file-down', class: "w-5 h-5"
-      span.absolute.top-full.left-1/2.-translate-x-1/2.mt-2.px-2.py-1.bg-gray-800.text-white.text-xs.rounded.opacity-0.group-hover:opacity-100.transition-opacity.whitespace-nowrap.pointer-events-none.z-50
-        | Export Markdown
+tr class="border-b border-[#F0F0ED]"
+  td class="px-4 py-[12px] align-top"
+    = render "dashboard/articles/article_cell", article: article, cell_article: ja_article, locale_label: "日本語"
+  td class="px-4 py-[12px] align-top"
+    = render "dashboard/articles/article_cell", article: article, cell_article: en_article, locale_label: "英語"
