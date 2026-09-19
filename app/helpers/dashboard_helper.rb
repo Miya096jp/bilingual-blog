@@ -22,4 +22,9 @@ module DashboardHelper
     draft = counts[[ locale, "draft" ]] || 0
     "#{published + draft} 件(公開 #{published}・下書き #{draft})"
   end
+
+  # 絞り込みチップのリンク用に、現在のq/sortを保ったままstatusだけ書き換えたparamsを返す
+  def dashboard_filter_link_params(status:)
+    params.permit(:q, :sort).to_h.symbolize_keys.merge(status: status).compact_blank
+  end
 end
