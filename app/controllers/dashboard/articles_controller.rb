@@ -5,13 +5,15 @@ class Dashboard::ArticlesController < ApplicationController
   layout "dashboard"
 
   def index
-    # 元記事とその翻訳をペアでグループ化
-    originals = current_user.articles.where(original_article_id: nil)
-    @original_articles = originals
-                                .includes(:translation, :category, :tags)
-                                .order(status: :desc, published_at: :desc, created_at: :desc)
-                                .page(params[:page]).per(20)
-    @locale_status_counts = current_user.articles.group(:locale, :status).count
+    @query = DashboardArticleListQuery.new(user: current_user, params: params.permit(:q, :status, :sort))
+    pairs = @query.call
+    @original_articles = pairs.page(params[:page]).per(20)
+
+    pair_ids = pairs.reorder(nil).pluck(:id)
+    @locale_status_counts = current_user.articles
+                                         .where(id: pair_ids)
+                                         .or(current_user.articles.where(original_article_id: pair_ids))
+                                         .group(:locale, :status).count
   end
 
   def show

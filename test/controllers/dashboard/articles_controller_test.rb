@@ -76,4 +76,89 @@ class Dashboard::ArticlesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_no_match articles(:test_article).title, response.body
   end
+
+  test "タイトル検索で日本語・英語どちらのタイトルでもヒットする" do
+    sign_in users(:one)
+    get dashboard_articles_path(q: "Study Notes")
+
+    assert_response :success
+    assert_match articles(:search_target_ja).title, response.body
+    assert_no_match articles(:mixed_status_ja).title, response.body
+  end
+
+  test "絞り込みチップで公開ペアのみ表示できる" do
+    sign_in users(:one)
+    get dashboard_articles_path(status: "published")
+
+    assert_response :success
+    assert_match articles(:search_target_ja).title, response.body
+    assert_no_match articles(:mixed_status_ja).title, response.body
+  end
+
+  test "絞り込みチップで下書きを含むペアのみ表示できる" do
+    sign_in users(:one)
+    get dashboard_articles_path(status: "draft")
+
+    assert_response :success
+    assert_match articles(:mixed_status_ja).title, response.body
+    assert_no_match articles(:search_target_ja).title, response.body
+  end
+
+  test "絞り込みチップで翻訳なしのペアのみ表示できる" do
+    sign_in users(:one)
+    get dashboard_articles_path(status: "no_translation")
+
+    assert_response :success
+    assert_match articles(:en_original_no_translation).title, response.body
+    assert_no_match articles(:search_target_ja).title, response.body
+  end
+
+  test "既定の並び替えで英語だけ更新したペアが上位に表示される" do
+    sign_in users(:one)
+    get dashboard_articles_path
+
+    assert_response :success
+    en_updated_position = response.body.index(articles(:en_updated_ja).title)
+    search_target_position = response.body.index(articles(:search_target_ja).title)
+
+    assert en_updated_position < search_target_position
+  end
+
+  test "並び替えを作成が古い順にすると原文のcreated_at昇順で表示される" do
+    sign_in users(:one)
+    get dashboard_articles_path(sort: "created_asc")
+
+    assert_response :success
+    en_updated_position = response.body.index(articles(:en_updated_ja).title)
+    search_target_position = response.body.index(articles(:search_target_ja).title)
+
+    assert en_updated_position < search_target_position
+  end
+
+  test "検索・絞り込み・並び替えの状態がページングリンクに引き継がれる" do
+    25.times do |i|
+      Article.create!(
+        title: "公開記事 #{i}",
+        content: "本文 #{i}",
+        locale: "ja",
+        status: "published",
+        user: users(:one)
+      )
+    end
+
+    sign_in users(:one)
+    get dashboard_articles_path(status: "published", sort: "created_asc")
+
+    assert_response :success
+    assert_select "a[href*='status=published'][href*='sort=created_asc']"
+  end
+
+  test "検索結果が0件のときは条件を外す導線付きの案内が表示される" do
+    sign_in users(:one)
+    get dashboard_articles_path(q: "該当しない検索語")
+
+    assert_response :success
+    assert_match "条件に合う記事がありません", response.body
+    assert_select "a[href=?]", dashboard_articles_path, text: "絞り込みを解除"
+  end
 end

@@ -7,6 +7,20 @@
     = lucide_icon 'plus', class: "w-4 h-4"
     | 新しい記事を書く
 
+= form_with url: dashboard_articles_path, method: :get, local: true, class: "flex flex-wrap items-center justify-between gap-3 mb-4"
+  div class="flex flex-wrap items-center gap-2"
+    = hidden_field_tag :status, @query.status
+    = text_field_tag :q, @query.keyword, placeholder: "タイトルで検索", class: "h-10 px-3 rounded-lg border border-[#E4E4E1] text-sm w-64"
+    = submit_tag "検索", name: nil, class: "h-10 px-4 rounded-lg border border-[#E4E4E1] text-sm text-[#55554F] hover:bg-[#F0F0ED] transition-colors cursor-pointer"
+
+    - DashboardArticleListQuery::STATUS_OPTIONS.each do |value, label|
+      - active = @query.status.to_s == value
+      = link_to label, dashboard_articles_path(dashboard_filter_link_params(status: value)), class: "h-10 px-3 rounded-full text-sm border transition-colors flex items-center #{active ? 'bg-[#2563EB] text-white border-[#2563EB]' : 'bg-white text-[#55554F] border-[#E4E4E1] hover:bg-[#F0F0ED]'}"
+
+  div class="flex items-center gap-2"
+    label class="text-sm text-[#6B6B66]" for="sort" 並び替え
+    = select_tag :sort, options_for_select(DashboardArticleListQuery::SORT_OPTIONS.invert, @query.sort), id: "sort", class: "h-10 px-3 rounded-lg border border-[#E4E4E1] text-sm", data: { controller: "auto-submit", action: "change->auto-submit#submit" }
+
 - if @original_articles.any?
   div class="bg-white border border-[#E4E4E1] rounded-xl"
     table.w-full
@@ -19,7 +33,11 @@
           = render "dashboard/articles/article_row", article: article
 
   .mt-6
-    = paginate @original_articles
+    = paginate @original_articles, params: @query.filter_params
+- elsif @query.filtering?
+  div class="bg-white border border-[#E4E4E1] rounded-xl p-12 text-center"
+    p class="text-[#55554F] mb-4" 条件に合う記事がありません
+    = link_to "絞り込みを解除", dashboard_articles_path, class: "text-[#2563EB] hover:text-[#1B4FC4] text-sm font-medium"
 - else
   div class="bg-white border border-[#E4E4E1] rounded-xl p-12 text-center"
     p class="text-[#55554F] mb-4" まだ記事がありません

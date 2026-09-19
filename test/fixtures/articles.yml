@@ -49,3 +49,76 @@ rails_article:
   published_at: <%= 2.days.ago %>
   user: blogger
   category: programming_ja
+
+search_target_ja:
+  title: Rubyの学習ノート
+  content: Rubyの学習ノートです。
+  locale: ja
+  status: published
+  published_at: <%= 10.days.ago %>
+  created_at: <%= 10.days.ago %>
+  updated_at: <%= 10.days.ago %>
+  user: one
+
+search_target_en:
+  title: Ruby Study Notes
+  content: This is a study note about Ruby.
+  locale: en
+  status: published
+  published_at: <%= 10.days.ago %>
+  created_at: <%= 10.days.ago %>
+  updated_at: <%= 10.days.ago %>
+  user: one
+  original_article: search_target_ja
+
+mixed_status_ja:
+  title: 混在ステータスのペア
+  content: 日本語は公開済みです。
+  locale: ja
+  status: published
+  published_at: <%= 8.days.ago %>
+  created_at: <%= 8.days.ago %>
+  updated_at: <%= 8.days.ago %>
+  user: one
+
+mixed_status_en:
+  title: Mixed Status Pair
+  content: The English side is still a draft.
+  locale: en
+  status: draft
+  published_at: <%= nil %>
+  created_at: <%= 8.days.ago %>
+  updated_at: <%= 8.days.ago %>
+  user: one
+  original_article: mixed_status_ja
+
+en_updated_ja:
+  title: 英語だけ更新されたペア
+  content: 原文は更新していません。
+  locale: ja
+  status: published
+  published_at: <%= 20.days.ago %>
+  created_at: <%= 20.days.ago %>
+  updated_at: <%= 20.days.ago %>
+  user: one
+
+en_updated_en:
+  title: English Updated Recently
+  content: Only this translation was updated recently.
+  locale: en
+  status: published
+  published_at: <%= 20.days.ago %>
+  created_at: <%= 20.days.ago %>
+  updated_at: <%= 1.hour.ago %>
+  user: one
+  original_article: en_updated_ja
+
+en_original_no_translation:
+  title: English Original Without Translation
+  content: This English article has no translation yet.
+  locale: en
+  status: published
+  published_at: <%= 5.days.ago %>
+  created_at: <%= 5.days.ago %>
+  updated_at: <%= 5.days.ago %>
+  user: one
