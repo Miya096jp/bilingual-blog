@@ -11,7 +11,7 @@ class Dashboard::ArticlesController < ApplicationController
                                 .includes(:translation, :category, :tags)
                                 .order(status: :desc, published_at: :desc, created_at: :desc)
                                 .page(params[:page]).per(20)
-    @status_counts = originals.group(:status).count
+    @locale_status_counts = current_user.articles.group(:locale, :status).count
   end
 
   def show

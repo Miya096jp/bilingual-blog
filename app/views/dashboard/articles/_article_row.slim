@@ -2,38 +2,7 @@
 - en_article = article.locale == "en" ? article : article.translation
 
 tr class="border-b border-[#F0F0ED]"
-  td class="px-4 py-3 align-top"
-    - if ja_article
-      div class="flex items-center gap-2 min-h-11"
-        = link_to ja_article.title, dashboard_article_edit_path_for(ja_article, article), class: "font-medium text-[#1B1B19] hover:text-[#2563EB] transition-colors"
-        = dashboard_status_badge(ja_article)
-    - else
-      = link_to new_dashboard_article_translation_path(article), class: "inline-flex items-center gap-1 min-h-11 text-[#2563EB] hover:text-[#1B4FC4] text-sm transition-colors"
-        = lucide_icon 'plus', class: "w-3.5 h-3.5"
-        | 翻訳を作成
-
-  td class="px-4 py-3 align-top"
-    - if en_article
-      div class="flex items-center gap-2 min-h-11"
-        = link_to en_article.title, dashboard_article_edit_path_for(en_article, article), class: "font-medium text-[#1B1B19] hover:text-[#2563EB] transition-colors"
-        = dashboard_status_badge(en_article)
-    - else
-      = link_to new_dashboard_article_translation_path(article), class: "inline-flex items-center gap-1 min-h-11 text-[#2563EB] hover:text-[#1B4FC4] text-sm transition-colors"
-        = lucide_icon 'plus', class: "w-3.5 h-3.5"
-        | 翻訳を作成
-
-  td class="px-4 py-3 align-top text-sm text-[#55554F]"
-    = article.category&.name || "—"
-
-  td class="px-4 py-3 align-top text-sm text-[#55554F]"
-    = (article.published_at || article.created_at).strftime("%m-%d")
-
-  td.px-4.py-3.align-top.text-right
-    div class="relative" data-controller="toggle" data-action="click@window->toggle#hide"
-      button class="inline-flex items-center justify-center w-8 h-8 rounded text-[#55554F] hover:bg-[#F0F0ED] hover:text-[#1B1B19] transition-colors" type="button" aria-label="操作" aria-haspopup="true" data-action="click->toggle#toggle"
-        = lucide_icon 'ellipsis', class: "w-5 h-5"
-      div class="hidden absolute right-0 mt-1 w-44 bg-white border border-[#E4E4E1] rounded-lg shadow-lg z-10" data-toggle-target="content"
-        - if ja_article
-          = link_to "日本語を書き出し", dashboard_article_export_path(ja_article), class: "block px-3 py-2 text-sm text-[#1B1B19] hover:bg-[#F7F7F5] transition-colors"
-        - if en_article
-          = link_to "英語を書き出し", dashboard_article_export_path(en_article), class: "block px-3 py-2 text-sm text-[#1B1B19] hover:bg-[#F7F7F5] transition-colors"
+  td class="px-4 py-[12px] align-top"
+    = render "dashboard/articles/article_cell", article: article, cell_article: ja_article, locale_label: "日本語"
+  td class="px-4 py-[12px] align-top"
+    = render "dashboard/articles/article_cell", article: article, cell_article: en_article, locale_label: "英語"

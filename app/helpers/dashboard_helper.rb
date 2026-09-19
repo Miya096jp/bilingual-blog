@@ -15,4 +15,11 @@ module DashboardHelper
   def dashboard_article_edit_path_for(article, original)
     article.original? ? edit_dashboard_article_path(article) : edit_dashboard_article_translation_path(original)
   end
+
+  # counts: current_user.articles.group(:locale, :status).count の結果
+  def dashboard_locale_summary(counts, locale)
+    published = counts[[ locale, "published" ]] || 0
+    draft = counts[[ locale, "draft" ]] || 0
+    "#{published + draft} 件(公開 #{published}・下書き #{draft})"
+  end
 end
