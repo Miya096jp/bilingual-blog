@@ -1,4 +1,6 @@
 class User < ApplicationRecord
+  include MarkdownRenderable
+
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :confirmable,
          :omniauthable, omniauth_providers: [ :github, :google_oauth2 ]
@@ -11,6 +13,8 @@ class User < ApplicationRecord
   validates :website, format: { with: /\A(http|https):\/\/.+\z/ }, allow_blank: true
   validates :avatar, content_type: [ "image/png", "image/jpeg", "image/webp" ],
                         size: { less_than: 5.megabytes }
+  validates :portrait, content_type: [ "image/png", "image/jpeg", "image/webp" ],
+                        size: { less_than: 5.megabytes }
 
   enum :role, { user: 0, admin: 1 }
   enum :status, { active: 0, suspended: 1, pending: 2 }
@@ -22,6 +26,7 @@ class User < ApplicationRecord
   has_many :likes, dependent: :destroy
 
   has_one_attached :avatar
+  has_one_attached :portrait
 
   before_destroy :purge_avatar
 
@@ -46,6 +51,17 @@ class User < ApplicationRecord
     when "en" then bio_en
     else bio_ja
     end
+  end
+
+  def localized_profile_body(locale = I18n.locale)
+    ja = profile_body_ja
+    en = profile_body_en
+    body = locale.to_s == "en" ? (en.presence || ja) : (ja.presence || en)
+    body.to_s
+  end
+
+  def profile_body_html(locale = I18n.locale)
+    render_markdown(localized_profile_body(locale))
   end
 
   def localized_location(locale = I18n.locale)
