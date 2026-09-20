@@ -2,7 +2,7 @@ Rails.application.routes.draw do
   get "contacts/new"
   get "contacts/create"
 
-  root to: redirect("/ja/u/admin/articles")
+  root to: redirect("/ja")
 
   devise_for :users,
     controllers: {
@@ -17,7 +17,7 @@ Rails.application.routes.draw do
 
 
 scope "/:locale", constraints: { locale: /ja|en/ } do
-  # root "welcome#index"
+  root "welcome#index", as: "welcome"
 
   scope "u" do
     get "/:username/search", to: "search#index", as: :user_search
@@ -56,7 +56,6 @@ namespace :dashboard do
 end
 
 get "/dashboard", to: redirect("/dashboard/articles")
-get "/", to: redirect("/ja")
 # get "about", to: "pages#about", as: :about
 
 namespace :admin do

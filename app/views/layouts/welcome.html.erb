@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dual Pascal — 日本語と英語で、書きためる。</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= display_meta_tags(default_meta_tags) %>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= yield :head %>
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body
+    class="text-lg bg-[#FBFAF8] text-[#1B1B19] min-h-screen flex flex-col"
+    data-controller="auth-modal"
+    data-action="keydown->auth-modal#closeOnEscape"
+    data-auth-modal-sign-in-url-value="<%= new_user_session_path %>"
+  >
+    <header class="border-b border-[#ECEAE5]">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <div class="relative flex items-center justify-end h-16">
+          <%= image_tag "dual-pascal-logo.png", alt: "Dual Pascal", class: "absolute left-1/2 -translate-x-1/2 h-8 w-auto" %>
+
+          <div class="flex items-center gap-3 sm:gap-6">
+            <%= link_to t("welcome.header.about"),
+            about_path(locale: params[:locale]),
+            class: "hidden md:inline-block text-sm text-[#55554F] hover:text-[#1B1B19]" %>
+
+            <% if user_signed_in? %>
+              <%= link_to t("welcome.header.dashboard"),
+              dashboard_articles_path,
+              class: "bg-[#2563EB] text-white rounded-[10px] text-sm font-medium px-5 py-2 hover:opacity-90" %>
+            <% else %>
+              <button
+                type="button"
+                data-action="click->auth-modal#showModal"
+                class="text-sm text-[#55554F] hover:text-[#1B1B19]"
+              >
+                <%= t("welcome.header.login") %>
+              </button>
+              <button
+                type="button"
+                data-action="click->auth-modal#showModal"
+                data-auth-modal-url-param="<%= new_user_registration_path %>"
+                class="hidden md:inline-block bg-[#2563EB] text-white rounded-[10px] text-sm font-medium px-5 py-2 hover:opacity-90"
+              >
+                <%= t("welcome.header.get_started") %>
+              </button>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <% flash.each do |type, message| %>
+      <div class="flash-message text-red-700 p-4 mb-4 max-w-6xl mx-auto text-center">
+        <p><%= message %></p>
+      </div>
+    <% end %>
+
+    <%= render "shared/auth_modal" %>
+
+    <main class="flex-grow pb-[96px]">
+      <%= yield %>
+    </main>
+
+    <footer class="border-t border-[#ECEAE5]">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-[32px] pb-[32px]">
+        <div
+          class="
+            flex flex-col sm:flex-row items-center justify-between gap-4 text-sm
+            text-[#6B6B66]
+          "
+        >
+          <span>Dual Pascal</span>
+          <nav class="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            <%= link_to t("footer.terms"),
+            terms_of_service_path(locale: params[:locale] || I18n.locale),
+            class: "hover:text-[#1B1B19]" %>
+            <%= link_to t("footer.privacy"),
+            privacy_policy_path(locale: params[:locale] || I18n.locale),
+            class: "hover:text-[#1B1B19]" %>
+            <%= link_to t("footer.contact"),
+            new_contact_path(locale: params[:locale] || I18n.locale),
+            class: "hover:text-[#1B1B19]" %>
+          </nav>
+          <span>© <%= Time.current.year %></span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

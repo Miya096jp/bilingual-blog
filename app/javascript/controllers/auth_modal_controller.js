@@ -6,6 +6,13 @@ export default class extends Controller {
 
   showModal(e) {
     if (e) e.preventDefault();
+
+    const url = e?.params?.url;
+    if (url) {
+      const frame = document.getElementById("auth_form_frame");
+      if (frame) frame.src = url;
+    }
+
     this.modalTarget.classList.remove("hidden");
   }
 

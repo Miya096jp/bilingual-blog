@@ -2,6 +2,11 @@
 @import "tailwindcss";
 @import "../stylesheets/layout_switcher.css";
 
+/* トップページの見出し用(明朝体)。#87 のモックの指定 */
+.font-mincho {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+}
+
 .default-theme .theme-header {
   background-color: #f9fafb !important; /* gray-50 */
   color: #374151 !important; /* gray-700 */
