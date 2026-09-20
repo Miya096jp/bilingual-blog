@@ -28,6 +28,12 @@
 #       enabled: "ON"
 
 en:
+  welcome:
+    header:
+      about: "About"
+      login: "Log in"
+      get_started: "Get Started"
+      dashboard: "Go to Dashboard"
   blog:
     category: "Category"
     tags: "Tags"

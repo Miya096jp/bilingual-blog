@@ -1,0 +1,71 @@
+div class="px-4 sm:px-6 pt-[112px] text-center"
+  div class="max-w-3xl mx-auto"
+    h1.font-mincho.text-4xl.sm:text-5xl.font-bold.leading-tight
+      | 日本語と英語で、
+      br
+      | 書きためる。
+    p class="mt-[28px] text-[#55554F]"
+      | 読者の反応や記事の完成度を気にせず、自分のペースで書くための場所です。
+      br
+      | 日本語だけ、英語だけ、日英セット。どれでも構いません。
+
+    div class="mt-[40px] flex flex-col sm:flex-row items-center justify-center gap-3"
+      - if user_signed_in?
+        = link_to t("welcome.header.dashboard"), dashboard_articles_path, class: "bg-[#2563EB] text-white rounded-[10px] font-medium px-8 py-3 hover:opacity-90"
+      - else
+        button type="button" class="bg-[#2563EB] text-white rounded-[10px] font-medium px-8 py-3 hover:opacity-90" data-action="click->auth-modal#showModal" data-auth-modal-url-param="#{new_user_registration_path}"
+          | ブログをはじめる
+        button type="button" class="border border-[#ECEAE5] rounded-[10px] font-medium px-8 py-3 hover:bg-[#ECEAE5]" data-action="click->auth-modal#showModal"
+          = t("welcome.header.login")
+
+    - unless user_signed_in?
+      p class="mt-[16px] text-sm text-[#6B6B66]"
+        | GitHub・Google のアカウントでも登録できます
+
+div class="px-4 sm:px-6 mt-[96px]"
+  div class="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-[28px]"
+    div class="bg-white border border-[#ECEAE5] rounded-[14px] p-[32px]"
+      svg class="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4.5v15m6-15v15M4.5 8.25h4.5m-4.5 7.5h4.5m6-7.5h4.5m-4.5 7.5h4.5"
+      h2 class="font-mincho text-lg font-bold mt-[14px]" 日英をセットで持てる
+      p class="mt-[10px] text-sm text-[#55554F]"
+        | 記事は日本語と英語を紐づけて管理できます。片方だけ書いて、あとから翻訳を足しても構いません。
+
+    div class="bg-white border border-[#ECEAE5] rounded-[14px] p-[32px]"
+      svg class="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 12l8.954-8.955a1.5 1.5 0 012.122 0L22.28 12M4.5 9.75V21a.75.75 0 00.75.75H9.75v-6a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v6h4.5a.75.75 0 00.75-.75V9.75"
+      h2 class="font-mincho text-lg font-bold mt-[14px]" 自分だけのブログ
+      p class="mt-[10px] text-sm text-[#55554F]"
+        | ユーザーごとに独立したブログを持てます。タイムラインやおすすめ表示はありません。
+
+    div class="bg-white border border-[#ECEAE5] rounded-[14px] p-[32px]"
+      svg class="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+      h2 class="font-mincho text-lg font-bold mt-[14px]" 書くことに集中できる
+      p class="mt-[10px] text-sm text-[#55554F]"
+        | Markdown で書き、プレビューを見ながら整えます。下書きのまま、ためておけます。
+
+- if @articles.present?
+  div class="px-4 sm:px-6 mt-[96px]"
+    div class="max-w-3xl mx-auto"
+      .flex.items-baseline.gap-3
+        h2.font-mincho.text-2xl.font-bold はじめに読む
+        span class="text-sm text-[#6B6B66]" 運営者が書いた、このサービスの使い方や成り立ち
+
+      ul class="mt-[20px] divide-y divide-[#ECEAE5] border-t border-b border-[#ECEAE5]"
+        - @articles.each do |article|
+          li class="py-[24px]"
+            = link_to user_article_path(@operator.username, article.id, locale: "ja"), class: "flex items-center justify-between gap-4 hover:text-[#2563EB]" do
+              span.font-medium= article.title
+              span class="text-sm text-[#6B6B66] whitespace-nowrap"= l(article.published_at, format: :blog_date)
+
+      p class="mt-[20px] text-right"
+        = link_to "運営者のブログを見る →", user_articles_path(@operator.username, locale: "ja"), class: "text-[#2563EB] hover:underline text-sm"
+
+- unless user_signed_in?
+  div class="px-4 sm:px-6 mt-[96px] text-center"
+    div class="max-w-3xl mx-auto"
+      h2.font-mincho.text-2xl.sm:text-3xl.font-bold まず1本、下書きから。
+      .mt-6
+        button type="button" class="bg-[#2563EB] text-white rounded-[10px] font-medium px-8 py-3 hover:opacity-90" data-action="click->auth-modal#showModal" data-auth-modal-url-param="#{new_user_registration_path}"
+          | ブログをはじめる

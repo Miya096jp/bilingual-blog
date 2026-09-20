@@ -1,0 +1,40 @@
+div class="px-4 sm:px-6 pt-[112px] text-center"
+  div class="max-w-3xl mx-auto"
+    h1.font-mincho.text-4xl.sm:text-5xl.font-bold.leading-tight
+      | Write, at your own pace,
+      br
+      | in Japanese and English.
+    p class="mt-[28px] text-[#55554F]"
+      | A place to write without worrying about readers' reactions or how finished a post is.
+      br
+      | Japanese only, English only, or both — whatever works for you.
+
+    div class="mt-[40px] flex flex-col sm:flex-row items-center justify-center gap-3"
+      - if user_signed_in?
+        = link_to t("welcome.header.dashboard"), dashboard_articles_path, class: "bg-[#2563EB] text-white rounded-[10px] font-medium px-8 py-3 hover:opacity-90"
+      - else
+        button type="button" class="bg-[#2563EB] text-white rounded-[10px] font-medium px-8 py-3 hover:opacity-90" data-action="click->auth-modal#showModal" data-auth-modal-url-param="#{new_user_registration_path}"
+          | Start your blog
+        button type="button" class="border border-[#ECEAE5] rounded-[10px] font-medium px-8 py-3 hover:bg-[#ECEAE5]" data-action="click->auth-modal#showModal"
+          = t("welcome.header.login")
+
+    - unless user_signed_in?
+      p class="mt-[16px] text-sm text-[#6B6B66]"
+        | You can also sign up with your GitHub or Google account
+
+- if @articles.present?
+  div class="px-4 sm:px-6 mt-[96px]"
+    div class="max-w-3xl mx-auto"
+      .flex.items-baseline.gap-3
+        h2.font-mincho.text-2xl.font-bold Start here
+        span class="text-sm text-[#6B6B66]" Written by the operator, on using and building this service
+
+      ul class="mt-[20px] divide-y divide-[#ECEAE5] border-t border-b border-[#ECEAE5]"
+        - @articles.each do |article|
+          li class="py-[24px]"
+            = link_to user_article_path(@operator.username, article.id, locale: "en"), class: "flex items-center justify-between gap-4 hover:text-[#2563EB]" do
+              span.font-medium= article.title
+              span class="text-sm text-[#6B6B66] whitespace-nowrap"= l(article.published_at, format: :blog_date)
+
+      p class="mt-[20px] text-right"
+        = link_to "See the operator's blog →", user_articles_path(@operator.username, locale: "en"), class: "text-[#2563EB] hover:underline text-sm"

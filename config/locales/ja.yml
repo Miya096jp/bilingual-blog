@@ -1,4 +1,10 @@
 ja:
+  welcome:
+    header:
+      about: "このサービスについて"
+      login: "ログイン"
+      get_started: "はじめる"
+      dashboard: "ダッシュボードへ"
   blog:
     category: "カテゴリ"
     tags: "タグ"
