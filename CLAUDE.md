@@ -28,12 +28,37 @@ Dual Pascalは、読者の反応や記事の完成度を意識せず、日本語
 - **開発スタックの起動**: `docker compose up`（Postgres 16 がホスト側ポート5433、Railsが3000番ポート）
 - **Rails サーバー**: `docker-compose.yml` の `web` サービスが起動時に自動で `bundle exec rails server` を実行する
 - **CSSのビルド（watch）**: `docker compose exec web bin/rails "tailwindcss:watch[always]"`。`docker compose up` の `web` は `rails server` のみを起動しており、Tailwind CSSのwatchは自動起動されない。**CSSの変更を反映するには、別ターミナルでこのコマンドを起動しておく必要がある。** `[always]` を付けないと、`docker compose exec` はTTYなしのセッションになりビルドを1回実行しただけでプロセスが終了してしまう（実際に検証済み）。ファイル変更の検知自体はポーリング不要で機能する。
-- **テスト**: `docker compose exec web bin/rails test` / `bin/rails test:system`（minitest、system testsはCapybara + Selenium）
+- **テスト**: `docker compose exec web bin/rails test`（minitest）。注意点・PR前の確認手順は本セクション末尾の「テスト」を参照
 - **Lint**: `docker compose exec web bin/rubocop`（rubocop-rails-omakaseベース、`.rubocop.yml` 参照）
-- **セキュリティスキャン**: `docker compose exec web bin/brakeman`
+- **セキュリティスキャン**: `docker compose exec web bundle exec brakeman --no-pager`（`bin/brakeman` は `--ensure-latest` を付けるため、警告がなくても終了コード5で失敗する。使わないこと）
 - **DB**: `docker compose exec web bin/rails db:prepare` / `db:migrate` / `db:seed`
 
-CI は未設定（`.github/` には `dependabot.yml` のみ）。JSのパッケージマネージャーによるビルドフローもない — `package.json` は devDependencyが1つあるだけでscriptsは無く、フロントエンド資産は `importmap-rails` と `tailwindcss-rails` gem経由で配信される。
+CI は `.github/workflows/ci.yml` で設定済み（`test`/`lint`/`security`の3ジョブがpull requestとmainへのpushで走り、mainへのpushでCI成功後に`build`/`deploy`が続く）。JSのパッケージマネージャーによるビルドフローはない — `package.json` は devDependencyが1つあるだけでscriptsは無く、フロントエンド資産は `importmap-rails` と `tailwindcss-rails` gem経由で配信される。
+
+### テスト
+
+- `bin/rails test` が単体・結合テストを実行する。CI が回しているのもこれ。
+  変更を確認するときはこのコマンドを使う。
+- **`bin/rails test:system` は実行しないこと。** 開発用の Docker イメージに
+  ブラウザが入っていないため、`Errno::ECONNREFUSED`(chromedriver への接続拒否)
+  で必ず失敗する。テスト対象のコードの不具合ではなく、環境の制約である。
+- system test は CI のワークフローにも含まれていない。`test/system/` 以下の
+  ファイルは現状どこでも実行されておらず、通るかどうかは不明な状態にある。
+- 他の作業のついでに Dockerfile へブラウザを追加したり、CI のワークフローを
+  変更したりしないこと。system test を実行できるようにする作業は、独立した
+  Issue として管理している。
+- 変更内容が E2E の確認を必要とすると判断した場合は、実行されない system test を
+  追加するのではなく、プルリクエストの説明にその旨を書くこと。
+
+プルリクエストを作成する前に、次を実行して確認する。
+
+    bin/rails test
+    bundle exec rubocop
+    bundle exec brakeman --no-pager
+
+`bin/brakeman` ではなく `bundle exec brakeman --no-pager` を使う。
+`bin/brakeman` は `--ensure-latest` を付けるため、警告がなくても
+終了コード 5 で失敗する。
 
 ## アーキテクチャ
 
