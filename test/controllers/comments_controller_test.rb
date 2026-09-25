@@ -38,14 +38,25 @@ class CommentsControllerTest < ActionDispatch::IntegrationTest
     assert flash[:alert].present?
   end
 
-  test "存在しない記事IDの場合にサーバーエラーにならない" do
+  test "存在しない記事IDの場合は404になる" do
     assert_no_difference("Comment.count") do
       post article_comments_path(@article.user.username, -1, locale: "ja"), params: {
         comment: { author_name: "テスト太郎", content: "テストコメント本文" }
       }
     end
 
-    assert_response :redirect
-    assert flash[:alert].present?
+    assert_response :not_found
+  end
+
+  test "未公開記事に対してコメントを投稿すると404になり、コメントも作成されない" do
+    draft = articles(:draft_ja)
+
+    assert_no_difference("Comment.count") do
+      post article_comments_path(draft.user.username, draft, locale: "ja"), params: {
+        comment: { author_name: "テスト太郎", content: "テストコメント本文" }
+      }
+    end
+
+    assert_response :not_found
   end
 end

@@ -16,7 +16,7 @@ class ArticlesController < ApplicationController
   end
 
   def show
-    @article = Article.find(params[:id])
+    @article = @blog_owner.articles.visible_to(current_user).find(params[:id])
     @comment = Comment.new
   end
 

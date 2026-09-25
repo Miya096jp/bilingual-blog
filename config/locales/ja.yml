@@ -9,6 +9,7 @@ ja:
     category: "カテゴリ"
     tags: "タグ"
     published_at: "投稿日"
+    draft_preview_notice: "下書きをプレビュー中です。この記事は公開されていません。"
     updated_at: "最終更新日"
     translation: "翻訳"
     more_stories: "その他の記事"
