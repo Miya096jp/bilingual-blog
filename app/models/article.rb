@@ -33,6 +33,13 @@ class Article < ApplicationRecord
   after_create :assign_pending_tags
   before_validation :set_default_description
 
+  scope :visible_to, ->(user) {
+    if user
+      published.or(where(user_id: user.id))
+    else
+      published
+    end
+  }
   scope :by_locale, ->(locale) { where(locale: locale) }
   scope :by_category, ->(category_id) { where(category_id: category_id) if category_id.present? }
   scope :by_tags, ->(tag_id, user) { joins(:tags).where(tags: { id: tag_id, user: user }) if tag_id.present? }

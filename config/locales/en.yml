@@ -38,6 +38,7 @@ en:
     category: "Category"
     tags: "Tags"
     published_at: "Published"
+    draft_preview_notice: "Previewing draft. This article is not published."
     updated_at: "Updated"
     translation: "Translation"
     more_stories: "More Stories"
