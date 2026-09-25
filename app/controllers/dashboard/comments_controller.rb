@@ -24,6 +24,6 @@ class Dashboard::CommentsController < ApplicationController
   private
 
   def set_comment
-    @comment = Comment.find(params[:id])
+    @comment = Comment.joins(:article).where(articles: { user_id: current_user.id }).find(params[:id])
   end
 end
