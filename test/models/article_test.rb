@@ -184,6 +184,22 @@ class ArticleTest < ActiveSupport::TestCase
     assert_not_includes published_articles, articles(:test_article)
   end
 
+  test "visible_to scope should include published articles for anyone" do
+    assert_includes Article.visible_to(nil), articles(:published_ja)
+    assert_includes Article.visible_to(users(:one)), articles(:published_ja)
+  end
+
+  test "visible_to scope should include the owner's own draft" do
+    draft = articles(:draft_ja)
+    assert_includes Article.visible_to(draft.user), draft
+  end
+
+  test "visible_to scope should exclude other users' drafts" do
+    draft = articles(:draft_ja)
+    assert_not_includes Article.visible_to(users(:one)), draft
+    assert_not_includes Article.visible_to(nil), draft
+  end
+
   test "by_locale scope should filter by locale correctly" do
     ja_articles = Article.by_locale("ja")
     assert ja_articles.all? { |a| a.locale == "ja" }
