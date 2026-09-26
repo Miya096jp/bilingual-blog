@@ -61,6 +61,27 @@ class ArticlesControllerTest < ActionDispatch::IntegrationTest
     assert_no_match draft.title, response.body
   end
 
+  test "所有者本人が自分の未公開記事を表示したときは、いいねボタンとコメント欄が表示されない" do
+    article = articles(:draft_ja)
+    sign_in article.user
+
+    get user_article_path(article.user.username, article, locale: "ja")
+
+    assert_response :success
+    assert_select "#like_button_#{article.id}", count: 0
+    assert_select ".comment-section", count: 0
+    assert_select "form[action=?]", article_comments_path(article.user.username, article, locale: "ja"), count: 0
+  end
+
+  test "公開済みの記事には、いいねボタンとコメント欄が表示される" do
+    article = articles(:published_ja)
+
+    get user_article_path(article.user.username, article, locale: "ja")
+
+    assert_select "#like_button_#{article.id}"
+    assert_select "form[action=?]", article_comments_path(article.user.username, article, locale: "ja")
+  end
+
   test "コメント投稿者のWebサイトへのリンクにはrel=\"nofollow ugc noopener\"が付く" do
     article = articles(:published_ja)
     comment = comments(:one)

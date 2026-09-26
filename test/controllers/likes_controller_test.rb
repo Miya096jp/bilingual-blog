@@ -58,4 +58,25 @@ class LikesControllerTest < ActionDispatch::IntegrationTest
       post user_article_likes_path(@article.user.username, @article, locale: "ja")
     end
   end
+
+  test "未公開記事へのいいねは404になり、Likeも作成されない" do
+    draft = articles(:draft_ja)
+
+    assert_no_difference("Like.count") do
+      post user_article_likes_path(draft.user.username, draft, locale: "ja")
+    end
+
+    assert_response :not_found
+  end
+
+  test "所有者本人でも自分の未公開記事へのいいねは404になる" do
+    draft = articles(:draft_ja)
+    sign_in draft.user
+
+    assert_no_difference("Like.count") do
+      post user_article_likes_path(draft.user.username, draft, locale: "ja")
+    end
+
+    assert_response :not_found
+  end
 end

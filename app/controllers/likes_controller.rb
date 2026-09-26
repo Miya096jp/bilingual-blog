@@ -27,7 +27,7 @@ class LikesController < ApplicationController
   private
 
   def set_article
-    @article = Article.find(params[:article_id])
+    @article = Article.published.find(params[:article_id])
   end
 
   def new_like_attributes
