@@ -117,7 +117,6 @@ class UmamiApiService
   def self.configure_http(uri)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE  # SSL検証を無効化
     http.open_timeout = 15
     http.read_timeout = 15
     http
