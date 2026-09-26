@@ -59,9 +59,10 @@
     article.article-content
       = @article.content_html
     
-    / いいねボタン（右下配置）
-    .flex.justify-end.mt-8
-      = render 'shared/like_button', article: @article, display_style: 'block'
+    / いいねボタン（右下配置）。下書きにはいいねできないため表示しない
+    - if @article.published?
+      .flex.justify-end.mt-8
+        = render 'shared/like_button', article: @article, display_style: 'block'
 
 .section-divider.my-16.max-w-5xl.mx-auto.text-center
   .flex.items-center.justify-center.gap-4
@@ -69,36 +70,42 @@
     span.text-sm.italic.text-gray-600.px-4 End of the article
     .border-t.border-gray-600.flex-1
 
-.comment-section
-  .comments.max-w-5xl.mx-auto
-    - if @article.comments.exists?
-      - @article.comments.order(created_at: :desc).each.with_index(1) do |comment, index|
-        .comment.mb-8.pb-4.border-b.border-gray-500
-          p.mb-2.font-semibold
-            = t('comments.number', number: index)
-          .mb-2
-            - if comment.website.present?
-              = link_to comment.author_name, comment.website, target: "_blank"
-            - else
-              = comment.author_name
-          p.text-sm.text-gray-500.mb-2= comment.created_at.strftime('%Y年%m月%d日 %H:%M')
-          .text-gray-700= simple_format(comment.content)
-    - else
-      p= t('comments.none')
+/ 下書きにはコメントできないため、コメント欄を表示しない
+- if @article.published?
+  .comment-section
+    .comments.max-w-5xl.mx-auto
+      - if @article.comments.exists?
+        - @article.comments.order(created_at: :desc).each.with_index(1) do |comment, index|
+          .comment.mb-8.pb-4.border-b.border-gray-500
+            p.mb-2.font-semibold
+              = t('comments.number', number: index)
+            .mb-2
+              - if comment.website.present?
+                = link_to comment.author_name, comment.website, target: "_blank", rel: "nofollow ugc noopener"
+              - else
+                = comment.author_name
+            p.text-sm.text-gray-500.mb-2= comment.created_at.strftime('%Y年%m月%d日 %H:%M')
+            .text-gray-700= simple_format(comment.content)
+      - else
+        p= t('comments.none')
   
-  .comment-form.max-w-5xl.mx-auto.py-8
-    = form_with model: Comment.new, url: article_comments_path(@article.user.username, @article.id), local: true do |f|
-      / .flex.flex-col.w-1/2.mb-2
-      .flex.flex-col.w-full.md:w-1/2.mb-2
-        = f.label :author_name, "#{t('comments.author_name')}:", class: "mb-2"
-        = f.text_field :author_name, required: true, class: "border-0 border-b border-gray-600 focus:outline-none"
-      / .flex.flex-col.w-1/2.mb-2
-      .flex.flex-col.w-full.md:w-1/2.mb-2
-        = f.label :website, "#{t('comments.website')}:", class: "mb-2"
-        = f.url_field :website, class: "border-0 border-b border-gray-600 focus:outline-none"
-      / .flex.flex-col.w-1/2.mb-2
-      .flex.flex-col.w-full.md:w-1/2.mb-2
-        = f.label :content, "#{t('comments.content')}:", class: "mb-2"
-        = f.text_area :content, rows: 5, required: true, class: "border border-gray-600 focus:outline-none"
+    .comment-form.max-w-5xl.mx-auto.py-8
+      = form_with model: Comment.new, url: article_comments_path(@article.user.username, @article.id), local: true do |f|
+        / .flex.flex-col.w-1/2.mb-2
+        .flex.flex-col.w-full.md:w-1/2.mb-2
+          = f.label :author_name, "#{t('comments.author_name')}:", class: "mb-2"
+          = f.text_field :author_name, required: true, class: "border-0 border-b border-gray-600 focus:outline-none"
+        / .flex.flex-col.w-1/2.mb-2
+        .flex.flex-col.w-full.md:w-1/2.mb-2
+          = f.label :website, "#{t('comments.website')}:", class: "mb-2"
+          = f.url_field :website, class: "border-0 border-b border-gray-600 focus:outline-none"
+        / .flex.flex-col.w-1/2.mb-2
+        .flex.flex-col.w-full.md:w-1/2.mb-2
+          = f.label :content, "#{t('comments.content')}:", class: "mb-2"
+          = f.text_area :content, rows: 5, required: true, class: "border border-gray-600 focus:outline-none"
       
-      = f.submit t('comments.submit'), class: "px-4 py-2 border border-gray-300 bg-white cursor-pointer text-base rounded hover:bg-gray-200 transition-colors"
+        div class="absolute -left-[9999px] w-px h-px overflow-hidden" aria-hidden="true"
+          = f.label :homepage, "Homepage"
+          = f.text_field :homepage, tabindex: "-1", autocomplete: "off"
+
+        = f.submit t('comments.submit'), class: "px-4 py-2 border border-gray-300 bg-white cursor-pointer text-base rounded hover:bg-gray-200 transition-colors"
