@@ -175,4 +175,29 @@ class Dashboard::ArticlesControllerTest < ActionDispatch::IntegrationTest
     assert_match "条件に合う記事がありません", response.body
     assert_select "a[href=?]", dashboard_articles_path, text: "絞り込みを解除"
   end
+
+  test "カバー画像をファイルでアップロードできる" do
+    sign_in @user
+    article = articles(:published_ja)
+    file = fixture_file_upload("portrait.png", "image/png")
+
+    patch dashboard_article_path(article), params: { article: { cover_image: file } }
+
+    assert_redirected_to dashboard_articles_path
+    assert article.reload.cover_image.attached?
+  end
+
+  test "カバー画像にsigned_idの文字列を送っても添付されない" do
+    sign_in @user
+    article = articles(:published_ja)
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: File.open(file_fixture("portrait.png")),
+      filename: "portrait.png",
+      content_type: "image/png"
+    )
+
+    patch dashboard_article_path(article), params: { article: { cover_image: blob.signed_id } }
+
+    assert_not article.reload.cover_image.attached?
+  end
 end
