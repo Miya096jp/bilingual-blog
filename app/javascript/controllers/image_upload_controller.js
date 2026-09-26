@@ -57,7 +57,7 @@ export default class extends Controller {
     textarea.focus();
     textarea.setSelectionRange(
       cursorPos + markdown.length,
-      cursorPos * markdown.length,
+      cursorPos + markdown.length,
     );
 
     textarea.dispatchEvent(new Event("input"));
