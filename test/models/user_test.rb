@@ -225,4 +225,28 @@ class UserTest < ActiveSupport::TestCase
     assert_not user.valid?
     assert user.errors[:portrait].any?
   end
+
+  test "should purge avatar and portrait when user is destroyed" do
+    user = users(:one)
+    user.avatar.attach(io: StringIO.new("png-data"), filename: "avatar.png", content_type: "image/png")
+    user.portrait.attach(io: StringIO.new("png-data"), filename: "portrait.png", content_type: "image/png")
+    user.save!
+    avatar_blob_id = user.avatar.blob.id
+    portrait_blob_id = user.portrait.blob.id
+
+    assert_difference "ActiveStorage::Blob.count", -2 do
+      user.destroy
+    end
+    assert_not ActiveStorage::Blob.exists?(avatar_blob_id)
+    assert_not ActiveStorage::Blob.exists?(portrait_blob_id)
+  end
+
+  test "should destroy user without attachments" do
+    user = users(:one)
+    assert_not user.avatar.attached?
+    assert_not user.portrait.attached?
+
+    assert_nothing_raised { user.destroy }
+    assert user.destroyed?
+  end
 end
