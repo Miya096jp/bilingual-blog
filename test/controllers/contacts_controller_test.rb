@@ -56,4 +56,20 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to new_contact_path(locale: "ja")
   end
+
+  test "GET /contacts/create にパラメータを付けてアクセスしても、Contactが作成されずメールも送信されない" do
+    assert_no_difference("Contact.count") do
+      assert_emails 0 do
+        get "/contacts/create", params: @valid_params
+      end
+    end
+
+    assert_response :not_found
+  end
+
+  test "ロケールの付かない GET /contacts/new は応答しない" do
+    get "/contacts/new"
+
+    assert_response :not_found
+  end
 end
