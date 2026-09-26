@@ -31,6 +31,10 @@ class RackAttackTest < ActionDispatch::IntegrationTest
   }.freeze
 
   setup do
+    # Rack::Attack は時刻を period で区切って数えるため、送信の途中で区切りをまたぐと回数がリセットされる。
+    # 時刻を止めて、テスト中のリクエストがすべて同じ区切りで数えられるようにする。
+    freeze_time
+
     @original_store = Rack::Attack.cache.store
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
 
