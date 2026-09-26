@@ -36,6 +36,10 @@ export default class extends Controller {
       .then((response) => response.json())
       .then((data) => {
         console.log("Data received:", data);
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
         if (data.url) {
           this.insertImageMarkdown(data.url, file.name);
         }
