@@ -60,6 +60,17 @@ class PurgeUnreferencedImagesJobTest < ActiveJob::TestCase
     assert ActiveStorage::Blob.exists?(unused_image.id)
   end
 
+  test "既に削除済みの画像への参照が本文にあっても、使われていない画像は削除される" do
+    deleted_image = create_blob(created_at: 8.days.ago)
+    articles(:draft_ja).update!(content: image_markdown(deleted_image))
+    deleted_image.purge
+    unused_image = create_blob(created_at: 8.days.ago)
+
+    PurgeUnreferencedImagesJob.perform_now
+
+    assert_not ActiveStorage::Blob.exists?(unused_image.id)
+  end
+
   private
 
   def create_blob(created_at:)
@@ -75,7 +86,7 @@ class PurgeUnreferencedImagesJobTest < ActiveJob::TestCase
   # Dashboard::ImagesController#create が本文に埋め込ませる URL と同じ形式
   def image_markdown(blob)
     variant = blob.variant(UnreferencedImageFinder::BODY_IMAGE_VARIANT)
-    url = Rails.application.routes.url_helpers.url_for(variant, host: "dualpascal.com", protocol: "https")
+    url = Rails.application.routes.url_helpers.polymorphic_url(variant, host: "dualpascal.com", protocol: "https")
     "![#{blob.filename}](#{url})"
   end
 end
