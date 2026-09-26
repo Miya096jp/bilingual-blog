@@ -41,9 +41,9 @@ class Rack::Attack
     end
   end
 
-  self.throttled_response = lambda do |env|
+  self.throttled_responder = lambda do |request|
     now = Time.current
-    match_data = env["rack.attack.match_data"]
+    match_data = request.env["rack.attack.match_data"]
     reset_time = match_data[:period] - (now.to_i % match_data[:period])
 
     [
