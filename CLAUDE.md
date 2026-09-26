@@ -72,7 +72,7 @@ RailsのUI文字列のi18n（`config/locales/ja.yml`, `config/locales/en.yml`）
 
 **フロントエンド。** Hotwire (Turbo + Stimulus) を使用し、React/Vueなし、JSバンドラーなし — Stimulusコントローラーは `app/javascript/controllers/` にある（例: `auth_modal_controller.js`、`markdown_preview_controller.js`、`layout_switcher_controller.js`、`theme_controller.js`）。
 
-**ストレージ。** `config/storage.yml` は開発環境向けの `local` ディスクストレージと、本番の画像/カバー画像アップロード向けのCloudflare R2（S3互換、`CLOUDFLARE_R2_*` 環境変数経由）を定義している。本番のシークレットの置き場所については「本番環境・デプロイ」セクションを参照。
+**ストレージ。** `config/storage.yml` は開発環境向けの `local` ディスクストレージと、本番の画像/カバー画像アップロード向けのCloudflare R2（S3互換、`CLOUDFLARE_R2_*` 環境変数経由）を定義している。本番のシークレットの置き場所については「本番環境・デプロイ」セクションを参照。本文に貼り付けた画像は定期ジョブ（`PurgeUnreferencedImagesJob`、判定は `app/services/unreferenced_image_finder.rb`）が本文を検索して削除を判定している。本文を保存するカラムを追加したら、検索対象に加えること。
 
 **過去の開発ログ。** `docs/dev_log.md` は日本語で書かれた開発記録だが、現在は更新していない（過去の記録として残している）。今後の決定事項や作業記録は上記の通りGitHubのIssue/PRに残す。
 
