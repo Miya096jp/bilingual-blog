@@ -10,7 +10,7 @@ class ProfilesController < ApplicationController
   private
 
   def set_blog_owner
-    @blog_owner = User.find_by!(username: params[:username])
+    @blog_owner = User.not_suspended.find_by!(username: params[:username])
   rescue ActiveRecord::RecordNotFound
     redirect_to root_path(locale: params[:locale]), alert: "ユーザーが見つかりません"
   end

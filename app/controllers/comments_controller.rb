@@ -1,6 +1,6 @@
 class CommentsController < ApplicationController
   def create
-    @article = Article.published.find(params[:article_id])
+    @article = Article.published.where(user: User.not_suspended).find(params[:article_id])
 
     if honeypot_filled?
       redirect_to user_article_path(@article.user.username, @article.id, locale: params[:locale]), notice: comment_created_message

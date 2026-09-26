@@ -27,7 +27,7 @@ class LikesController < ApplicationController
   private
 
   def set_article
-    @article = Article.published.find(params[:article_id])
+    @article = Article.published.where(user: User.not_suspended).find(params[:article_id])
   end
 
   def new_like_attributes

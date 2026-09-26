@@ -92,6 +92,15 @@ class User < ApplicationRecord
     update(status: :active)
   end
 
+  # Deviseはリクエストのたびにこれを確認するため、ログイン中に停止されたユーザーも次の操作でログアウトされる
+  def active_for_authentication?
+    super && !suspended?
+  end
+
+  def inactive_message
+    suspended? ? :suspended : super
+  end
+
   def self.from_omniauth(auth)
     user = where(email: auth.info.email).first
 

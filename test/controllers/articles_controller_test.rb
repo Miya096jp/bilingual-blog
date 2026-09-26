@@ -98,4 +98,29 @@ class ArticlesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "[aria-hidden=true] input[name=?][tabindex=?][autocomplete=?]", "comment[homepage]", "-1", "off"
   end
+
+  test "停止中のユーザーの記事一覧・記事詳細は、存在しないユーザーと同じ扱いになる" do
+    article = articles(:published_ja)
+    article.user.suspend!
+
+    get user_articles_path(article.user.username, locale: "ja")
+    assert_redirected_to root_path(locale: "ja")
+    assert_equal "ユーザーが見つかりません", flash[:alert]
+
+    get user_article_path(article.user.username, article, locale: "ja")
+    assert_redirected_to root_path(locale: "ja")
+    assert_equal "ユーザーが見つかりません", flash[:alert]
+  end
+
+  test "停止を解除すると、記事一覧・記事詳細が元どおり表示される" do
+    article = articles(:published_ja)
+    article.user.suspend!
+    article.user.restore!
+
+    get user_articles_path(article.user.username, locale: "ja")
+    assert_response :success
+
+    get user_article_path(article.user.username, article, locale: "ja")
+    assert_response :success
+  end
 end

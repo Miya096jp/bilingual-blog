@@ -70,4 +70,16 @@ class CommentsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to user_article_path(@article.user.username, @article, locale: "ja")
     assert_equal "コメントを投稿しました", flash[:notice]
   end
+
+  test "停止中のユーザーの記事にはコメントできず、404になる" do
+    @article.user.suspend!
+
+    assert_no_difference("Comment.count") do
+      post article_comments_path(@article.user.username, @article, locale: "ja"), params: {
+        comment: { author_name: "テスト太郎", content: "テストコメント本文" }
+      }
+    end
+
+    assert_response :not_found
+  end
 end

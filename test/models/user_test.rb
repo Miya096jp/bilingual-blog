@@ -76,6 +76,24 @@ class UserTest < ActiveSupport::TestCase
     assert_not user.suspended?
   end
 
+  test "停止中のユーザーは認証の対象外になり、停止中である旨のメッセージキーを返す" do
+    user = users(:suspended)
+
+    assert_not user.active_for_authentication?
+    assert_equal :suspended, user.inactive_message
+  end
+
+  test "停止していないユーザーは認証の対象になる" do
+    assert users(:blogger).active_for_authentication?
+  end
+
+  test "停止を解除すると認証の対象に戻る" do
+    user = users(:suspended)
+    user.restore!
+
+    assert user.active_for_authentication?
+  end
+
   test "unconfirmed user should not be confirmed" do
     user = users(:unconfirmed)
     assert_nil user.confirmed_at
