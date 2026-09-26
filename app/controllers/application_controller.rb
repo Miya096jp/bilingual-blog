@@ -4,14 +4,8 @@ class ApplicationController < ActionController::Base
   before_action :set_blog_setting
   before_action :configure_permitted_parameters, if: :devise_controller?
 
-  # skip_before_action :verify_authenticity_token
-
-  # protect_from_forgery with: :exception
-
-  # Devise関連のみCSRF検証をスキップ
-  skip_before_action :verify_authenticity_token, if: :devise_controller?
-  protect_from_forgery with: :exception, unless: :devise_controller?
-
+  protect_from_forgery with: :exception, prepend: true
+  rescue_from ActionController::InvalidAuthenticityToken, with: :handle_invalid_authenticity_token
 
   def set_locale
     if request.path.start_with?("/dashboard") || request.path.start_with?("/admin")
@@ -59,6 +53,14 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  # ログイン画面を開いたまま時間が経つなどしてトークンが古くなった場合に、
+  # 汎用の422ページではなく、理由が分かる形でトップへ戻す
+  def handle_invalid_authenticity_token(exception)
+    raise exception unless devise_controller?
+
+    redirect_to root_path(locale: I18n.locale), alert: "ページの有効期限が切れました。もう一度お試しください。", status: :see_other
+  end
 
   def visitor_token
     cookies.signed[:visitor_token]
