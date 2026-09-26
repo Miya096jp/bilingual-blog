@@ -38,4 +38,76 @@ class RackAttackTest < ActionDispatch::IntegrationTest
 
     assert_response :too_many_requests
   end
+
+  test "新規登録は上限内であれば制限されない" do
+    assert_difference("User.count", 10) do
+      10.times { |i| post user_registration_path, params: sign_up_params(i) }
+    end
+
+    assert_response :redirect
+  end
+
+  test "新規登録が上限を超えると429になり、Userも作成されない" do
+    10.times { |i| post user_registration_path, params: sign_up_params(i) }
+
+    assert_no_difference("User.count") do
+      post user_registration_path, params: sign_up_params(10)
+    end
+
+    assert_response :too_many_requests
+  end
+
+  test "パスワード再設定の依頼は上限内であれば制限されない" do
+    assert_emails 5 do
+      5.times do
+        post user_password_path, params: { user: { email: users(:one).email } }
+        assert_response :redirect
+      end
+    end
+  end
+
+  test "パスワード再設定の依頼が上限を超えると429になり、メールも送信されない" do
+    5.times { post user_password_path, params: { user: { email: users(:one).email } } }
+
+    assert_no_emails do
+      post user_password_path, params: { user: { email: users(:one).email } }
+    end
+
+    assert_response :too_many_requests
+  end
+
+  test "確認メールの再送は上限内であれば制限されない" do
+    user = users(:unconfirmed)
+
+    assert_emails 5 do
+      5.times do
+        post user_confirmation_path, params: { user: { email: user.email } }
+        assert_response :redirect
+      end
+    end
+  end
+
+  test "確認メールの再送が上限を超えると429になり、メールも送信されない" do
+    user = users(:unconfirmed)
+    5.times { post user_confirmation_path, params: { user: { email: user.email } } }
+
+    assert_no_emails do
+      post user_confirmation_path, params: { user: { email: user.email } }
+    end
+
+    assert_response :too_many_requests
+  end
+
+  private
+
+  def sign_up_params(index)
+    {
+      user: {
+        username: "newuser#{index}",
+        email: "newuser#{index}@example.com",
+        password: "password123",
+        password_confirmation: "password123"
+      }
+    }
+  end
 end
