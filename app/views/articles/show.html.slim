@@ -78,7 +78,7 @@
             = t('comments.number', number: index)
           .mb-2
             - if comment.website.present?
-              = link_to comment.author_name, comment.website, target: "_blank"
+              = link_to comment.author_name, comment.website, target: "_blank", rel: "nofollow ugc noopener"
             - else
               = comment.author_name
           p.text-sm.text-gray-500.mb-2= comment.created_at.strftime('%Y年%m月%d日 %H:%M')
@@ -101,4 +101,8 @@
         = f.label :content, "#{t('comments.content')}:", class: "mb-2"
         = f.text_area :content, rows: 5, required: true, class: "border border-gray-600 focus:outline-none"
       
+      div class="absolute -left-[9999px] w-px h-px overflow-hidden" aria-hidden="true"
+        = f.label :homepage, "Homepage"
+        = f.text_field :homepage, tabindex: "-1", autocomplete: "off"
+
       = f.submit t('comments.submit'), class: "px-4 py-2 border border-gray-300 bg-white cursor-pointer text-base rounded hover:bg-gray-200 transition-colors"

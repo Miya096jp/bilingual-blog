@@ -60,4 +60,21 @@ class ArticlesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_no_match draft.title, response.body
   end
+
+  test "コメント投稿者のWebサイトへのリンクにはrel=\"nofollow ugc noopener\"が付く" do
+    article = articles(:published_ja)
+    comment = comments(:one)
+
+    get user_article_path(article.user.username, article, locale: "ja")
+
+    assert_select "a[href=?][rel=?]", comment.website, "nofollow ugc noopener", text: comment.author_name
+  end
+
+  test "コメントフォームのハニーポット欄は自動入力されない設定で画面外に置かれる" do
+    article = articles(:published_ja)
+
+    get user_article_path(article.user.username, article, locale: "ja")
+
+    assert_select "[aria-hidden=true] input[name=?][tabindex=?][autocomplete=?]", "comment[homepage]", "-1", "off"
+  end
 end

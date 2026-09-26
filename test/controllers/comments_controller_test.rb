@@ -59,4 +59,15 @@ class CommentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "ハニーポット欄が埋まっている場合はコメントが保存されず、成功時と同じ表示になる" do
+    assert_no_difference("Comment.count") do
+      post article_comments_path(@article.user.username, @article, locale: "ja"), params: {
+        comment: { author_name: "bot", content: "spam", homepage: "https://spam.example.com" }
+      }
+    end
+
+    assert_redirected_to user_article_path(@article.user.username, @article, locale: "ja")
+    assert_equal "コメントを投稿しました", flash[:notice]
+  end
 end
