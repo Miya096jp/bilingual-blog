@@ -39,3 +39,6 @@ ja:
   time:
     formats:
       blog_date: "%Y年%m月%d日"
+  devise:
+    failure:
+      suspended: "このアカウントは停止されています。"

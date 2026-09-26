@@ -6,7 +6,8 @@ class Users::SessionsController < Devise::SessionsController
       self.resource = resource_class.new(sign_in_params)
       render layout: false
     else
-      redirect_to root_path(locale: I18n.locale), alert: "このページは利用できません"
+      # 停止中・未確認などでログインを拒否されたときは、Deviseがここへリダイレクトしてくるので、その理由を残す
+      redirect_to root_path(locale: I18n.locale), alert: flash[:alert].presence || "このページは利用できません"
     end
   end
 
