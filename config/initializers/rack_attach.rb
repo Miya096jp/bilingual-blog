@@ -21,6 +21,26 @@ class Rack::Attack
     end
   end
 
+  # 以下の3つはいずれもメール送信を伴うため、厳しめの上限にしている。
+  # 新規登録は入力ミスによる再送信も数えるため、他より少し緩めにしている。
+  throttle("registrations/ip", limit: 10, period: 1.hour) do |req|
+    if req.path == "/users" && req.post?
+      req.ip
+    end
+  end
+
+  throttle("passwords/ip", limit: 5, period: 1.hour) do |req|
+    if req.path == "/users/password" && req.post?
+      req.ip
+    end
+  end
+
+  throttle("confirmations/ip", limit: 5, period: 1.hour) do |req|
+    if req.path == "/users/confirmation" && req.post?
+      req.ip
+    end
+  end
+
   self.throttled_response = lambda do |env|
     now = Time.current
     match_data = env["rack.attack.match_data"]
