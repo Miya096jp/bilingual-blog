@@ -91,4 +91,4 @@ Dual PascalはVPS1台上でDocker Compose（`compose.prod.yaml` + `Caddyfile`）
 ## 既知の課題
 
 - **Kamalの残骸**: `config/deploy.yml`、`.kamal/`、`bin/kamal` は `rails new`/`kamal init` 時点の未編集のひな形で、デプロイには使われていない。意図的に削除せず残している（実際のデプロイ手順は `docs/deploy.md` を参照）。
-- **いいねがログイン必須になっている**: `app/controllers/likes_controller.rb` に `before_action :authenticate_user!` があり、匿名の読者はいいねできない。プロダクトの方針（第三者のいいねを残す）と食い違っているが、このIssueでは修正しない。
+- **匿名のいいねはCookieを消せば押し直せる**: ログインしていない読者もいいねできる。同じ記事への重複は `visitor_token` Cookieで防いでいるだけなので、Cookieを消せば何度でも押せる。いいねの数は重要な指標ではないため、この程度の水増しは許容している（IP単位のレート制限だけ `config/initializers/rack_attack.rb` で設けている）。
