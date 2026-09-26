@@ -28,7 +28,7 @@ class User < ApplicationRecord
   has_one_attached :avatar
   has_one_attached :portrait
 
-  before_destroy :purge_avatar
+  before_destroy :purge_attachments
 
   after_create :setup_analytics_async
   after_destroy :cleanup_analytics_async
@@ -118,8 +118,9 @@ class User < ApplicationRecord
 
   private
 
-  def purge_avatar
+  def purge_attachments
     avatar.purge if avatar.attached?
+    portrait.purge if portrait.attached?
   end
 
   def setup_analytics_async
