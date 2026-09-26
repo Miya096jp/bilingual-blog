@@ -94,4 +94,13 @@ class ProfilesControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "oldhandle", response.body
     assert_no_match "oldgithub", response.body
   end
+
+  test "停止中のユーザーのプロフィールは、存在しないユーザーと同じ扱いになる" do
+    @user.suspend!
+
+    get user_profile_path(username: @user.username, locale: "ja")
+
+    assert_redirected_to root_path(locale: "ja")
+    assert_equal "ユーザーが見つかりません", flash[:alert]
+  end
 end

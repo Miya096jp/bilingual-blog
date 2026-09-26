@@ -79,4 +79,14 @@ class LikesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "停止中のユーザーの記事にはいいねできず、404になる" do
+    @article.user.suspend!
+
+    assert_no_difference("Like.count") do
+      post user_article_likes_path(@article.user.username, @article, locale: "ja")
+    end
+
+    assert_response :not_found
+  end
 end

@@ -79,6 +79,18 @@ class AccountSuspensionTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "停止中のユーザーのブログ内検索は、存在しないユーザーと同じ扱いになる" do
+    user = users(:one)
+
+    get user_search_path(user.username, locale: "ja", q: "test")
+    assert_response :success
+
+    user.suspend!
+    get user_search_path(user.username, locale: "ja", q: "test")
+    assert_redirected_to root_path(locale: "ja")
+    assert_equal "ユーザーが見つかりません", flash[:alert]
+  end
+
   private
 
   def omniauth_hash(email)
