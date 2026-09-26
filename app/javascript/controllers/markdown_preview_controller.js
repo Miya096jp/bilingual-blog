@@ -17,7 +17,6 @@ export default class extends Controller {
   preview() {
     this.adjustHeight(this.inputTarget);
     this.updateTitlePreview();
-    console.log("preview method called");
     clearTimeout(this.timeout);
     this.timeout = setTimeout(() => {
       this.fetchPreview();
@@ -50,12 +49,8 @@ export default class extends Controller {
       },
       body: JSON.stringify({ content: content }),
     })
-      .then((response) => {
-        console.log("Response status:", response.status);
-        return response.json();
-      })
+      .then((response) => response.json())
       .then((data) => {
-        console.log("Response data:", data);
         this.previewTarget.innerHTML = data.html;
       })
       .catch((error) => {

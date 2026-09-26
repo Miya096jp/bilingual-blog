@@ -4,7 +4,6 @@ export default class extends Controller {
   static targets = ["textarea"];
 
   selectImage() {
-    console.log("selectImage called!"); // ← 追加
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -18,7 +17,6 @@ export default class extends Controller {
   }
 
   uploadImage(file) {
-    console.log("uploadImage called with:", file);
     const formData = new FormData();
     formData.append("image", file);
 
@@ -35,7 +33,6 @@ export default class extends Controller {
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log("Data received:", data);
         if (data.error) {
           alert(data.error);
           return;

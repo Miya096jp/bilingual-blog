@@ -54,16 +54,6 @@ export default class extends Controller {
     const formData = new FormData(this.formTarget);
     // localeはhiddenフィールドから自動的に送信される
 
-    // デバッグ：送信されるデータを確認
-    console.log("=== Category Modal Submit ===");
-    console.log("Locale Value:", this.localeValue);
-    console.log("Form Data:");
-    for (let [key, value] of formData.entries()) {
-      console.log(`  ${key}: ${value}`);
-    }
-    console.log("============================");
-
-
     const url = `${this.urlValue}?locale=${this.localeValue}`;
 
     try {
