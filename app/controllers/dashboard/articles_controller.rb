@@ -1,4 +1,6 @@
 class Dashboard::ArticlesController < ApplicationController
+  include UploadedFilesOnly
+
   before_action :authenticate_user!
   before_action :set_article, only: %w[show edit update destroy]
   before_action :set_categories, only: %w[new edit create update]
@@ -67,6 +69,7 @@ class Dashboard::ArticlesController < ApplicationController
   end
 
   def article_params
-    params.require(:article).permit(:title, :content, :description, :locale, :status, :category_id, :tag_list, :cover_image)
+    permitted = params.require(:article).permit(:title, :content, :description, :locale, :status, :category_id, :tag_list, :cover_image)
+    uploaded_files_only(permitted, :cover_image)
   end
 end

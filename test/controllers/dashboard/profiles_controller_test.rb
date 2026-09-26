@@ -58,6 +58,46 @@ class Dashboard::ProfilesControllerTest < ActionDispatch::IntegrationTest
     assert @user.reload.portrait.attached?
   end
 
+  test "アバターをアップロードできる" do
+    file = fixture_file_upload("portrait.png", "image/png")
+    patch dashboard_profile_path, params: { user: { avatar: file } }
+
+    assert_redirected_to edit_dashboard_profile_path
+    assert @user.reload.avatar.attached?
+  end
+
+  test "アバター・ポートレートにsigned_idの文字列を送っても添付されない" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: File.open(file_fixture("portrait.png")),
+      filename: "portrait.png",
+      content_type: "image/png"
+    )
+
+    patch dashboard_profile_path, params: { user: { avatar: blob.signed_id, portrait: blob.signed_id } }
+
+    @user.reload
+    assert_not @user.avatar.attached?
+    assert_not @user.portrait.attached?
+  end
+
+  test "他人の記事の画像のsigned_idをアバターとして送り、アバターを削除しても元の画像のblobは残る" do
+    other = users(:one)
+    sign_out @user
+    sign_in other
+    post dashboard_images_path, params: { image: fixture_file_upload("portrait.png", "image/png") }
+    image_url = JSON.parse(response.body)["url"]
+    signed_id = CGI.unescape(image_url[%r{/redirect/([^/]+)/}, 1])
+    blob = ActiveStorage::Blob.find_signed!(signed_id)
+    sign_out other
+
+    sign_in @user
+    patch dashboard_profile_path, params: { user: { avatar: signed_id } }
+    @user.reload
+    delete dashboard_attachment_path(@user.avatar.attachment) if @user.avatar.attached?
+
+    assert ActiveStorage::Blob.exists?(blob.id)
+  end
+
   test "旧プロフィール項目は更新されない" do
     patch dashboard_profile_path, params: { user: { bio_ja: "変更", website: "https://example.com", github_handle: "x" } }
 
