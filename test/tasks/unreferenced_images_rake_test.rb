@@ -3,7 +3,8 @@ require "rake"
 
 class UnreferencedImagesRakeTest < ActiveSupport::TestCase
   setup do
-    Rails.application.load_tasks unless Rake::Task.task_defined?("images:list_unreferenced")
+    Rake.application.rake_require("tasks/unreferenced_images", [ Rails.root.join("lib").to_s ])
+    Rake::Task.define_task(:environment)
     Rake::Task["images:list_unreferenced"].reenable
   end
 
