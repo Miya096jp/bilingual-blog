@@ -336,4 +336,14 @@ test "for_listing scope should avoid N+1 queries" do
 
     assert article.valid?
   end
+
+  test "検索語の%はワイルドカードではなく文字として扱う" do
+    with_percent = users(:blogger).articles.create!(title: "達成率100%", content: "本文", locale: "ja")
+    without_percent = users(:blogger).articles.create!(title: "達成率", content: "本文", locale: "ja")
+
+    results = Article.search("%")
+
+    assert_includes results, with_percent
+    assert_not_includes results, without_percent
+  end
 end
