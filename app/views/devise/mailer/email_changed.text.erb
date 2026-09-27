@@ -1,0 +1,8 @@
+<% if @resource.try(:unconfirmed_email?) -%>
+Dual Pascal のアカウントのメールアドレスを、<%= @resource.unconfirmed_email %> に変更する手続きを受け付けました。
+<% else -%>
+Dual Pascal のアカウントのメールアドレスが、<%= @resource.email %> に変更されました。
+<% end -%>
+
+心当たりがない場合は、お問い合わせフォームからご連絡ください。
+<%= new_contact_url(locale: :ja) %>

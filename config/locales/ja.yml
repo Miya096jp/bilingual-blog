@@ -53,3 +53,12 @@ ja:
   devise:
     failure:
       suspended: "このアカウントは停止されています。"
+    mailer:
+      confirmation_instructions:
+        subject: "【Dual Pascal】メールアドレスの確認"
+      reset_password_instructions:
+        subject: "【Dual Pascal】パスワード再設定のご案内"
+      email_changed:
+        subject: "【Dual Pascal】メールアドレス変更のお知らせ"
+      password_change:
+        subject: "【Dual Pascal】パスワード変更のお知らせ"
