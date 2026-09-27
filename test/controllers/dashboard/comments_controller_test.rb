@@ -17,6 +17,14 @@ class Dashboard::CommentsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?][rel=?]", comments(:one).website, "nofollow ugc noopener"
   end
 
+  test "showの記事タイトルは公開側の記事ページにリンクする" do
+    sign_in users(:blogger)
+    article = comments(:one).article
+    get dashboard_comment_path(comments(:one))
+
+    assert_select "a[href=?]", user_article_path(article.user.username, article.id, locale: article.locale), text: article.title
+  end
+
   test "showに削除と一覧に戻るのリンクがある" do
     sign_in users(:blogger)
     get dashboard_comment_path(comments(:one))
