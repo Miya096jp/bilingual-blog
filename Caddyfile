@@ -1,4 +1,9 @@
 dualpascal.com, www.dualpascal.com {
+    # プロフィールの更新では avatar と portrait(各 5MB 未満)を1回で送るため、
+    # 画像アップロードの上限(5MB)を下回らず、2枚分と本文が収まる値にしている
+    request_body {
+        max_size 15MB
+    }
     reverse_proxy web:3000
 }
 
