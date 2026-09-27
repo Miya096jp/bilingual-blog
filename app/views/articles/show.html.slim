@@ -94,15 +94,15 @@
         / .flex.flex-col.w-1/2.mb-2
         .flex.flex-col.w-full.md:w-1/2.mb-2
           = f.label :author_name, "#{t('comments.author_name')}:", class: "mb-2"
-          = f.text_field :author_name, required: true, class: "border-0 border-b border-gray-600 focus:outline-none"
+          = f.text_field :author_name, required: true, maxlength: 50, class: "border-0 border-b border-gray-600 focus:outline-none"
         / .flex.flex-col.w-1/2.mb-2
         .flex.flex-col.w-full.md:w-1/2.mb-2
           = f.label :website, "#{t('comments.website')}:", class: "mb-2"
-          = f.url_field :website, class: "border-0 border-b border-gray-600 focus:outline-none"
+          = f.url_field :website, maxlength: 255, class: "border-0 border-b border-gray-600 focus:outline-none"
         / .flex.flex-col.w-1/2.mb-2
         .flex.flex-col.w-full.md:w-1/2.mb-2
           = f.label :content, "#{t('comments.content')}:", class: "mb-2"
-          = f.text_area :content, rows: 5, required: true, class: "border border-gray-600 focus:outline-none"
+          = f.text_area :content, rows: 5, required: true, maxlength: 2000, class: "border border-gray-600 focus:outline-none"
       
         div class="absolute -left-[9999px] w-px h-px overflow-hidden" aria-hidden="true"
           = f.label :homepage, "Homepage"
