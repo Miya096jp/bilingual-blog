@@ -1,10 +1,10 @@
 class Dashboard::TranslationsController < ApplicationController
   include UploadedFilesOnly
 
+  before_action :authenticate_user!
   before_action :set_original_article
   before_action :set_translation, only: %w[show edit update destroy]
   before_action :set_categories, only: %w[new edit create update]
-  before_action :authenticate_user!
   layout "dashboard"
 
   def show
