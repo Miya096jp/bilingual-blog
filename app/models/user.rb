@@ -105,7 +105,17 @@ class User < ApplicationRecord
     user = where(email: auth.info.email).first
 
     if user
-      { user: user, is_new: false }
+      # 未確認のアカウントは、メールアドレスの持ち主以外が登録した可能性があるため、
+      # 登録時に設定されたパスワードと確認トークンを無効にしてから紐づける
+      password_reset = !user.confirmed?
+      if password_reset
+        transaction do
+          user.password = Devise.friendly_token
+          user.confirmation_token = nil
+          user.confirm
+        end
+      end
+      { user: user, is_new: false, password_reset: password_reset }
     else
       new_user = create!(
         email: auth.info.email,
