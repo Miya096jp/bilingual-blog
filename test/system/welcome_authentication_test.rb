@@ -7,13 +7,13 @@ class WelcomeAuthenticationTest < ApplicationSystemTestCase
     click_on "ブログをはじめる", match: :first
 
     within "#auth_form_frame" do
-      assert_text "Create account"
+      assert_text "アカウントを作成"
 
       fill_in "user_username", with: "newblogger"
       fill_in "user_email", with: "newblogger@example.com"
       fill_in "user_password", with: "password123"
       fill_in "user_password_confirmation", with: "password123"
-      click_on "Sign up"
+      click_on "アカウントを作成"
     end
 
     assert_no_text "このページは利用できません"
@@ -29,7 +29,7 @@ class WelcomeAuthenticationTest < ApplicationSystemTestCase
     within "#auth_form_frame" do
       fill_in "user_email", with: user.email
       fill_in "user_password", with: "password123"
-      click_on "Sign in"
+      click_on "ログイン", exact: true
     end
 
     assert_no_text "このページは利用できません"
@@ -41,11 +41,11 @@ class WelcomeAuthenticationTest < ApplicationSystemTestCase
     click_on "ログイン", match: :first
 
     within "#auth_form_frame" do
-      assert_text "Sign in"
-      click_on "Sign up"
-      assert_text "Create account"
-      click_on "Log in"
-      assert_text "Sign in"
+      assert_text "ログイン"
+      click_on "新規登録"
+      assert_text "アカウントを作成"
+      click_on "ログイン", exact: true
+      assert_text "ログイン"
     end
   end
 end

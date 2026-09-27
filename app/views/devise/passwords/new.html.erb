@@ -1,31 +1,31 @@
 <turbo-frame id="auth_form_frame">
   <div class="flex justify-between items-center mb-6">
-    <h3 class="text-xl font-semibold">Reset password</h3>
+    <h3 class="text-xl font-semibold">パスワード再設定</h3>
   </div>
 
   <%= form_for(resource, as: resource_name, url: password_path(resource_name), html: { method: :post, class: "space-y-4" }, data: { turbo: false }) do |f| %>
     <%= render "devise/shared/error_messages", resource: resource %>
 
     <div>
-      <%= f.email_field :email, autofocus: true, autocomplete: "email", placeholder: "Email", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
+      <%= f.email_field :email, autofocus: true, autocomplete: "email", placeholder: "メールアドレス", class: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-500", required: true %>
     </div>
 
     <p class="text-sm text-gray-600">
-      If the email is registered, we'll send you a link to reset your password.
+      登録済みのメールアドレスであれば、パスワード再設定用のリンクを送信します。
     </p>
 
     <div class="mt-6">
-      <%= f.submit "Send reset instructions", class: "w-full btn-unified" %>
+      <%= f.submit "再設定メールを送信", class: "w-full btn-unified" %>
     </div>
   <% end %>
 
   <div class="text-center mt-4">
-    <span class="text-gray-600">Remember your password?</span>
-    <%= link_to "Log in", new_session_path(resource_name), data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800" %>
+    <span class="text-gray-600">パスワードを覚えている方</span>
+    <%= link_to "ログイン", new_session_path(resource_name), data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800" %>
   </div>
 
   <div class="text-center mt-2">
-    <span class="text-gray-600">Don't have an account?</span>
-    <%= link_to "Sign up", new_registration_path(resource_name), data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800" %>
+    <span class="text-gray-600">アカウントをお持ちでない方</span>
+    <%= link_to "新規登録", new_registration_path(resource_name), data: { turbo_frame: "auth_form_frame" }, class: "text-blue-600 hover:text-blue-800" %>
   </div>
 </turbo-frame>
