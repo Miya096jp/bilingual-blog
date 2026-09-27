@@ -10,6 +10,14 @@ class Dashboard::TranslationsControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
   end
 
+  test "未ログインで翻訳の作成画面にアクセスすると、ログイン画面へリダイレクトされる" do
+    sign_out @user
+
+    get new_dashboard_article_translation_path(articles(:draft_ja))
+
+    assert_redirected_to new_user_session_path
+  end
+
   test "カバー画像をファイルでアップロードできる" do
     file = fixture_file_upload("portrait.png", "image/png")
     patch dashboard_article_translation_path(@original), params: { article: { cover_image: file } }
