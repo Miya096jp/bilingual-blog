@@ -76,7 +76,7 @@
                                class:
                                  "w-32 lg:w-48 border text-gray-500 border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-gray-400 bg-white px-3 py-1 text-sm",
                                value: params[:q] %><%= f.submit t("blog.search.button"),
-                           class: "btn-unified text-sm whitespace-nowrap !py-1" %><% end %><% end %><% if user_signed_in? %><%= link_to "Dashboard",
+                           class: "btn-unified text-sm whitespace-nowrap !py-1" %><% end %><% end %><% if user_signed_in? %><%= link_to t("blog.header.dashboard"),
                 dashboard_articles_path,
                 class: "hover:!text-gray-400 font-medium text-sm whitespace-nowrap" %><% else %>
                 <button
@@ -86,7 +86,7 @@
                     hover:bg-blue-500 transition-colors whitespace-nowrap !py-1 px-5
                   "
                 >
-                  Sign in
+                  <%= t("blog.header.login") %>
                 </button>
               <% end %>
             </div>
@@ -130,9 +130,9 @@
               locale_switch_url(locale_switch_target),
               class: "block text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm" %>
             </div>
-            <!-- Dashboard / Sign in -->
+            <!-- ダッシュボード / ログイン -->
             <% if user_signed_in? %>
-              <%= link_to "Dashboard",
+              <%= link_to t("blog.header.dashboard"),
               dashboard_articles_path,
               class: "block text-gray-200 px-3 py-2 hover:bg-gray-700/30 rounded text-sm" %>
             <% else %>
@@ -143,7 +143,7 @@
                   text-sm
                 "
               >
-                Sign in
+                <%= t("blog.header.login") %>
               </button>
             <% end %>
           </div>
