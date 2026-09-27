@@ -43,4 +43,14 @@ class Dashboard::PreviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "プレビュー生成でエラーが発生しました", response.parsed_body["error"]
     assert_not_includes response.body, "/var/secret/internal/path"
   end
+
+  test "公開ページの本文と同じHTMLを返す" do
+    content = "# Hello\n\n{: .fixed .inset-0}\nparagraph\n\n```ruby\ndef x = 1\n```\n"
+
+    post dashboard_preview_path, params: { content: content }, as: :json
+
+    assert_response :success
+    assert_equal Article.new(content: content).content_html, response.parsed_body["html"]
+    assert_no_match(/fixed|inset-0/, response.parsed_body["html"])
+  end
 end

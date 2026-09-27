@@ -346,4 +346,36 @@ test "for_listing scope should avoid N+1 queries" do
     assert_includes results, with_percent
     assert_not_includes results, without_percent
   end
+
+  test "本文のコードブロックに、Rouge が付けるクラスが残る" do
+    article = Article.new(content: "```ruby\ndef x = 1\n```\n")
+    html = Nokogiri::HTML5.fragment(article.content_html)
+
+    assert html.at_css("div.language-ruby.highlighter-rouge div.highlight pre.highlight code span.k")
+  end
+
+  test "本文のタスクリストと脚注に、kramdown が付けるクラスが残る" do
+    article = Article.new(content: "- [ ] todo\n\ntext[^1]\n\n[^1]: note\n")
+    html = Nokogiri::HTML5.fragment(article.content_html)
+
+    assert html.at_css("ul.task-list li.task-list-item")
+    assert html.at_css("a.footnote")
+    assert html.at_css("div.footnotes a.reversefootnote")
+  end
+
+  test "本文の属性リスト記法で付けたクラスは除去される" do
+    article = Article.new(content: "{: .fixed .inset-0}\nparagraph\n")
+    html = Nokogiri::HTML5.fragment(article.content_html)
+
+    paragraph = html.at_css("p")
+    assert_equal "paragraph", paragraph.text
+    assert_nil paragraph["class"]
+  end
+
+  test "本文のHTMLのclass属性は、許可されたクラスだけが残る" do
+    article = Article.new(content: "<div class=\"fixed inset-0 z-50 highlight\">x</div>\n")
+    html = Nokogiri::HTML5.fragment(article.content_html)
+
+    assert_equal "highlight", html.at_css("div")["class"]
+  end
 end
