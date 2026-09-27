@@ -21,20 +21,3 @@ div class="px-4 sm:px-6 pt-[112px] text-center"
     - unless user_signed_in?
       p class="mt-[16px] text-sm text-[#6B6B66]"
         | You can also sign up with your GitHub or Google account
-
-- if @articles.present?
-  div class="px-4 sm:px-6 mt-[96px]"
-    div class="max-w-3xl mx-auto"
-      .flex.items-baseline.gap-3
-        h2.font-mincho.text-2xl.font-bold Start here
-        span class="text-sm text-[#6B6B66]" Written by the operator, on using and building this service
-
-      ul class="mt-[20px] divide-y divide-[#ECEAE5] border-t border-b border-[#ECEAE5]"
-        - @articles.each do |article|
-          li class="py-[24px]"
-            = link_to user_article_path(@operator.username, article.id, locale: "en"), class: "flex items-center justify-between gap-4 hover:text-[#2563EB]" do
-              span.font-medium= article.title
-              span class="text-sm text-[#6B6B66] whitespace-nowrap"= l(article.published_at, format: :blog_date)
-
-      p class="mt-[20px] text-right"
-        = link_to "See the operator's blog →", user_articles_path(@operator.username, locale: "en"), class: "text-[#2563EB] hover:underline text-sm"
