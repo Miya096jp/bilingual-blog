@@ -267,4 +267,17 @@ class UserTest < ActiveSupport::TestCase
     assert_nothing_raised { user.destroy }
     assert user.destroyed?
   end
+
+  test "7文字のパスワードでは作成できない" do
+    user = User.new(username: "newuser", email: "new@example.com", password: "a" * 7, password_confirmation: "a" * 7)
+
+    assert_not user.valid?
+    assert user.errors[:password].any?
+  end
+
+  test "8文字のパスワードなら作成できる" do
+    user = User.new(username: "newuser", email: "new@example.com", password: "a" * 8, password_confirmation: "a" * 8)
+
+    assert user.valid?
+  end
 end
