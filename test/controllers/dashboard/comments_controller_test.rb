@@ -10,6 +10,21 @@ class Dashboard::CommentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "showの投稿者ウェブサイトへのリンクにはnofollow ugc noopenerが付く" do
+    sign_in users(:blogger)
+    get dashboard_comment_path(comments(:one))
+
+    assert_select "a[href=?][rel=?]", comments(:one).website, "nofollow ugc noopener"
+  end
+
+  test "showに削除と一覧に戻るのリンクがある" do
+    sign_in users(:blogger)
+    get dashboard_comment_path(comments(:one))
+
+    assert_select "a[href=?][data-turbo-method=delete][data-turbo-confirm]", dashboard_comment_path(comments(:one)), text: "削除"
+    assert_select "a[href=?]", dashboard_comments_path, text: "一覧に戻る"
+  end
+
   test "自分の記事のコメントはdestroyできる" do
     sign_in users(:blogger)
 
