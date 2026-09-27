@@ -2,7 +2,6 @@ class ArticlesController < ApplicationController
   # before_action :set_user
   before_action :set_blog_owner
   before_action :set_blog_setting
-  before_action :set_locale
 
   def index
     # @filter = ArticleFilterQuery.new(params.merge(user: @user))
@@ -31,10 +30,6 @@ class ArticlesController < ApplicationController
   # def set_user
   #   @user = User.find_by!(username: params[:username])
   # end
-
-  def set_locale
-    I18n.locale = params[:locale] || I18n.default_locale
-  end
 
   def set_blog_setting
     @blog_setting = @blog_owner.blog_setting || @blog_owner.build_blog_setting
