@@ -21,9 +21,9 @@ h1= t('blog.search.results')
         - if article.category.present?
           p.pb-2
             | #{t('blog.category')}:
-            = link_to article.category.name, user_articles_path(params[:username], @filter.filter_params.merge(category_id: article.category.id))
+            = link_to article.category.name, user_articles_path(params[:username], locale: params[:locale], category_id: article.category.id)
 
-        = render 'shared/article_tags', article: article, filter_params: @filter.filter_params
+        = render 'shared/article_tags', article: article, filter_params: { locale: params[:locale] }
 
       .meta-content-divider.text-center.mx-8
         span.text-gray-400.text-xl • • •
