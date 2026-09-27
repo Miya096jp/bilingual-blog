@@ -51,7 +51,10 @@ class Article < ApplicationRecord
       .order(published_at: :desc)
   }
   scope :search, ->(keyword) {
-    where("title ILIKE ? OR content ILIKE ?", "%#{keyword}%", "%#{keyword}%") if keyword.present?
+    next if keyword.blank?
+
+    like = "%#{sanitize_sql_like(keyword)}%"
+    where("title ILIKE ? OR content ILIKE ?", like, like)
   }
 
   def original?
