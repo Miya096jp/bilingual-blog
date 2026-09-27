@@ -12,6 +12,10 @@ ja:
       title: "Dual Pascal — 日本語と英語で書く、あなただけのブログ"
   meta:
     description: "日本語と英語で、自分のペースで書ける個人ブログ。コミュニティもタイムラインもない、あなただけのブログです。"
+  auth:
+    heading:
+      sign_in: "ログイン"
+      sign_up: "アカウントを作成"
   blog:
     category: "カテゴリ"
     tags: "タグ"
