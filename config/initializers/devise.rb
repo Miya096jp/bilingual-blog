@@ -30,6 +30,7 @@ config.mailer_sender = "noreply@dualpascal.com"
 
   # Configure the class responsible to send e-mails.
   # config.mailer = 'Devise::Mailer'
+  config.mailer = "UserMailer"
 
   # Configure the parent class responsible to send e-mails.
   # config.parent_mailer = 'ActionMailer::Base'
@@ -134,9 +135,11 @@ config.mailer_sender = "noreply@dualpascal.com"
 
   # Send a notification to the original email when the user's email is changed.
   # config.send_email_changed_notification = false
+  config.send_email_changed_notification = true
 
   # Send a notification email when the user's password is changed.
   # config.send_password_change_notification = false
+  config.send_password_change_notification = true
 
   # ==> Configuration for :confirmable
   # A period that the user is allowed to access the website even without
