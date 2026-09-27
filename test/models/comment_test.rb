@@ -50,6 +50,40 @@ class CommentTest < ActiveSupport::TestCase
     assert comment.valid?
   end
 
+  test "author_name は50文字までなら有効で、51文字だと無効になる" do
+    comment = comments(:one)
+
+    comment.author_name = "a" * 50
+    assert comment.valid?
+
+    comment.author_name = "a" * 51
+    assert_not comment.valid?
+    assert comment.errors[:author_name].any?
+  end
+
+  test "content は2000文字までなら有効で、2001文字だと無効になる" do
+    comment = comments(:one)
+
+    comment.content = "a" * 2000
+    assert comment.valid?
+
+    comment.content = "a" * 2001
+    assert_not comment.valid?
+    assert comment.errors[:content].any?
+  end
+
+  test "website は255文字までなら有効で、256文字だと無効になる" do
+    comment = comments(:one)
+    prefix = "https://example.com/"
+
+    comment.website = prefix + "a" * (255 - prefix.length)
+    assert comment.valid?
+
+    comment.website = prefix + "a" * (256 - prefix.length)
+    assert_not comment.valid?
+    assert comment.errors[:website].any?
+  end
+
   test "should belong to article" do
     comment = comments(:one)
     assert_equal articles(:published_ja), comment.article

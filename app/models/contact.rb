@@ -3,7 +3,7 @@ class Contact < ApplicationRecord
   attr_accessor :website
 
   validates :name, presence: true, length: { maximum: 100 }
-  validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :email, presence: true, length: { maximum: 255 }, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :subject, presence: true, length: { maximum: 200 }
   validates :message, presence: true, length: { maximum: 2000 }
   scope :unresolved, -> { where(resolved: false) }

@@ -38,6 +38,17 @@ class CommentsControllerTest < ActionDispatch::IntegrationTest
     assert flash[:alert].present?
   end
 
+  test "本文が上限を超える場合はコメントが作成されず、エラーが分かる形で表示される" do
+    assert_no_difference("Comment.count") do
+      post article_comments_path(@article.user.username, @article, locale: "ja"), params: {
+        comment: { author_name: "テスト太郎", content: "a" * 2001 }
+      }
+    end
+
+    assert_redirected_to user_article_path(@article.user.username, @article, locale: "ja")
+    assert flash[:alert].present?
+  end
+
   test "存在しない記事IDの場合は404になる" do
     assert_no_difference("Comment.count") do
       post article_comments_path(@article.user.username, -1, locale: "ja"), params: {
