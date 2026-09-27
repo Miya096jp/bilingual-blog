@@ -6,7 +6,7 @@ div class="bg-white border border-[#E4E4E1] rounded-xl divide-y divide-[#F0F0ED]
     dl class="grid grid-cols-[8rem_1fr] gap-x-4 gap-y-2 text-sm"
       dt class="text-[#6B6B66]" タイトル
       dd class="text-[#1B1B19] break-words"
-        = link_to @comment.article.title, user_article_path(@comment.article, locale: @comment.article.locale), class: "text-[#2563EB] hover:text-[#1B4FC4] font-medium"
+        = link_to @comment.article.title, user_article_path(@comment.article.user.username, @comment.article.id, locale: @comment.article.locale), class: "text-[#2563EB] hover:text-[#1B4FC4] font-medium"
       dt class="text-[#6B6B66]" 言語
       dd class="text-[#1B1B19]"= @comment.article.locale == 'ja' ? '日本語' : '英語'
 
