@@ -114,12 +114,12 @@ class WelcomeControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "ログインモーダルの見出しがロケールに合わせて表示される" do
+  test "ログインモーダルの見出しがロケールに関わらず日本語で表示される" do
     get "/ja"
     assert_select "#auth_modal_overlay h3", text: "ログイン"
 
     get "/en"
-    assert_select "#auth_modal_overlay h3", text: "Sign in"
+    assert_select "#auth_modal_overlay h3", text: "ログイン"
   end
 
   test "title と description が新しいコンセプトの文言になり、keywords は出力されない" do

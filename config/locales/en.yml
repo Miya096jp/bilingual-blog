@@ -41,10 +41,6 @@ en:
       title: "Dual Pascal — Your own blog, in Japanese and English"
   meta:
     description: "A personal blog where you can write in Japanese and English at your own pace. No community, no timeline — just your own blog."
-  auth:
-    heading:
-      sign_in: "Sign in"
-      sign_up: "Create account"
   blog:
     category: "Category"
     tags: "Tags"
