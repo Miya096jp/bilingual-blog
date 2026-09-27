@@ -321,4 +321,19 @@ test "for_listing scope should avoid N+1 queries" do
       assert_not ArticleTag.exists?(id)
     end
   end
+
+  test "他人のカテゴリを設定すると無効になる" do
+    article = articles(:published_ja)
+    article.category = categories(:lifestyle_ja)
+
+    assert_not article.valid?
+    assert article.errors[:category].any?
+  end
+
+  test "自分のカテゴリなら有効になる" do
+    article = articles(:rails_article)
+    article.category = categories(:programming_ja)
+
+    assert article.valid?
+  end
 end
