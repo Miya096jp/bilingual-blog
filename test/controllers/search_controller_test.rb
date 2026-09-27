@@ -16,6 +16,16 @@ class SearchControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2 a", text: article.title
   end
 
+  test "ヒットしたときに検索語と件数が表示され、キーワードなしの文言が出ない" do
+    article = articles(:search_target_ja)
+
+    get user_search_path(article.user.username, locale: "ja", q: "Ruby")
+
+    assert_response :success
+    assert_includes response.body, "「Ruby」#{I18n.t('blog.search.results_count', count: 1, locale: :ja)}"
+    assert_not_includes response.body, I18n.t("blog.search.no_keyword", locale: :ja)
+  end
+
   test "カテゴリとタグのある記事がヒットしても表示される" do
     article = articles(:published_ja)
     assert article.category.present?
