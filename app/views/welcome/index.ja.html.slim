@@ -23,8 +23,8 @@ section class="bg-[#F6F7F9]"
           - if user_signed_in?
             = link_to t("welcome.header.dashboard"), dashboard_articles_path, class: primary_button
           - else
-            = link_to "ブログをはじめる", new_user_registration_path, class: primary_button, data: { action: "click->auth-modal#showModal", auth_modal_url_param: new_user_registration_path }
-            = link_to t("welcome.header.login"), new_user_session_path, class: secondary_button, data: { action: "click->auth-modal#showModal" }
+            = button_tag "ブログをはじめる", type: "button", class: primary_button, data: { action: "click->auth-modal#showModal", auth_modal_url_param: new_user_registration_path }
+            = button_tag t("welcome.header.login"), type: "button", class: secondary_button, data: { action: "click->auth-modal#showModal" }
 
         - unless user_signed_in?
           p class="mt-5 text-[13px] leading-[1.8] text-[#6B6B66]"
@@ -107,5 +107,5 @@ section class="max-w-[1200px] mx-auto px-6 lg:px-10 py-24 lg:py-[172px] flex fle
         br class="lg:hidden"
         | はじめてみませんか。
       div class="mt-8 lg:mt-10 flex flex-col sm:flex-row justify-center gap-3"
-        = link_to "ブログをはじめる", new_user_registration_path, class: primary_button, data: { action: "click->auth-modal#showModal", auth_modal_url_param: new_user_registration_path }
-        = link_to t("welcome.header.login"), new_user_session_path, class: secondary_button, data: { action: "click->auth-modal#showModal" }
+        = button_tag "ブログをはじめる", type: "button", class: primary_button, data: { action: "click->auth-modal#showModal", auth_modal_url_param: new_user_registration_path }
+        = button_tag t("welcome.header.login"), type: "button", class: secondary_button, data: { action: "click->auth-modal#showModal" }

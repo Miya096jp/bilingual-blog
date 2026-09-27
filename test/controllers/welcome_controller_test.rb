@@ -72,13 +72,24 @@ class WelcomeControllerTest < ActionDispatch::IntegrationTest
     assert_no_match "Start here", response.body
   end
 
-  test "未ログインでは、新規登録とログインへのリンクがあり、ダッシュボードへのリンクはない" do
+  test "未ログインでは、新規登録とログインのモーダルを開くボタンがあり、ダッシュボードへのリンクはない" do
     get "/ja"
 
     assert_response :success
-    assert_select "a[href=?]", path_pattern(new_user_registration_path)
-    assert_select "a[href=?]", path_pattern(new_user_session_path)
+    assert_select "button[data-action='click->auth-modal#showModal'][data-auth-modal-url-param=?]", path_pattern(new_user_registration_path)
+    assert_select "button[data-action='click->auth-modal#showModal']:not([data-auth-modal-url-param])"
     assert_select "a[href=?]", path_pattern(dashboard_articles_path), count: 0
+  end
+
+  # リンクにすると Turbo がマウスオーバーで frame 外のリクエストとしてプリフェッチし、
+  # そのレスポンス(トップページへのリダイレクト)がモーダルの turbo-frame に流用されてしまう
+  test "モーダルを開くトリガーは、プリフェッチされるリンクではなくボタンにする" do
+    %w[ja en].each do |locale|
+      get "/#{locale}"
+
+      assert_response :success
+      assert_select "a[data-action*='auth-modal#showModal']", count: 0
+    end
   end
 
   test "ログイン中は、ダッシュボードへのリンクがあり、新規登録とログインへのリンクはない" do
