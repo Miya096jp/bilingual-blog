@@ -69,6 +69,15 @@ class Article < ApplicationRecord
     translation.present?
   end
 
+  # 公開ページでリンクしてよい翻訳・原文。下書きなら nil を返す
+  def published_translation
+    translation if translation&.published?
+  end
+
+  def published_original_article
+    original_article if original_article&.published?
+  end
+
   def content_html
     render_markdown(content)
   end

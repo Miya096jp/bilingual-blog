@@ -40,8 +40,8 @@ h1= t('blog.search.results')
         | #{t('blog.updated_at')}: 
         = article.updated_at&.strftime('%Y年%m月%d日')
 
-      - if article.translation.present?
-        p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(article.translation.user.username, article.translation.id, locale: article.translation.locale)
+      - if (translation = article.published_translation)
+        p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(translation.user.username, translation.id, locale: translation.locale)
 
 = paginate @articles
 

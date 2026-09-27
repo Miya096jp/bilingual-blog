@@ -1,9 +1,9 @@
 module LocaleHelper
   def locale_switch_url(target_locale)
-    if action_name == "show" && @article&.translation.present?
-      user_article_path(@article.translation.user.username, @article.translation.id, locale: target_locale)
-    elsif action_name == "show" && @article&.original_article.present?
-      user_article_path(@article.original_article.user.username, @article.original_article.id, locale: target_locale)
+    if action_name == "show" && (translation = @article&.published_translation)
+      user_article_path(translation.user.username, translation.id, locale: target_locale)
+    elsif action_name == "show" && (original_article = @article&.published_original_article)
+      user_article_path(original_article.user.username, original_article.id, locale: target_locale)
     elsif controller_name == "profiles" && action_name == "show"
       user_profile_path(params[:username], locale: target_locale)
     elsif controller_name == "legal"
