@@ -11,6 +11,7 @@ class Article < ApplicationRecord
   validates :cover_image, content_type: [ "image/png", "image/jpeg", "image/webp" ],
                           size: { less_than: 5.megabytes }
   validates :description, length: { maximum: 255 }
+  validate :category_belongs_to_user
 
 
   enum :status, %i[draft published]
@@ -50,7 +51,10 @@ class Article < ApplicationRecord
       .order(published_at: :desc)
   }
   scope :search, ->(keyword) {
-    where("title ILIKE ? OR content ILIKE ?", "%#{keyword}%", "%#{keyword}%") if keyword.present?
+    next if keyword.blank?
+
+    like = "%#{sanitize_sql_like(keyword)}%"
+    where("title ILIKE ? OR content ILIKE ?", like, like)
   }
 
   def original?
@@ -63,6 +67,15 @@ class Article < ApplicationRecord
 
   def has_translation?
     translation.present?
+  end
+
+  # 公開ページでリンクしてよい翻訳・原文。下書きなら nil を返す
+  def published_translation
+    translation if translation&.published?
+  end
+
+  def published_original_article
+    original_article if original_article&.published?
   end
 
   def content_html
@@ -118,6 +131,12 @@ class Article < ApplicationRecord
       new_tags = @pending_tag_names.map { |name| user.tags.find_or_create_by(name: name.downcase) }
       self.tags = new_tags
     end
+  end
+
+  def category_belongs_to_user
+    return if category.nil? || category.user_id == user_id
+
+    errors.add(:category, :invalid)
   end
 
   def set_default_description

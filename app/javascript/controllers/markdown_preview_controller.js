@@ -27,7 +27,9 @@ export default class extends Controller {
     if (!this.hasTitlePreviewTarget) return;
 
     const title = document.querySelector('[data-field="title"]').value || "";
-    this.titlePreviewTarget.innerHTML = `<h1>${title || "title"}</h1>`;
+    const heading = document.createElement("h1");
+    heading.textContent = title || "title";
+    this.titlePreviewTarget.replaceChildren(heading);
   }
 
   fetchPreview() {

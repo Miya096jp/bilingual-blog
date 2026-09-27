@@ -200,4 +200,40 @@ class Dashboard::ArticlesControllerTest < ActionDispatch::IntegrationTest
 
     assert_not article.reload.cover_image.attached?
   end
+
+  test "他人のカテゴリを指定して記事を作成すると、保存されない" do
+    sign_in @user
+
+    assert_no_difference "Article.count" do
+      post dashboard_articles_path, params: { article: { title: "新規", content: "本文", locale: "ja", category_id: categories(:lifestyle_ja).id } }
+    end
+  end
+
+  test "自分のカテゴリを指定して記事を作成すると、保存される" do
+    sign_in @user
+
+    assert_difference "Article.count", 1 do
+      post dashboard_articles_path, params: { article: { title: "新規", content: "本文", locale: "ja", category_id: categories(:programming_ja).id } }
+    end
+    assert_equal categories(:programming_ja), Article.order(:created_at).last.category
+  end
+
+  test "他人のカテゴリを指定して記事を更新すると、保存されない" do
+    sign_in @user
+    article = articles(:published_ja)
+
+    patch dashboard_article_path(article), params: { article: { category_id: categories(:lifestyle_ja).id } }
+
+    assert_equal categories(:programming_ja), article.reload.category
+  end
+
+  test "自分のカテゴリを指定して記事を更新すると、保存される" do
+    sign_in @user
+    article = articles(:draft_ja)
+
+    patch dashboard_article_path(article), params: { article: { category_id: categories(:programming_ja).id } }
+
+    assert_redirected_to dashboard_articles_path
+    assert_equal categories(:programming_ja), article.reload.category
+  end
 end

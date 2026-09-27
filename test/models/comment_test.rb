@@ -32,6 +32,14 @@ class CommentTest < ActiveSupport::TestCase
     end
   end
 
+  test "websiteにjavascript:で始まる値を入れると無効になる" do
+    comment = comments(:one)
+    comment.website = "javascript:alert(1)"
+
+    assert_not comment.valid?
+    assert comment.errors[:website].any?
+  end
+
   test "should accept valid website url formats" do
     comment = comments(:one)
 

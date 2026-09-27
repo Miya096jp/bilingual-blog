@@ -10,6 +10,14 @@ class Dashboard::TranslationsControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
   end
 
+  test "未ログインで翻訳の作成画面にアクセスすると、ログイン画面へリダイレクトされる" do
+    sign_out @user
+
+    get new_dashboard_article_translation_path(articles(:draft_ja))
+
+    assert_redirected_to new_user_session_path
+  end
+
   test "カバー画像をファイルでアップロードできる" do
     file = fixture_file_upload("portrait.png", "image/png")
     patch dashboard_article_translation_path(@original), params: { article: { cover_image: file } }
@@ -28,5 +36,35 @@ class Dashboard::TranslationsControllerTest < ActionDispatch::IntegrationTest
     patch dashboard_article_translation_path(@original), params: { article: { cover_image: blob.signed_id } }
 
     assert_not @translation.reload.cover_image.attached?
+  end
+
+  test "他人のカテゴリを指定して翻訳を作成すると、保存されない" do
+    assert_no_difference "Article.count" do
+      post dashboard_article_translation_path(articles(:draft_ja)), params: { article: { title: "Draft", content: "Body", category_id: categories(:technology_en).id } }
+    end
+  end
+
+  test "自分のカテゴリを指定して翻訳を作成すると、保存される" do
+    category = @user.categories.create!(name: "Programming", locale: "en")
+
+    assert_difference "Article.count", 1 do
+      post dashboard_article_translation_path(articles(:draft_ja)), params: { article: { title: "Draft", content: "Body", category_id: category.id } }
+    end
+    assert_equal category, articles(:draft_ja).reload.translation.category
+  end
+
+  test "他人のカテゴリを指定して翻訳を更新すると、保存されない" do
+    patch dashboard_article_translation_path(@original), params: { article: { category_id: categories(:technology_en).id } }
+
+    assert_nil @translation.reload.category
+  end
+
+  test "自分のカテゴリを指定して翻訳を更新すると、保存される" do
+    category = @user.categories.create!(name: "Programming", locale: "en")
+
+    patch dashboard_article_translation_path(@original), params: { article: { category_id: category.id } }
+
+    assert_redirected_to dashboard_articles_path
+    assert_equal category, @translation.reload.category
   end
 end

@@ -123,4 +123,18 @@ class ArticlesControllerTest < ActionDispatch::IntegrationTest
     get user_article_path(article.user.username, article, locale: "ja")
     assert_response :success
   end
+
+  test "記事一覧のcategory_idに他人のカテゴリのidを渡しても、そのカテゴリ名は表示されない" do
+    get user_articles_path(users(:blogger).username, locale: "ja", category_id: categories(:lifestyle_ja).id)
+
+    assert_response :success
+    assert_no_match categories(:lifestyle_ja).name, response.body
+  end
+
+  test "記事一覧のcategory_idに自分のカテゴリのidを渡すと、そのカテゴリ名が絞り込み条件に表示される" do
+    get user_articles_path(users(:blogger).username, locale: "ja", category_id: categories(:programming_ja).id)
+
+    assert_response :success
+    assert_select ".filter-status strong", text: categories(:programming_ja).name
+  end
 end

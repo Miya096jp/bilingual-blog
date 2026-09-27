@@ -31,5 +31,5 @@
         p
           | #{t('blog.updated_at')}:
           = l(article.updated_at, format: :blog_date)
-        - if article.translation.present?
-          p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(article.translation.user.username, article.translation.id, locale: article.translation.locale)
+        - if (translation = article.published_translation)
+          p= link_to "#{article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(translation.user.username, translation.id, locale: translation.locale)

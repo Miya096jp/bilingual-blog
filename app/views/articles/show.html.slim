@@ -42,14 +42,14 @@
         | :
       span
         = render 'shared/article_tags', article: @article, filter_params: {}
-    - if @article.translation.present?
+    - if (translation = @article.published_translation)
       .flex.items-center.mb-2
         span.w-25.text-gray-500.text-right
           = t('blog.translation')
         span.w-4.text-gray-500.text-center
           | :
         span
-          = link_to "#{@article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(@article.translation.user.username, @article.translation.id, locale: @article.translation.locale), class: "pb-2 block text-gray-500 hover:text-gray-800"
+          = link_to "#{@article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(translation.user.username, translation.id, locale: translation.locale), class: "pb-2 block text-gray-500 hover:text-gray-800"
   
   - if has_cover_image?(@article)
     .hero-thumbnail.max-w-5xl.mx-auto.mb-6

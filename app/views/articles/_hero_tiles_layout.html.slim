@@ -32,8 +32,8 @@
           | #{t('blog.updated_at')}:
           = l(hero_article.updated_at, format: :blog_date)
 
-        - if hero_article.translation.present?
-          p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(hero_article.translation.user.username, hero_article.translation.id, locale: hero_article.translation.locale)
+        - if (translation = hero_article.published_translation)
+          p= link_to "#{hero_article.locale == 'ja' ? 'English' : '日本語'}版", user_article_path(translation.user.username, translation.id, locale: translation.locale)
 
 - if @blog_owner&.admin? && I18n.locale == :en
   .max-w-4xl.mx-auto.mt-8.mb-12.px-4

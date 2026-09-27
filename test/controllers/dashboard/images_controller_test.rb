@@ -1,4 +1,5 @@
 require "test_helper"
+require "minitest/mock"
 
 class Dashboard::ImagesControllerTest < ActionDispatch::IntegrationTest
   include Devise::Test::IntegrationHelpers
@@ -90,5 +91,19 @@ class Dashboard::ImagesControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to new_user_session_path
+  end
+
+  test "アップロード中に例外が起きても、応答に例外のメッセージを含めない" do
+    sign_in @user
+    file = fixture_file_upload("portrait.png", "image/png")
+
+    ActiveStorage::Blob.stub(:create_and_upload!, ->(**) { raise "/var/secret/storage/path" }) do
+      post dashboard_images_path, params: { image: file }
+    end
+
+    assert_response :unprocessable_entity
+    error = JSON.parse(response.body)["error"]
+    assert_equal "画像のアップロードに失敗しました", error
+    assert_not_includes response.body, "/var/secret/storage/path"
   end
 end

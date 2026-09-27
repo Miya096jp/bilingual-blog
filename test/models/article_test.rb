@@ -321,4 +321,61 @@ test "for_listing scope should avoid N+1 queries" do
       assert_not ArticleTag.exists?(id)
     end
   end
+
+  test "他人のカテゴリを設定すると無効になる" do
+    article = articles(:published_ja)
+    article.category = categories(:lifestyle_ja)
+
+    assert_not article.valid?
+    assert article.errors[:category].any?
+  end
+
+  test "自分のカテゴリなら有効になる" do
+    article = articles(:rails_article)
+    article.category = categories(:programming_ja)
+
+    assert article.valid?
+  end
+
+  test "検索語の%はワイルドカードではなく文字として扱う" do
+    with_percent = users(:blogger).articles.create!(title: "達成率100%", content: "本文", locale: "ja")
+    without_percent = users(:blogger).articles.create!(title: "達成率", content: "本文", locale: "ja")
+
+    results = Article.search("%")
+
+    assert_includes results, with_percent
+    assert_not_includes results, without_percent
+  end
+
+  test "本文のコードブロックに、Rouge が付けるクラスが残る" do
+    article = Article.new(content: "```ruby\ndef x = 1\n```\n")
+    html = Nokogiri::HTML5.fragment(article.content_html)
+
+    assert html.at_css("div.language-ruby.highlighter-rouge div.highlight pre.highlight code span.k")
+  end
+
+  test "本文のタスクリストと脚注に、kramdown が付けるクラスが残る" do
+    article = Article.new(content: "- [ ] todo\n\ntext[^1]\n\n[^1]: note\n")
+    html = Nokogiri::HTML5.fragment(article.content_html)
+
+    assert html.at_css("ul.task-list li.task-list-item")
+    assert html.at_css("a.footnote")
+    assert html.at_css("div.footnotes a.reversefootnote")
+  end
+
+  test "本文の属性リスト記法で付けたクラスは除去される" do
+    article = Article.new(content: "{: .fixed .inset-0}\nparagraph\n")
+    html = Nokogiri::HTML5.fragment(article.content_html)
+
+    paragraph = html.at_css("p")
+    assert_equal "paragraph", paragraph.text
+    assert_nil paragraph["class"]
+  end
+
+  test "本文のHTMLのclass属性は、許可されたクラスだけが残る" do
+    article = Article.new(content: "<div class=\"fixed inset-0 z-50 highlight\">x</div>\n")
+    html = Nokogiri::HTML5.fragment(article.content_html)
+
+    assert_equal "highlight", html.at_css("div")["class"]
+  end
 end

@@ -27,7 +27,8 @@ class Dashboard::ImagesController < ApplicationController
     image_url = url_for(variant)
     render json: { url: image_url }
   rescue => e
-    render_error("画像のアップロードに失敗しました: #{e.message}")
+    Rails.logger.error "Image upload error: #{e.message}"
+    render_error("画像のアップロードに失敗しました")
   end
 
   private
