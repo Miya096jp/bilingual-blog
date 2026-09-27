@@ -33,12 +33,12 @@
               dashboard_articles_path,
               class: "bg-[#1B1B19] text-white rounded-md text-sm font-bold px-5 py-2.5 hover:opacity-85" %>
             <% else %>
-              <%= link_to t("welcome.header.login"),
-              new_user_session_path,
+              <%= button_tag t("welcome.header.login"),
+              type: "button",
               data: { action: "click->auth-modal#showModal" },
               class: "text-sm text-[#3A3A36] hover:text-[#1B1B19]" %>
-              <%= link_to t("welcome.header.get_started"),
-              new_user_registration_path,
+              <%= button_tag t("welcome.header.get_started"),
+              type: "button",
               data: { action: "click->auth-modal#showModal", auth_modal_url_param: new_user_registration_path },
               class: "bg-[#1B1B19] text-white rounded-md text-sm font-bold px-5 py-2.5 hover:opacity-85" %>
             <% end %>
