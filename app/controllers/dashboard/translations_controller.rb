@@ -42,7 +42,7 @@ class Dashboard::TranslationsController < ApplicationController
       redirect_to dashboard_articles_path, notice: "翻訳記事が更新されました"
     else
       flash.now[:alert] = "descriptionは255文字以内で入力してください"
-　　　render :edit
+      render :edit
     end
   end
 
