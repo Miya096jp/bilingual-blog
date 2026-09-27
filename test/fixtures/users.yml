@@ -60,3 +60,14 @@ suspended:
   status: suspended
   created_at: <%= 1.month.ago %>
   updated_at: <%= 1.month.ago %>
+
+# パスワードの最小長を 8 文字に上げる前に登録した、7 文字のパスワードを持つユーザー
+short_password:
+  username: shortpassword
+  email: short_password@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'pass123') %>
+  confirmed_at: <%= Time.current %>
+  role: user
+  status: active
+  created_at: <%= 1.month.ago %>
+  updated_at: <%= 1.month.ago %>

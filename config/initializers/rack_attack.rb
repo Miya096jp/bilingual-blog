@@ -5,6 +5,33 @@ class Rack::Attack::Request
   def normalized_path
     ActionDispatch::Journey::Router::Utils.normalize_path(path).sub(%r{\.[^/.]+\z}, "")
   end
+
+  # ログインで送られたメールアドレスを、Devise と同じ規則（前後の空白を除き、小文字にする）で正規化して返す。
+  # req.params には JSON の本文が含まれないが、Rails は JSON の本文でもログインを処理するため、本文も読む。
+  def login_email
+    email = user_email_in(params) || user_email_in(json_body)
+    return unless email.is_a?(String)
+
+    email.strip.downcase.presence
+  end
+
+  private
+
+  # user が Hash でない形で送られても例外にしない
+  def user_email_in(hash)
+    hash["user"]["email"] if hash.is_a?(Hash) && hash["user"].is_a?(Hash)
+  end
+
+  def json_body
+    return unless media_type == "application/json" && body
+
+    JSON.parse(body.read)
+  rescue JSON::ParserError
+    nil
+  ensure
+    # Rails 側のログイン処理が本文を最初から読めるよう、読んだ位置を戻す
+    body&.rewind
+  end
 end
 
 class Rack::Attack
@@ -21,6 +48,16 @@ class Rack::Attack
   throttle("logins/ip", limit: 5, period: 20.seconds) do |req|
     if req.normalized_path == "/users/sign_in" && req.post?
       req.ip
+    end
+  end
+
+  # IP を分散させた総当たりを止めるため、同じメールアドレスへの試行を数える。
+  # アカウント自体はロックせず、期間が過ぎれば解除される。OmniAuth でのログインには影響しない。
+  # キャッシュのキーやログにメールアドレスを残さないよう、ハッシュ化した値をキーにする。
+  throttle("logins/email", limit: 10, period: 1.hour) do |req|
+    if req.normalized_path == "/users/sign_in" && req.post?
+      email = req.login_email
+      Digest::SHA256.hexdigest(email) if email
     end
   end
 
