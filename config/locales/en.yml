@@ -34,6 +34,13 @@ en:
       login: "Log in"
       get_started: "Get Started"
       dashboard: "Go to Dashboard"
+    footer:
+      tagline: "Write what you want, in Japanese and English."
+      contact: "Contact"
+    meta:
+      title: "Dual Pascal — Your own blog, in Japanese and English"
+  meta:
+    description: "A personal blog where you can write in Japanese and English at your own pace. No community, no timeline — just your own blog."
   blog:
     category: "Category"
     tags: "Tags"

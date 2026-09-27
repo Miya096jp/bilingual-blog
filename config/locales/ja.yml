@@ -5,6 +5,13 @@ ja:
       login: "ログイン"
       get_started: "はじめる"
       dashboard: "ダッシュボードへ"
+    footer:
+      tagline: "日本語と英語で、書きたいことを。"
+      contact: "お問い合わせ"
+    meta:
+      title: "Dual Pascal — 日本語と英語で書く、あなただけのブログ"
+  meta:
+    description: "日本語と英語で、自分のペースで書ける個人ブログ。コミュニティもタイムラインもない、あなただけのブログです。"
   blog:
     category: "カテゴリ"
     tags: "タグ"

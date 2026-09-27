@@ -1,71 +1,111 @@
-div class="px-4 sm:px-6 pt-[112px] text-center"
-  div class="max-w-3xl mx-auto"
-    h1.font-mincho.text-4xl.sm:text-5xl.font-bold.leading-tight
-      | 日本語と英語で、
-      br
-      | 書きためる。
-    p class="mt-[28px] text-[#55554F]"
-      | 読者の反応や記事の完成度を気にせず、自分のペースで書くための場所です。
-      br
-      | 日本語だけ、英語だけ、日英セット。どれでも構いません。
+- primary_button = "inline-flex items-center justify-center w-full sm:w-auto bg-[#2563EB] text-white rounded-md text-[15px] font-bold px-8 h-[52px] hover:opacity-90"
+- secondary_button = "inline-flex items-center justify-center w-full sm:w-auto bg-white border border-[#D9D9D4] text-[#1B1B19] rounded-md text-[15px] font-bold px-8 h-[52px] hover:bg-[#F3F3F0]"
 
-    div class="mt-[40px] flex flex-col sm:flex-row items-center justify-center gap-3"
-      - if user_signed_in?
-        = link_to t("welcome.header.dashboard"), dashboard_articles_path, class: "bg-[#2563EB] text-white rounded-[10px] font-medium px-8 py-3 hover:opacity-90"
-      - else
-        button type="button" class="bg-[#2563EB] text-white rounded-[10px] font-medium px-8 py-3 hover:opacity-90" data-action="click->auth-modal#showModal" data-auth-modal-url-param="#{new_user_registration_path}"
-          | ブログをはじめる
-        button type="button" class="border border-[#ECEAE5] rounded-[10px] font-medium px-8 py-3 hover:bg-[#ECEAE5]" data-action="click->auth-modal#showModal"
-          = t("welcome.header.login")
+section class="bg-[#F6F7F9]"
+  div class="max-w-[1200px] mx-auto px-6 lg:px-10 pt-12 pb-16 lg:py-[84px]"
+    div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center"
+      div class="lg:col-span-5 text-center lg:text-left"
+        p class="flex items-center justify-center lg:justify-start gap-3 text-[13px] font-medium text-[#2C4A8A]"
+          span class="hidden lg:inline-block w-7 h-px bg-[#2C4A8A]" aria-hidden="true"
+          | 日本語と英語の、個人ブログ
+        h1 class="font-mincho mt-6 lg:mt-7 text-[34px] lg:text-[48px] leading-[1.5] tracking-[0.08em]"
+          | 書きたいことを、
+          br
+          span class="text-[#2C4A8A]" ふたつの言葉で。
+        p class="mt-6 lg:mt-8 text-base lg:text-lg leading-[2] text-[#3A3A36]"
+          | 日本語と英語で、自分のペースで書ける。
+          br
+          | コミュニティもタイムラインもない、
+          br
+          | あなただけのブログです。
 
-    - unless user_signed_in?
-      p class="mt-[16px] text-sm text-[#6B6B66]"
-        | GitHub・Google のアカウントでも登録できます
+        div class="mt-8 lg:mt-10 flex flex-col sm:flex-row sm:justify-center lg:justify-start gap-3"
+          - if user_signed_in?
+            = link_to t("welcome.header.dashboard"), dashboard_articles_path, class: primary_button
+          - else
+            = link_to "ブログをはじめる", new_user_registration_path, class: primary_button, data: { action: "click->auth-modal#showModal", auth_modal_url_param: new_user_registration_path }
+            = link_to t("welcome.header.login"), new_user_session_path, class: secondary_button, data: { action: "click->auth-modal#showModal" }
 
-div class="px-4 sm:px-6 mt-[96px]"
-  div class="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-[28px]"
-    div class="bg-white border border-[#ECEAE5] rounded-[14px] p-[32px]"
-      svg class="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4.5v15m6-15v15M4.5 8.25h4.5m-4.5 7.5h4.5m6-7.5h4.5m-4.5 7.5h4.5"
-      h2 class="font-mincho text-lg font-bold mt-[14px]" 日英をセットで持てる
-      p class="mt-[10px] text-sm text-[#55554F]"
-        | 記事は日本語と英語を紐づけて管理できます。片方だけ書いて、あとから翻訳を足しても構いません。
+        - unless user_signed_in?
+          p class="mt-5 text-[13px] leading-[1.8] text-[#6B6B66]"
+            | 無料で使えます。
+            br class="sm:hidden"
+            | Google・GitHub・メールアドレスで登録できます。
 
-    div class="bg-white border border-[#ECEAE5] rounded-[14px] p-[32px]"
-      svg class="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 12l8.954-8.955a1.5 1.5 0 012.122 0L22.28 12M4.5 9.75V21a.75.75 0 00.75.75H9.75v-6a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v6h4.5a.75.75 0 00.75-.75V9.75"
-      h2 class="font-mincho text-lg font-bold mt-[14px]" 自分だけのブログ
-      p class="mt-[10px] text-sm text-[#55554F]"
-        | ユーザーごとに独立したブログを持てます。タイムラインやおすすめ表示はありません。
+      div class="lg:col-span-7"
+        = image_tag "landing/hero.png",
+          alt: "同じ日付の日本語の記事と英語の記事を、2枚のカードで並べた様子",
+          width: 820, height: 706,
+          class: "w-full h-auto rounded-sm"
 
-    div class="bg-white border border-[#ECEAE5] rounded-[14px] p-[32px]"
-      svg class="w-6 h-6 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-      h2 class="font-mincho text-lg font-bold mt-[14px]" 書くことに集中できる
-      p class="mt-[10px] text-sm text-[#55554F]"
-        | Markdown で書き、プレビューを見ながら整えます。下書きのまま、ためておけます。
+section class="max-w-[1200px] mx-auto px-6 lg:px-10 py-24 lg:py-[172px] flex flex-col gap-28 lg:gap-[180px]"
+  div class="grid grid-cols-1 lg:grid-cols-[7fr_5fr] gap-8 lg:gap-10 items-center"
+    div class="bg-[#EEF1F6] rounded-lg p-4 lg:p-5"
+      = image_tag "landing/feature_bilingual.png",
+        alt: "日本語と英語の記事を、ペアで並べて管理している記事一覧の画面",
+        width: 880, height: 530, loading: "lazy",
+        class: "w-full h-auto rounded shadow-[0_8px_24px_rgba(27,27,25,0.12)]"
+    div
+      p class="flex items-baseline gap-4"
+        span class="font-mincho text-[22px] text-[#2C4A8A]" 01
+        span class="text-[11px] tracking-[0.18em] text-[#55554F]" TWO LANGUAGES, TOGETHER
+      h2 class="font-mincho mt-4 lg:mt-5 text-[24px] lg:text-[30px] leading-[1.6] tracking-[0.06em]"
+        | 日本語と英語の記事を、
+        br
+        | ペアで管理。
+      p class="mt-5 lg:mt-7 text-[15px] lg:text-base leading-[2] text-[#3A3A36]"
+        | 日本語だけ、英語だけ、あるいは両方そろえて。
+        br class="hidden lg:inline"
+        | 書きたいときに、書きたい言葉で公開できます。
 
-- if @articles.present?
-  div class="px-4 sm:px-6 mt-[96px]"
-    div class="max-w-3xl mx-auto"
-      .flex.items-baseline.gap-3
-        h2.font-mincho.text-2xl.font-bold はじめに読む
-        span class="text-sm text-[#6B6B66]" 運営者が書いた、このサービスの使い方や成り立ち
+  div class="grid grid-cols-1 lg:grid-cols-[5fr_7fr] gap-8 lg:gap-10 items-center"
+    div class="bg-[#EEF1F6] rounded-lg p-4 lg:p-5 lg:order-2"
+      = image_tag "landing/feature_blog.png",
+        alt: "カバー画像と記事タイトルが並ぶ、公開されたブログの画面",
+        width: 880, height: 530, loading: "lazy",
+        class: "w-full h-auto rounded shadow-[0_8px_24px_rgba(27,27,25,0.12)]"
+    div class="lg:order-1"
+      p class="flex items-baseline gap-4"
+        span class="font-mincho text-[22px] text-[#2C4A8A]" 02
+        span class="text-[11px] tracking-[0.18em] text-[#55554F]" YOUR OWN LITTLE PLACE
+      h2 class="font-mincho mt-4 lg:mt-5 text-[24px] lg:text-[30px] leading-[1.6] tracking-[0.06em]"
+        | 日記を書くように、
+        br
+        | 誰にも気兼ねなく。
+      p class="mt-5 lg:mt-7 text-[15px] lg:text-base leading-[2] text-[#3A3A36]"
+        | 読まれた数や反応を気にせずに、
+        br class="hidden lg:inline"
+        | あなたの言葉を静かに書き綴れる場所です。
 
-      ul class="mt-[20px] divide-y divide-[#ECEAE5] border-t border-b border-[#ECEAE5]"
-        - @articles.each do |article|
-          li class="py-[24px]"
-            = link_to user_article_path(@operator.username, article.id, locale: "ja"), class: "flex items-center justify-between gap-4 hover:text-[#2563EB]" do
-              span.font-medium= article.title
-              span class="text-sm text-[#6B6B66] whitespace-nowrap"= l(article.published_at, format: :blog_date)
-
-      p class="mt-[20px] text-right"
-        = link_to "運営者のブログを見る →", user_articles_path(@operator.username, locale: "ja"), class: "text-[#2563EB] hover:underline text-sm"
+  div class="grid grid-cols-1 lg:grid-cols-[7fr_5fr] gap-8 lg:gap-10 items-center"
+    div class="bg-[#EEF1F6] rounded-lg p-4 lg:p-5"
+      = image_tag "landing/feature_editor.png",
+        alt: "Markdown の入力欄とプレビューを左右に並べたエディターの画面",
+        width: 880, height: 530, loading: "lazy",
+        class: "w-full h-auto rounded shadow-[0_8px_24px_rgba(27,27,25,0.12)]"
+    div
+      p class="flex items-baseline gap-4"
+        span class="font-mincho text-[22px] text-[#2C4A8A]" 03
+        span class="text-[11px] tracking-[0.18em] text-[#55554F]" JUST YOU AND YOUR WORDS
+      h2 class="font-mincho mt-4 lg:mt-5 text-[24px] lg:text-[30px] leading-[1.6] tracking-[0.06em]"
+        | シンプルなエディターで、
+        br
+        | 書くことに集中。
+      p class="mt-5 lg:mt-7 text-[15px] lg:text-base leading-[2] text-[#3A3A36]"
+        | Markdown で書きながら、仕上がりをその場で確認できます。
+        br class="hidden lg:inline"
+        | 見出しやリストも、記号ひとつで整います。
+        br class="hidden lg:inline"
+        | 翻訳するときは、原文を表示できます。
 
 - unless user_signed_in?
-  div class="px-4 sm:px-6 mt-[96px] text-center"
-    div class="max-w-3xl mx-auto"
-      h2.font-mincho.text-2xl.sm:text-3xl.font-bold まず1本、下書きから。
-      .mt-6
-        button type="button" class="bg-[#2563EB] text-white rounded-[10px] font-medium px-8 py-3 hover:opacity-90" data-action="click->auth-modal#showModal" data-auth-modal-url-param="#{new_user_registration_path}"
-          | ブログをはじめる
+  section class="bg-[#F6F7F9]"
+    div class="max-w-[1200px] mx-auto px-6 lg:px-10 py-20 lg:py-[108px] text-center"
+      p class="font-mincho italic text-[15px] lg:text-[16px] text-[#2C4A8A]" Every story starts with a word.
+      h2 class="font-mincho mt-4 lg:mt-5 text-[24px] lg:text-[30px] leading-[1.6] tracking-[0.06em]"
+        | まずは気軽に、
+        br class="lg:hidden"
+        | はじめてみませんか。
+      div class="mt-8 lg:mt-10 flex flex-col sm:flex-row justify-center gap-3"
+        = link_to "ブログをはじめる", new_user_registration_path, class: primary_button, data: { action: "click->auth-modal#showModal", auth_modal_url_param: new_user_registration_path }
+        = link_to t("welcome.header.login"), new_user_session_path, class: secondary_button, data: { action: "click->auth-modal#showModal" }

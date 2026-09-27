@@ -17,8 +17,7 @@ module ApplicationHelper
       title: "日英バイリンガルブログプラットフォーム",
       reverse: true,
       separator: "|",
-      description: "Dual Pascalは、世界に情報発信したいエンジニアのためのブログプラットフォームです。",
-      keywords: "エンジニア, 技術ブログ, プログラミング, 英語, 情報発信",
+      description: t("meta.description"),
       canonical: request.original_url,
       noindex: !Rails.env.production?,
       icon: [
