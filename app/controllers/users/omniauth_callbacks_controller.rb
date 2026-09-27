@@ -18,6 +18,8 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       sign_in_and_redirect @user, event: :authentication
       if result[:is_new]
         flash[:notice] = "アカウントを作成しました"
+      elsif result[:password_reset]
+        flash[:notice] = "既存アカウントでログインしました。登録時のパスワードは無効になったため、パスワードでログインする場合は再設定してください"
       else
         flash[:notice] = "既存アカウントでログインしました"
       end
