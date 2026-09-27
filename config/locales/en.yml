@@ -49,6 +49,9 @@ en:
     updated_at: "Updated"
     translation: "Translation"
     more_stories: "More Stories"
+    header:
+      login: "Log in"
+      dashboard: "Dashboard"
     search:
       placeholder: "Search article..."
       button: "Search"

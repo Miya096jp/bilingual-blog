@@ -20,6 +20,9 @@ ja:
     updated_at: "最終更新日"
     translation: "翻訳"
     more_stories: "その他の記事"
+    header:
+      login: "ログイン"
+      dashboard: "ダッシュボード"
     search:
       placeholder: "記事を検索..."
       button: "検索"
