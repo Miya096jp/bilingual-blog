@@ -11,6 +11,7 @@ class Article < ApplicationRecord
   validates :cover_image, content_type: [ "image/png", "image/jpeg", "image/webp" ],
                           size: { less_than: 5.megabytes }
   validates :description, length: { maximum: 255 }
+  validate :category_belongs_to_user
 
 
   enum :status, %i[draft published]
@@ -118,6 +119,12 @@ class Article < ApplicationRecord
       new_tags = @pending_tag_names.map { |name| user.tags.find_or_create_by(name: name.downcase) }
       self.tags = new_tags
     end
+  end
+
+  def category_belongs_to_user
+    return if category.nil? || category.user_id == user_id
+
+    errors.add(:category, :invalid)
   end
 
   def set_default_description
