@@ -49,7 +49,7 @@
 
 
 ## 技術スタック
-- **言語・フレームワーク**：Ruby 3.3.4 / Ruby on Rails 8.1.4
+- **言語・フレームワーク**：Ruby 3.4.12 / Ruby on Rails 8.1.4
 - **フロントエンド**：Hotwire（Turbo / Stimulus）、Tailwind CSS 4、Slim、importmap（JSバンドラーなし）
 - **データベース**：PostgreSQL
 - **認証**：Devise、OmniAuth（GitHub / Google）
