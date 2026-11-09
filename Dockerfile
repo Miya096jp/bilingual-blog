@@ -1,9 +1,10 @@
-FROM ruby:3.3.4-slim
+FROM ruby:3.4.12-slim-bookworm
 
 RUN apt-get update -qq && \
     apt-get install -y \
     build-essential \
     libpq-dev \
+    libyaml-dev \
     nodejs \
     npm \
     postgresql-client \
