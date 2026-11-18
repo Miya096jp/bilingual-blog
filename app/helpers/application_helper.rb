@@ -21,8 +21,8 @@ module ApplicationHelper
       canonical: request.original_url,
       noindex: !Rails.env.production?,
       icon: [
-        { href: image_url("dualpascal_icon.png") },
-        { href: image_url("dualpascal_icon.png"), rel: "apple-touch-icon", sizes: "180x180", type: "image/png" }
+        { href: "/favicon.ico", sizes: "any" },
+        { href: image_url("apple-touch-icon.png"), rel: "apple-touch-icon", sizes: "180x180", type: "image/png" }
       ],
       og: {
         site_name: "Dual Pascal",
@@ -30,7 +30,7 @@ module ApplicationHelper
         description: :description,
         type: "website",
         url: request.original_url,
-        image: image_url("dualpascal_official_image.png"),
+        image: image_url("dualpascal_ogp.png"),
         locale: "ja_JP"
       },
       twitter: {
