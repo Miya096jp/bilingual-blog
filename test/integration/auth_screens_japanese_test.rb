@@ -20,14 +20,15 @@ class AuthScreensJapaneseTest < ActionDispatch::IntegrationTest
     get new_user_registration_path(locale: "en"), headers: FRAME_HEADERS
 
     assert_select "h3", text: "アカウントを作成"
-    assert_select "button", text: "GitHubでログイン"
-    assert_select "button", text: "Googleでログイン"
+    assert_select "button", text: "GitHubではじめる"
+    assert_select "button", text: "Googleではじめる"
     assert_select "span", text: "または"
+    assert_select "p", text: "Eメールとパスワードではじめる"
     assert_select "input[placeholder=?]", "ユーザー名"
     assert_select "input[placeholder=?]", "メールアドレス"
     assert_select "input[placeholder=?]", "パスワード（8文字以上）"
     assert_select "input[placeholder=?]", "パスワード（確認）"
-    assert_select "input[type=submit][value=?]", "アカウントを作成"
+    assert_select "input[type=submit][value=?]", "確認メールを送信"
     assert_select "span", text: "すでにアカウントをお持ちの方"
     assert_select "a[href=?]", new_user_session_path, text: "ログイン"
     assert_no_match ENGLISH_WORDS, response.body
