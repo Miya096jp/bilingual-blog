@@ -1,7 +1,7 @@
 - if @blog_owner.admin?
-  - set_meta_tags title: "Dual Pascal - 日英バイリンガルブログプラットフォーム",
-                  description: "Dual Pascalは、世界に情報発信したいエンジニアのためのブログサービスです",
-                  og: { image: image_url('dualpascal_official_image.png') },
+  - set_meta_tags title: "Dual Pascal",
+                  description: "日本語と英語で書ける、あなただけのブログです。",
+                  og: { image: image_url('dualpascal_opg.png') },
                   site: ""
 - else
   - blog_title = @blog_setting&.display_title(I18n.locale)
